@@ -1,124 +1,253 @@
-'use client'
+import Link from 'next/link'
+import { ArrowRight, Zap, TrendingUp, Skull } from 'lucide-react'
+import { SiteHeader } from '@/components/site-header'
+import { SiteFooter } from '@/components/site-footer'
+import { ProductCard } from '@/components/product-card'
+import { NewsFeed } from '@/components/news-feed'
+import { MarketPulse } from '@/components/market-pulse'
+import { ArticleCard } from '@/components/article-card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  getFeaturedProducts,
+  getTrendingProducts,
+  getDeadProducts,
+  articles,
+  products,
+} from '@/lib/mock-data'
 
-import { useState, useEffect } from 'react'
-import { Header } from '@/components/header'
-import { CategoryFilter } from '@/components/category-filter'
-import { ProductList } from '@/components/product-list'
-import { Sidebar } from '@/components/sidebar'
-import { SearchDialog } from '@/components/search-dialog'
-import { ProductPanel } from '@/components/product-panel'
-import { products, type Product, type Category } from '@/lib/mock-data'
-
-export default function Home() {
-  const [selectedCategory, setSelectedCategory] = useState<Category>('All')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [sort, setSort] = useState<'buzz' | 'trending' | 'newest' | 'hidden-gems'>('buzz')
-
-  // Keyboard shortcut for search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setSearchOpen(true)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
-  // Sort products based on selected sort option
-  const sortedProducts = [...products].sort((a, b) => {
-    switch (sort) {
-      case 'buzz':
-        return b.buzzScore - a.buzzScore
-      case 'trending':
-        const trendOrder = { rising: 0, stable: 1, falling: 2 }
-        if (trendOrder[a.buzzTrend] !== trendOrder[b.buzzTrend]) {
-          return trendOrder[a.buzzTrend] - trendOrder[b.buzzTrend]
-        }
-        return b.buzzScore - a.buzzScore
-      case 'newest':
-        return new Date(b.launchDate).getTime() - new Date(a.launchDate).getTime()
-      case 'hidden-gems':
-        // Products with lower buzz but high potential (verified, active development)
-        const aGem = a.verified && a.badges.includes('active-development') ? 1 : 0
-        const bGem = b.verified && b.badges.includes('active-development') ? 1 : 0
-        if (aGem !== bGem) return bGem - aGem
-        return a.buzzScore - b.buzzScore // Lower buzz first for hidden gems
-      default:
-        return 0
-    }
-  })
+export default function HomePage() {
+  const featuredProducts = getFeaturedProducts(4)
+  const trendingProducts = getTrendingProducts(5)
+  const deadProducts = getDeadProducts().slice(0, 3)
+  const recentArticles = articles.slice(0, 3)
+  const latestArticle = articles[0]
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Background gradient */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-1/2 left-1/2 h-[1000px] w-[1000px] -translate-x-1/2 rounded-full bg-[var(--sentinel-accent)]/5 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-[600px] w-[600px] rounded-full bg-[var(--sentinel-accent)]/3 blur-3xl" />
-      </div>
+      <SiteHeader />
 
-      <Header
-        onSearch={setSearchQuery}
-        onOpenSearch={() => setSearchOpen(true)}
-      />
-
-      <main className="mx-auto max-w-7xl px-4 pt-24 pb-12 sm:px-6 lg:px-8">
-        {/* Hero section */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-            Track the{' '}
-            <span className="bg-gradient-to-r from-[var(--sentinel-accent)] to-[var(--sentinel-rising)] bg-clip-text text-transparent">
-              Buzz
-            </span>
-          </h1>
-          <p className="mx-auto mt-3 max-w-xl text-lg text-muted-foreground text-balance">
-            Discover what the internet is talking about. Real-time social signals from Twitter, Reddit, Hacker News, and more.
-          </p>
-        </div>
-
-        {/* Category filter */}
-        <div className="mb-6">
-          <CategoryFilter
-            selected={selectedCategory}
-            onSelect={setSelectedCategory}
-          />
-        </div>
-
-        {/* Main content */}
-        <div className="flex gap-8">
-          {/* Product list */}
-          <div className="min-w-0 flex-1">
-            <ProductList
-              products={sortedProducts}
-              category={selectedCategory}
-              searchQuery={searchQuery}
-              onProductClick={setSelectedProduct}
-            />
+      <main>
+        {/* Hero Section */}
+        <section className="border-b border-border bg-secondary/20 py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-center text-center">
+              <Badge variant="secondary" className="mb-4">
+                <Zap className="mr-1 h-3 w-3" />
+                Tracking 500+ products
+              </Badge>
+              <h1 className="max-w-3xl font-serif text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+                Discover what the internet is{' '}
+                <span className="text-primary">talking about</span>
+              </h1>
+              <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
+                Real-time social buzz monitoring for products and tools. 
+                Track trends, discover rising stars, and see what&apos;s fading away.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+                <Button asChild size="lg">
+                  <Link href="/products">
+                    Browse Products
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg">
+                  <Link href="/explore">
+                    Explore the Graph
+                  </Link>
+                </Button>
+              </div>
+            </div>
           </div>
+        </section>
 
-          {/* Sidebar */}
-          <Sidebar sort={sort} onSortChange={setSort} />
-        </div>
+        {/* Main Content Grid */}
+        <section className="py-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-8 lg:grid-cols-3">
+              {/* Left Column - News Feed & Featured Article */}
+              <div className="lg:col-span-2 space-y-8">
+                {/* Featured Article */}
+                {latestArticle && (
+                  <div>
+                    <div className="mb-4 flex items-center justify-between">
+                      <h2 className="font-serif text-xl font-semibold">Latest Insight</h2>
+                      <Link
+                        href="/insights"
+                        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        All insights
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                    <ArticleCard article={latestArticle} variant="featured" />
+                  </div>
+                )}
+
+                {/* News Feed */}
+                <NewsFeed limit={6} />
+              </div>
+
+              {/* Right Column - Market Pulse */}
+              <div className="space-y-8">
+                <MarketPulse />
+
+                {/* Quick Stats */}
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <h3 className="font-medium text-muted-foreground">Platform Stats</h3>
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">{products.filter(p => p.status === 'active').length}</p>
+                      <p className="text-xs text-muted-foreground">Active products</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">{deadProducts.length}</p>
+                      <p className="text-xs text-muted-foreground">In graveyard</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">9</p>
+                      <p className="text-xs text-muted-foreground">Categories</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">24/7</p>
+                      <p className="text-xs text-muted-foreground">Monitoring</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Featured Products */}
+        <section className="border-t border-border bg-secondary/10 py-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="font-serif text-2xl font-semibold">Featured Today</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Hand-picked products making waves right now
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href="/products">
+                  View all products
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {featuredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} variant="featured" />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Trending & Rising */}
+        <section className="py-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-8 lg:grid-cols-2">
+              {/* Trending */}
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-[var(--sentinel-rising)]" />
+                  <h2 className="font-serif text-xl font-semibold">Trending This Week</h2>
+                </div>
+                <div className="space-y-2">
+                  {trendingProducts.map((product, index) => (
+                    <div key={product.id} className="flex items-center gap-3">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1">
+                        <ProductCard product={product} variant="compact" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Graveyard Preview */}
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Skull className="h-5 w-5 text-[var(--sentinel-dead)]" />
+                    <h2 className="font-serif text-xl font-semibold">Product Graveyard</h2>
+                  </div>
+                  <Link
+                    href="/graveyard"
+                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    View all
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Products that have been discontinued or sunset. Learn from the past.
+                </p>
+                <div className="space-y-2">
+                  {deadProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} variant="compact" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* More Insights */}
+        <section className="border-t border-border bg-secondary/10 py-12">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="font-serif text-2xl font-semibold">Market Insights</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Analysis, comparisons, and trend reports
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href="/insights">
+                  All articles
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {recentArticles.map((article) => (
+                <ArticleCard key={article.id} article={article} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="rounded-2xl bg-primary p-8 text-center text-primary-foreground sm:p-12">
+              <h2 className="font-serif text-2xl font-semibold sm:text-3xl">
+                Have a product to share?
+              </h2>
+              <p className="mx-auto mt-3 max-w-xl text-primary-foreground/80">
+                Submit your product to get tracked on Product Sentinel. 
+                Verified products get featured placement and enhanced analytics.
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-4">
+                <Button variant="secondary" size="lg" asChild>
+                  <Link href="/submit">Submit a Product</Link>
+                </Button>
+                <Button variant="ghost" size="lg" className="text-primary-foreground hover:text-primary-foreground hover:bg-primary-foreground/10" asChild>
+                  <Link href="/signup">Create an Account</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* Search dialog */}
-      <SearchDialog
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onSelect={(product) => {
-          setSelectedProduct(product)
-          setSearchOpen(false)
-        }}
-      />
-
-      {/* Product detail panel */}
-      <ProductPanel
-        product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
-      />
+      <SiteFooter />
     </div>
   )
 }

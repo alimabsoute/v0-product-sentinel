@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, Fraunces } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const _geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const _geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+const _fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces" });
 
 export const metadata: Metadata = {
   title: 'Product Sentinel - Track the Buzz',
@@ -35,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${_geist.variable} ${_geistMono.variable} ${_fraunces.variable}`}>
       <body className="font-sans antialiased">
         {children}
         <Analytics />
