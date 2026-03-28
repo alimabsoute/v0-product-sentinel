@@ -100,16 +100,20 @@ export default function ExplorePage() {
         strength: 1,
       })
 
-      // Edges between competitors
-      product.competitorIds.forEach(compId => {
-        if (nodeMap[compId]) {
-          edgeList.push({
-            source: product.id,
-            target: compId,
-            strength: 0.5,
-          })
-        }
-      })
+      // Edges between competitors (competitors array contains slugs)
+      if (product.competitors) {
+        product.competitors.forEach(compSlug => {
+          // Find the product by slug
+          const competitor = filteredProducts.find(p => p.slug === compSlug)
+          if (competitor && nodeMap[competitor.id]) {
+            edgeList.push({
+              source: product.id,
+              target: competitor.id,
+              strength: 0.5,
+            })
+          }
+        })
+      }
     })
 
     return {

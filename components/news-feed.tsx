@@ -90,13 +90,19 @@ function NewsItemCard({ item, isNew }: NewsItemCardProps) {
     .map(id => getProductById(id))
     .filter(Boolean)
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't open external link if clicking on a product mention
+    if ((e.target as HTMLElement).closest('[data-product-link]')) {
+      return
+    }
+    window.open(item.url, '_blank', 'noopener,noreferrer')
+  }
+
   return (
-    <a
-      href={item.url}
-      target="_blank"
-      rel="noopener noreferrer"
+    <div
+      onClick={handleCardClick}
       className={cn(
-        "group block rounded-lg border border-border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm",
+        "group cursor-pointer rounded-lg border border-border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm",
         isNew && "border-l-2 border-l-[var(--sentinel-hot)]"
       )}
     >
@@ -172,7 +178,7 @@ function NewsItemCard({ item, isNew }: NewsItemCardProps) {
                 <Link
                   key={product.id}
                   href={`/products/${product.slug}`}
-                  onClick={(e) => e.stopPropagation()}
+                  data-product-link
                   className="flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
                 >
                   <img
@@ -189,6 +195,6 @@ function NewsItemCard({ item, isNew }: NewsItemCardProps) {
 
         <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
-    </a>
+    </div>
   )
 }
