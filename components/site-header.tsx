@@ -52,10 +52,16 @@ export function SiteHeader() {
               Insights
             </Link>
             <Link
-              href="/categories"
+              href="/evolution"
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              Categories
+              Evolution
+            </Link>
+            <Link
+              href="/graveyard"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Graveyard
             </Link>
           </nav>
 
@@ -143,11 +149,18 @@ export function SiteHeader() {
                 Insights
               </Link>
               <Link
-                href="/categories"
+                href="/evolution"
                 className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Categories
+                Evolution
+              </Link>
+              <Link
+                href="/graveyard"
+                className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Graveyard
               </Link>
               <div className="my-2 border-t border-border" />
               <Link

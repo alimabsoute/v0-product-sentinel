@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 
 interface ProductCardProps {
   product: Product
-  variant?: 'default' | 'compact' | 'featured'
+  variant?: 'default' | 'compact' | 'featured' | 'list'
 }
 
 export function ProductCard({ product, variant = 'default' }: ProductCardProps) {
@@ -54,6 +54,68 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
           <p className="text-xs text-muted-foreground truncate">{product.tagline}</p>
         </div>
         <BuzzIndicator product={product} size="sm" />
+      </Link>
+    )
+  }
+
+  if (variant === 'list') {
+    return (
+      <Link
+        href={`/products/${product.slug}`}
+        className={cn(
+          "group flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-md",
+          product.status === 'dead' && "opacity-60"
+        )}
+      >
+        <img
+          src={product.logo}
+          alt={product.name}
+          className="h-14 w-14 rounded-lg object-cover shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-medium">{product.name}</h3>
+            {product.status === 'dead' && (
+              <Badge className="bg-[var(--sentinel-dead)] text-xs">Sunset</Badge>
+            )}
+            {product.badges.includes('verified') && (
+              <Badge variant="secondary" className="h-4 px-1 text-[10px]">Verified</Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground line-clamp-1 mb-2">{product.tagline}</p>
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="outline" className="text-xs">{product.category}</Badge>
+            {product.tags.slice(0, 2).map(tag => (
+              <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-4 shrink-0">
+          <BuzzIndicator product={product} />
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.preventDefault()
+              }}
+            >
+              <Bookmark className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.preventDefault()
+                window.open(product.url, '_blank')
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </Link>
     )
   }
