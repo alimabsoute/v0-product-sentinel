@@ -450,9 +450,9 @@ export default function EvolutionPage() {
                             <h3 className="font-medium group-hover:text-primary transition-colors">
                               {product.name}
                             </h3>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(product.launchDate).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-                            </p>
+<p className="text-xs text-muted-foreground">
+                                              {product.launchDate.slice(0, 4)}
+                                            </p>
                           </div>
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">
@@ -743,7 +743,7 @@ export default function EvolutionPage() {
                       
                       {/* Year-by-year bars */}
                       <div className="flex items-end gap-1 h-16">
-                        {years.map(year => {
+                        {[2020, 2021, 2022, 2023, 2024, 2025].map(year => {
                           const count = cat.years[year as keyof typeof cat.years]
                           const height = (count / maxProducts) * 100
                           

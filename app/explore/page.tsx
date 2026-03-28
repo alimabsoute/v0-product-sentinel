@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { ZoomIn, ZoomOut, Maximize2, Filter, Search, Info } from 'lucide-react'
+import { ZoomIn, ZoomOut, Maximize2, Filter, Search, Info, Play, Pause } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,7 @@ interface Edge {
   source: string
   target: string
   strength: number
+  type: 'category' | 'competitor' | 'similar'
 }
 
 export default function ExplorePage() {
@@ -42,6 +43,8 @@ export default function ExplorePage() {
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<Category>('All')
+  const [isAnimating, setIsAnimating] = useState(true)
+  const [animationSpeed, setAnimationSpeed] = useState<'slow' | 'normal' | 'fast'>('normal')
 
   // Generate graph data
   const { nodes, edges } = useMemo(() => {
@@ -98,6 +101,7 @@ export default function ExplorePage() {
         source: product.id,
         target: `cat-${product.category}`,
         strength: 1,
+        type: 'category',
       })
 
       // Edges between competitors (competitors array contains slugs)
@@ -109,7 +113,8 @@ export default function ExplorePage() {
             edgeList.push({
               source: product.id,
               target: competitor.id,
-              strength: 0.5,
+              strength: 0.8,
+              type: 'competitor',
             })
           }
         })
@@ -187,9 +192,9 @@ export default function ExplorePage() {
           </div>
         </div>
 
-        {/* Zoom Controls */}
-        <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
-          <div className="rounded-xl border border-border bg-card p-1 shadow-lg">
+        {/* Zoom & Animation Controls */}
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+          <div className="rounded-xl border border-border bg-card p-1 shadow-lg flex flex-col">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleZoom('in')}>
               <ZoomIn className="h-4 w-4" />
             </Button>
@@ -200,27 +205,58 @@ export default function ExplorePage() {
               <Maximize2 className="h-4 w-4" />
             </Button>
           </div>
+          <div className="rounded-xl border border-border bg-card p-1 shadow-lg flex flex-col">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn("h-8 w-8", isAnimating && "text-primary")}
+              onClick={() => setIsAnimating(!isAnimating)}
+            >
+              {isAnimating ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
 
         {/* Legend */}
-        <div className="absolute bottom-4 left-4 z-10 rounded-xl border border-border bg-card p-3 shadow-lg">
+        <div className="absolute bottom-4 left-4 z-10 rounded-xl border border-border bg-card p-3 shadow-lg max-w-[180px]">
           <p className="text-xs font-medium text-muted-foreground mb-2">Legend</p>
           <div className="space-y-1.5">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide pt-1">Nodes</p>
             <div className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full bg-[var(--sentinel-rising)]" />
-              <span className="text-xs">Rising</span>
+              <span className="text-xs">Rising buzz</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-[var(--sentinel-stable)]" />
+              <div className="h-3 w-3 rounded-full bg-muted-foreground/50" />
               <span className="text-xs">Stable</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full bg-[var(--sentinel-falling)]" />
-              <span className="text-xs">Falling</span>
+              <span className="text-xs">Falling buzz</span>
             </div>
-            <div className="flex items-center gap-2 pt-1 border-t border-border">
-              <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded-full border-2 border-primary bg-muted" />
               <span className="text-xs">Category</span>
+            </div>
+            
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide pt-2 border-t border-border">Connections</p>
+            <div className="flex items-center gap-2">
+              <div className="h-0.5 w-6 bg-primary rounded" />
+              <span className="text-xs">Competitors</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-px w-6 bg-muted-foreground/30" />
+              <span className="text-xs">Same category</span>
+            </div>
+            
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide pt-2 border-t border-border">Animation</p>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                <div className="h-px w-4 bg-primary/50" />
+                <div className="h-1 w-1 rounded-full bg-primary/50" />
+              </div>
+              <span className="text-xs">Data flow</span>
             </div>
           </div>
         </div>
@@ -264,24 +300,140 @@ export default function ExplorePage() {
             background: 'radial-gradient(circle at center, hsl(var(--muted)) 0%, hsl(var(--background)) 100%)',
           }}
         >
+          {/* Definitions for gradients and animations */}
+          <defs>
+            {/* Animated gradient for competitor edges */}
+            <linearGradient id="competitorGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
+              <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity="0.8">
+                {isAnimating && (
+                  <animate 
+                    attributeName="offset" 
+                    values="0;1;0" 
+                    dur="3s" 
+                    repeatCount="indefinite" 
+                  />
+                )}
+              </stop>
+              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.2" />
+            </linearGradient>
+
+            {/* Animated gradient for category edges */}
+            <linearGradient id="categoryGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity="0.3" />
+            </linearGradient>
+
+            {/* Glow filter for highlighted edges */}
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+
+            {/* Animated dash pattern */}
+            <pattern id="flowPattern" patternUnits="userSpaceOnUse" width="20" height="1">
+              <line x1="0" y1="0" x2="10" y2="0" stroke="hsl(var(--primary))" strokeWidth="2">
+                {isAnimating && (
+                  <animate 
+                    attributeName="x1" 
+                    values="0;20" 
+                    dur="1s" 
+                    repeatCount="indefinite" 
+                  />
+                )}
+              </line>
+            </pattern>
+          </defs>
+
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-            {/* Edges */}
-            {visibleEdges.map((edge, i) => {
+            {/* Category Edges (subtle, behind everything) */}
+            {visibleEdges.filter(e => e.type === 'category').map((edge, i) => {
               const source = getNode(edge.source)
               const target = getNode(edge.target)
               if (!source || !target) return null
 
               return (
                 <line
-                  key={`edge-${i}`}
+                  key={`cat-edge-${i}`}
                   x1={source.x}
                   y1={source.y}
                   x2={target.x}
                   y2={target.y}
-                  stroke="hsl(var(--border))"
-                  strokeWidth={edge.strength}
-                  strokeOpacity={0.5}
+                  stroke="url(#categoryGradient)"
+                  strokeWidth={0.5}
+                  strokeOpacity={0.4}
                 />
+              )
+            })}
+
+            {/* Competitor Edges (animated, more prominent) */}
+            {visibleEdges.filter(e => e.type === 'competitor').map((edge, i) => {
+              const source = getNode(edge.source)
+              const target = getNode(edge.target)
+              if (!source || !target) return null
+
+              const isHighlighted = hoveredNode && 
+                (hoveredNode.id === edge.source || hoveredNode.id === edge.target)
+              const isSelected = selectedNode &&
+                (selectedNode.id === edge.source || selectedNode.id === edge.target)
+
+              // Calculate edge length for animation timing
+              const dx = target.x - source.x
+              const dy = target.y - source.y
+              const length = Math.sqrt(dx * dx + dy * dy)
+
+              return (
+                <g key={`comp-edge-${i}`}>
+                  {/* Base line */}
+                  <line
+                    x1={source.x}
+                    y1={source.y}
+                    x2={target.x}
+                    y2={target.y}
+                    stroke={isHighlighted || isSelected ? "hsl(var(--primary))" : "hsl(var(--border))"}
+                    strokeWidth={isHighlighted || isSelected ? 2 : 1}
+                    strokeOpacity={isHighlighted || isSelected ? 0.8 : 0.3}
+                    className="transition-all duration-300"
+                    filter={isHighlighted ? "url(#glow)" : undefined}
+                  />
+                  
+                  {/* Animated flow dots */}
+                  {isAnimating && (isHighlighted || isSelected) && (
+                    <>
+                      <circle r="3" fill="hsl(var(--primary))">
+                        <animateMotion
+                          dur="2s"
+                          repeatCount="indefinite"
+                          path={`M${source.x},${source.y} L${target.x},${target.y}`}
+                        />
+                        <animate
+                          attributeName="opacity"
+                          values="0;1;1;0"
+                          dur="2s"
+                          repeatCount="indefinite"
+                        />
+                      </circle>
+                      <circle r="2" fill="hsl(var(--primary))" opacity="0.5">
+                        <animateMotion
+                          dur="2s"
+                          repeatCount="indefinite"
+                          begin="0.5s"
+                          path={`M${source.x},${source.y} L${target.x},${target.y}`}
+                        />
+                        <animate
+                          attributeName="opacity"
+                          values="0;0.5;0.5;0"
+                          dur="2s"
+                          repeatCount="indefinite"
+                          begin="0.5s"
+                        />
+                      </circle>
+                    </>
+                  )}
+                </g>
               )
             })}
 
