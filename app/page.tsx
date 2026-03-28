@@ -64,9 +64,9 @@ export default function HomePage() {
         {/* Main Content Grid */}
         <section className="py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid gap-8 lg:grid-cols-3">
-              {/* Left Column - News Feed & Featured Article */}
-              <div className="lg:col-span-2 space-y-8">
+            <div className="grid gap-8 lg:grid-cols-12">
+              {/* Left Column - Featured Products & Market Pulse */}
+              <div className="lg:col-span-7 space-y-8">
                 {/* Featured Article */}
                 {latestArticle && (
                   <div>
@@ -84,18 +84,13 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* News Feed */}
-                <NewsFeed limit={6} />
-              </div>
-
-              {/* Right Column - Market Pulse */}
-              <div className="space-y-8">
+                {/* Market Pulse */}
                 <MarketPulse />
 
                 {/* Quick Stats */}
                 <div className="rounded-xl border border-border bg-card p-4">
                   <h3 className="font-medium text-muted-foreground">Platform Stats</h3>
-                  <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div className="mt-4 grid grid-cols-4 gap-4">
                     <div>
                       <p className="text-2xl font-bold tabular-nums">{products.filter(p => p.status === 'active').length}</p>
                       <p className="text-xs text-muted-foreground">Active products</p>
@@ -113,6 +108,13 @@ export default function HomePage() {
                       <p className="text-xs text-muted-foreground">Monitoring</p>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Right Column - Live News Feed (prominently displayed) */}
+              <div className="lg:col-span-5">
+                <div className="lg:sticky lg:top-4">
+                  <NewsFeed limit={6} showNewsletter={true} />
                 </div>
               </div>
             </div>
