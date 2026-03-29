@@ -35,7 +35,7 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
     return (
       <Link 
         href={`/products/${product.slug}`}
-        className="group flex items-center gap-3 rounded-lg border border-transparent p-2 transition-colors hover:border-border hover:bg-card"
+        className="group flex items-center gap-3 rounded-xl p-2.5 transition-all hover:bg-secondary/80"
       >
         <img
           src={product.logo}
@@ -63,7 +63,7 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
       <Link
         href={`/products/${product.slug}`}
         className={cn(
-          "group flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-md",
+          "group flex items-center gap-4 rounded-2xl glass p-4 transition-all hover:shadow-lg hover:-translate-y-0.5",
           product.status === 'dead' && "opacity-60"
         )}
       >
@@ -124,7 +124,7 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
     return (
       <Link
         href={`/products/${product.slug}`}
-        className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg"
+        className="group relative flex flex-col overflow-hidden rounded-2xl glass transition-all hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1"
       >
         {/* Screenshot/Preview */}
         {product.screenshots[0] && (
@@ -169,7 +169,7 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
     <Link
       href={`/products/${product.slug}`}
       className={cn(
-        "group relative flex flex-col rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-md",
+        "group relative flex flex-col rounded-2xl glass p-4 transition-all hover:shadow-lg hover:-translate-y-0.5",
         product.status === 'dead' && "opacity-60"
       )}
     >

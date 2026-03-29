@@ -40,12 +40,12 @@ export function MarketPulse() {
   const trends = calculateCategoryTrends()
 
   return (
-    <div className="space-y-4">
+    <div className="glass rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-serif text-lg font-semibold">Market Pulse</h2>
         <Link
           href="/categories"
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           All markets
           <ArrowRight className="h-4 w-4" />
@@ -53,8 +53,8 @@ export function MarketPulse() {
       </div>
 
       <div className="space-y-2">
-        {trends.slice(0, 6).map((trend) => (
-          <CategoryTrendCard key={trend.category} trend={trend} />
+        {trends.slice(0, 6).map((trend, i) => (
+          <CategoryTrendCard key={trend.category} trend={trend} index={i} />
         ))}
       </div>
     </div>
@@ -63,9 +63,10 @@ export function MarketPulse() {
 
 interface CategoryTrendCardProps {
   trend: CategoryTrend
+  index?: number
 }
 
-function CategoryTrendCard({ trend }: CategoryTrendCardProps) {
+function CategoryTrendCard({ trend, index = 0 }: CategoryTrendCardProps) {
   const TrendIcon = trend.trend === 'rising'
     ? TrendingUp
     : trend.trend === 'falling'
@@ -82,12 +83,13 @@ function CategoryTrendCard({ trend }: CategoryTrendCardProps) {
     ? 'bg-[var(--sentinel-rising)]/10'
     : trend.trend === 'falling'
     ? 'bg-[var(--sentinel-falling)]/10'
-    : 'bg-muted'
+    : 'bg-secondary/50'
 
   return (
     <Link
       href={`/categories/${trend.category.toLowerCase().replace(/\s+/g, '-')}`}
-      className="group flex items-center justify-between rounded-lg border border-border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm"
+      className="group flex items-center justify-between rounded-xl bg-secondary/30 hover:bg-secondary/50 p-3 transition-all"
+      style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="flex items-center gap-3">
         <div className={cn(

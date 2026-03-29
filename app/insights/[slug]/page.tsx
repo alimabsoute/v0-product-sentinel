@@ -21,7 +21,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     notFound()
   }
 
-  const mentionedProducts = products.filter(p => article.productMentions.includes(p.id))
+  const mentionedProducts = products.filter(p => article.productMentions?.includes(p.id))
   const relatedArticles = articles
     .filter(a => a.id !== article.id && a.category === article.category)
     .slice(0, 3)

@@ -46,11 +46,14 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, 
   }
 
   return (
-    <div className="space-y-0">
+    <div className="glass rounded-2xl p-5 space-y-0">
       {showHeader && (
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <div className="h-2 w-2 animate-pulse rounded-full bg-[var(--sentinel-hot)]" />
+            <div className="relative">
+              <div className="h-2.5 w-2.5 rounded-full bg-[var(--sentinel-hot)]" />
+              <div className="absolute inset-0 h-2.5 w-2.5 animate-ping rounded-full bg-[var(--sentinel-hot)] opacity-75" />
+            </div>
             <h2 className="font-serif text-xl font-semibold">Live Stream</h2>
           </div>
           <Button
@@ -58,7 +61,7 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, 
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground rounded-xl"
           >
             <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
             Refresh
@@ -66,7 +69,7 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, 
         </div>
       )}
 
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-border/50">
         {news.map((item, index) => (
           <NewsItemCard key={item.id} item={item} isNew={index === 0} variant={variant} />
         ))}
@@ -74,7 +77,7 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, 
 
       {/* View Full Stream button */}
       <div className="pt-6">
-        <Button variant="outline" className="w-full" asChild>
+        <Button variant="outline" className="w-full rounded-xl" asChild>
           <Link href="/news">
             VIEW FULL STREAM
           </Link>
@@ -83,7 +86,7 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, 
 
       {/* Newsletter signup */}
       {showNewsletter && (
-        <div className="mt-8 rounded-xl bg-slate-800 p-6 text-white">
+        <div className="mt-6 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-6 text-white">
           <h3 className="font-serif text-xl font-semibold italic">Weekly Curated Hits</h3>
           <p className="mt-2 text-sm text-slate-300">
             Join 50k+ makers receiving the best launches in their inbox every Friday.
@@ -94,9 +97,9 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, 
               placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 border-slate-600 bg-slate-700 text-white placeholder:text-slate-400"
+              className="flex-1 rounded-xl border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
             />
-            <Button className="bg-orange-500 text-white hover:bg-orange-600">
+            <Button className="rounded-xl bg-orange-500 text-white hover:bg-orange-600 px-6">
               Join
             </Button>
           </div>
