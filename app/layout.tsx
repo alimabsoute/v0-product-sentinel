@@ -36,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${_geist.variable} ${_geistMono.variable} ${_fraunces.variable}`}>
+    <html lang="en" className={`${_geist.variable} ${_geistMono.variable} ${_fraunces.variable} light`} style={{ colorScheme: 'light' }}>
       <body className="font-sans antialiased">
         {children}
         <Analytics />
