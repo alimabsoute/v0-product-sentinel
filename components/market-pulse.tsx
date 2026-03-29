@@ -40,21 +40,20 @@ export function MarketPulse() {
   const trends = calculateCategoryTrends()
 
   return (
-    <div className="glass rounded-2xl p-5 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="rounded-2xl border border-border/50 bg-card/50 p-5">
+      <div className="flex items-center justify-between mb-5">
         <h2 className="font-serif text-lg font-semibold">Market Pulse</h2>
         <Link
           href="/categories"
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
         >
-          All markets
-          <ArrowRight className="h-4 w-4" />
+          All <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
 
-      <div className="space-y-2">
-        {trends.slice(0, 6).map((trend, i) => (
-          <CategoryTrendCard key={trend.category} trend={trend} index={i} />
+      <div className="space-y-1.5">
+        {trends.slice(0, 6).map((trend) => (
+          <CategoryTrendCard key={trend.category} trend={trend} />
         ))}
       </div>
     </div>
@@ -63,10 +62,9 @@ export function MarketPulse() {
 
 interface CategoryTrendCardProps {
   trend: CategoryTrend
-  index?: number
 }
 
-function CategoryTrendCard({ trend, index = 0 }: CategoryTrendCardProps) {
+function CategoryTrendCard({ trend }: CategoryTrendCardProps) {
   const TrendIcon = trend.trend === 'rising'
     ? TrendingUp
     : trend.trend === 'falling'
@@ -74,51 +72,35 @@ function CategoryTrendCard({ trend, index = 0 }: CategoryTrendCardProps) {
     : Minus
 
   const trendColor = trend.trend === 'rising'
-    ? 'text-[var(--sentinel-rising)]'
+    ? 'text-emerald-600'
     : trend.trend === 'falling'
-    ? 'text-[var(--sentinel-falling)]'
+    ? 'text-red-500'
     : 'text-muted-foreground'
-
-  const trendBg = trend.trend === 'rising'
-    ? 'bg-[var(--sentinel-rising)]/10'
-    : trend.trend === 'falling'
-    ? 'bg-[var(--sentinel-falling)]/10'
-    : 'bg-secondary/50'
 
   return (
     <Link
       href={`/categories/${trend.category.toLowerCase().replace(/\s+/g, '-')}`}
-      className="group flex items-center justify-between rounded-xl bg-secondary/30 hover:bg-secondary/50 p-3 transition-all"
-      style={{ animationDelay: `${index * 50}ms` }}
+      className="group flex items-center justify-between rounded-xl p-2.5 -mx-2.5 transition-colors hover:bg-secondary/50"
     >
       <div className="flex items-center gap-3">
-        <div className={cn(
-          "flex h-10 w-10 items-center justify-center rounded-lg",
-          trendBg
-        )}>
-          <TrendIcon className={cn("h-5 w-5", trendColor)} />
-        </div>
+        <TrendIcon className={cn("h-4 w-4", trendColor)} />
         <div>
-          <h3 className="font-medium group-hover:text-primary">{trend.category}</h3>
-          <p className="text-xs text-muted-foreground">
+          <span className="text-sm font-medium group-hover:text-primary transition-colors">
+            {trend.category}
+          </span>
+          <span className="text-xs text-muted-foreground ml-2">
             {trend.productCount} products
-          </p>
+          </span>
         </div>
       </div>
 
-      <div className="text-right">
-        <div className={cn("text-sm font-semibold tabular-nums", trendColor)}>
-          {trend.change > 0 ? '+' : ''}{trend.change}%
-        </div>
-        <div className="text-xs text-muted-foreground">
-          avg buzz {trend.avgBuzz}
-        </div>
+      <div className={cn("text-sm font-medium tabular-nums", trendColor)}>
+        {trend.change > 0 ? '+' : ''}{trend.change}%
       </div>
     </Link>
   )
 }
 
-// Compact version for sidebar
 export function MarketPulseCompact() {
   const trends = calculateCategoryTrends()
   const topRising = trends.filter(t => t.trend === 'rising').slice(0, 3)
@@ -137,7 +119,7 @@ export function MarketPulseCompact() {
               className="flex items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-muted"
             >
               <span>{trend.category}</span>
-              <span className="flex items-center gap-1 text-[var(--sentinel-rising)]">
+              <span className="flex items-center gap-1 text-emerald-600">
                 <TrendingUp className="h-3 w-3" />
                 +{trend.change}%
               </span>
@@ -155,7 +137,7 @@ export function MarketPulseCompact() {
               className="flex items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-muted"
             >
               <span>{trend.category}</span>
-              <span className="flex items-center gap-1 text-[var(--sentinel-falling)]">
+              <span className="flex items-center gap-1 text-red-500">
                 <TrendingDown className="h-3 w-3" />
                 {trend.change}%
               </span>

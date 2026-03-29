@@ -46,9 +46,11 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <Badge variant="secondary">{article.category}</Badge>
-            <Badge variant="outline">
-              {article.type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-            </Badge>
+            {article.type && (
+              <Badge variant="outline">
+                {article.type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+              </Badge>
+            )}
           </div>
 
           <h1 className="font-serif text-3xl font-bold leading-tight sm:text-4xl">

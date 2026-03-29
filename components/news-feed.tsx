@@ -2,33 +2,30 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ExternalLink, Clock, RefreshCw } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { NewsItem, getRecentNews, formatRelativeTime, getProductById } from '@/lib/mock-data'
+import { NewsItem, getRecentNews, formatRelativeTime } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 
-// Category colors matching the screenshot style
 const categoryColors: Record<string, string> = {
-  insights: 'bg-slate-700 text-white',
-  design: 'bg-slate-600 text-white',
-  ecommerce: 'bg-blue-600 text-white',
-  engineering: 'bg-emerald-600 text-white',
-  ai: 'bg-violet-600 text-white',
-  startup: 'bg-orange-600 text-white',
-  funding: 'bg-green-600 text-white',
-  product: 'bg-pink-600 text-white',
+  insights: 'bg-slate-800',
+  design: 'bg-pink-600',
+  ecommerce: 'bg-blue-600',
+  engineering: 'bg-emerald-600',
+  ai: 'bg-violet-600',
+  startup: 'bg-amber-600',
+  funding: 'bg-green-600',
+  product: 'bg-cyan-600',
 }
 
 interface NewsFeedProps {
   limit?: number
   showHeader?: boolean
   showNewsletter?: boolean
-  variant?: 'default' | 'sidebar'
 }
 
-export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, variant = 'default' }: NewsFeedProps) {
+export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true }: NewsFeedProps) {
   const [news, setNews] = useState<NewsItem[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [email, setEmail] = useState('')
@@ -42,54 +39,50 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, 
     setTimeout(() => {
       setNews(getRecentNews(limit))
       setIsRefreshing(false)
-    }, 1000)
+    }, 800)
   }
 
   return (
-    <div className="glass rounded-2xl p-5 space-y-0">
+    <div className="rounded-2xl border border-border/50 bg-card/50 p-5">
       {showHeader && (
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <div className="h-2.5 w-2.5 rounded-full bg-[var(--sentinel-hot)]" />
-              <div className="absolute inset-0 h-2.5 w-2.5 animate-ping rounded-full bg-[var(--sentinel-hot)] opacity-75" />
-            </div>
-            <h2 className="font-serif text-xl font-semibold">Live Stream</h2>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+            </span>
+            <h2 className="font-serif text-lg font-semibold">Live Stream</h2>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="text-muted-foreground hover:text-foreground rounded-xl"
+            className="h-8 text-xs text-muted-foreground"
           >
-            <RefreshCw className={cn("h-4 w-4 mr-1", isRefreshing && "animate-spin")} />
+            <RefreshCw className={cn("h-3 w-3 mr-1", isRefreshing && "animate-spin")} />
             Refresh
           </Button>
         </div>
       )}
 
-      <div className="divide-y divide-border/50">
-        {news.map((item, index) => (
-          <NewsItemCard key={item.id} item={item} isNew={index === 0} variant={variant} />
+      <div className="space-y-0 divide-y divide-border/50">
+        {news.map((item) => (
+          <NewsItemCard key={item.id} item={item} />
         ))}
       </div>
 
-      {/* View Full Stream button */}
-      <div className="pt-6">
-        <Button variant="outline" className="w-full rounded-xl" asChild>
-          <Link href="/news">
-            VIEW FULL STREAM
-          </Link>
+      <div className="mt-5">
+        <Button variant="outline" size="sm" className="w-full rounded-xl text-xs" asChild>
+          <Link href="/news">View Full Stream</Link>
         </Button>
       </div>
 
-      {/* Newsletter signup */}
       {showNewsletter && (
-        <div className="mt-6 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-6 text-white">
-          <h3 className="font-serif text-xl font-semibold italic">Weekly Curated Hits</h3>
-          <p className="mt-2 text-sm text-slate-300">
-            Join 50k+ makers receiving the best launches in their inbox every Friday.
+        <div className="mt-5 rounded-xl bg-slate-900 p-5 text-white">
+          <h3 className="font-serif text-lg font-semibold">Weekly Curated Hits</h3>
+          <p className="mt-1.5 text-sm text-slate-400">
+            Join 50k+ makers receiving the best launches every Friday.
           </p>
           <div className="mt-4 flex gap-2">
             <Input
@@ -97,9 +90,9 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, 
               placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 rounded-xl border-slate-600 bg-slate-700/50 text-white placeholder:text-slate-400"
+              className="flex-1 rounded-lg border-slate-700 bg-slate-800 text-white placeholder:text-slate-500 text-sm h-9"
             />
-            <Button className="rounded-xl bg-orange-500 text-white hover:bg-orange-600 px-6">
+            <Button size="sm" className="rounded-lg bg-primary px-4 h-9">
               Join
             </Button>
           </div>
@@ -111,72 +104,50 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true, 
 
 interface NewsItemCardProps {
   item: NewsItem
-  isNew?: boolean
-  variant?: 'default' | 'sidebar'
 }
 
-function NewsItemCard({ item, isNew, variant = 'default' }: NewsItemCardProps) {
-  // Determine category from item - using source as fallback
-  const category = item.category || item.source
-  const categoryLabel = category.toUpperCase()
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('[data-product-link]')) {
-      return
-    }
-    window.open(item.url, '_blank', 'noopener,noreferrer')
-  }
+function NewsItemCard({ item }: NewsItemCardProps) {
+  const category = item.category || 'insights'
 
   return (
-    <div
-      onClick={handleCardClick}
-      className={cn(
-        "group cursor-pointer py-5 transition-all hover:bg-secondary/30",
-        isNew && "border-l-2 border-l-[var(--sentinel-hot)] pl-4 -ml-4"
-      )}
+    <a
+      href={item.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group block py-4 transition-colors hover:bg-secondary/30 -mx-5 px-5"
     >
-      {/* Category badge + time */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 text-xs mb-1.5">
         <span className={cn(
-          "px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded",
-          categoryColors[category] || 'bg-slate-600 text-white'
+          "px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide text-white",
+          categoryColors[category]
         )}>
-          {categoryLabel}
+          {category}
         </span>
-        <span className="text-sm text-muted-foreground flex items-center gap-1">
-          <Clock className="h-3 w-3" />
-          {formatRelativeTime(item.publishedAt)}
-        </span>
+        <span className="text-muted-foreground">{formatRelativeTime(item.publishedAt)}</span>
       </div>
 
-      {/* Headline */}
-      <h3 className="font-serif text-lg font-semibold leading-snug text-foreground group-hover:text-primary mb-2">
+      <h3 className="font-medium leading-snug text-foreground group-hover:text-primary transition-colors">
         {item.title}
       </h3>
 
-      {/* Excerpt */}
       {item.excerpt && (
-        <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+        <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
           {item.excerpt}
         </p>
       )}
 
-      {/* Author + Source row */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="mt-2 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
           {item.author && (
             <>
-              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-[10px] font-bold text-white">
-                {item.author.split(' ').map(n => n[0]).join('')}
-              </div>
-              <span className="text-sm text-foreground">{item.author}</span>
-              <span className="text-muted-foreground">•</span>
+              <span className="font-medium text-foreground">{item.author}</span>
+              <span>·</span>
             </>
           )}
-          <span className="text-sm text-muted-foreground">{item.sourceName}</span>
+          <span>{item.sourceName}</span>
         </div>
-        <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
-    </div>
+    </a>
   )
 }
