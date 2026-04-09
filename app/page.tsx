@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { ArrowRight, TrendingUp, Skull, Sparkles, Activity } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
@@ -14,151 +16,158 @@ import {
   articles,
   products,
 } from '@/lib/mock-data'
+import { cn } from '@/lib/utils'
 
 export default function HomePage() {
-  const featuredProducts = getFeaturedProducts(4)
-  const trendingProducts = getTrendingProducts(5)
-  const deadProducts = getDeadProducts().slice(0, 3)
-  const recentArticles = articles.slice(0, 3)
+  const trendingProducts = getTrendingProducts(6).slice(0, 6)
+  const newProductsToday = products.filter(p => p.status === 'active').slice(0, 6)
   const latestArticle = articles[0]
+  const deadProducts = getDeadProducts().slice(0, 3)
 
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
 
       <main>
-        {/* Hero - Clean & Minimal */}
-        <section className="relative pt-32 pb-20 overflow-hidden">
-          {/* Subtle gradient orbs */}
-          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px]" />
-          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-primary/3 rounded-full blur-[80px]" />
-          
-          <div className="relative mx-auto max-w-5xl px-6 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/80 text-sm text-muted-foreground mb-8 animate-fade-in-up">
-              <Activity className="h-4 w-4 text-primary" />
-              <span>Tracking 500+ products in real-time</span>
-            </div>
-            
-            <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.1] animate-fade-in-up stagger-1">
-              Discover what&apos;s
-              <br />
-              <span className="text-primary">gaining momentum</span>
+        {/* Compact Hero - Minimal Space */}
+        <section className="relative pt-8 pb-12 overflow-hidden border-b border-border/30">
+          <div className="relative mx-auto max-w-7xl px-6">
+            <h1 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight">
+              What&apos;s trending
+              <span className="text-primary"> now</span>
             </h1>
-            
-            <p className="mt-6 text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed animate-fade-in-up stagger-2">
-              Real-time social buzz tracking for products and tools. 
-              See what&apos;s rising, what&apos;s fading, and what people are saying.
+            <p className="mt-2 text-muted-foreground max-w-2xl">
+              Real-time buzz tracking. See what&apos;s rising in tech and product.
             </p>
-            
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up stagger-3">
-              <Button asChild size="lg" className="h-12 px-8 rounded-full text-base">
-                <Link href="/products">
-                  Explore Products
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" size="lg" className="h-12 px-8 rounded-full text-base text-muted-foreground">
-                <Link href="/explore">
-                  View Graph
-                </Link>
-              </Button>
-            </div>
           </div>
         </section>
 
-        {/* Main Grid */}
-        <section className="py-12 border-t border-border/50">
+        {/* Main Content - Two Column Layout */}
+        <section className="py-12">
           <div className="mx-auto max-w-7xl px-6">
-            <div className="grid gap-8 lg:grid-cols-12">
-              {/* Left - Content */}
-              <div className="lg:col-span-7 space-y-10">
-                {/* Latest Insight */}
+            <div className="grid gap-10 lg:grid-cols-12">
+              {/* Left Column - Trending & New Products + Content */}
+              <div className="lg:col-span-7 space-y-8">
+                
+                {/* TRENDING PRODUCTS - TOP ROW */}
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1 w-8 bg-[var(--sentinel-rising)] rounded-full" />
+                      <h2 className="font-serif text-lg font-semibold">Hottest Right Now</h2>
+                    </div>
+                    <Link
+                      href="/trending"
+                      className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                    >
+                      View all
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                  
+                  {/* Liquid glass separator - decorative blur shape */}
+                  <div className="relative mb-4">
+                    <div className="absolute -inset-x-12 -top-6 h-20 bg-gradient-to-r from-transparent via-primary/5 to-transparent rounded-full blur-3xl" />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {trendingProducts.slice(0, 3).map((product) => (
+                      <ProductCard key={product.id} product={product} variant="featured" />
+                    ))}
+                  </div>
+                </div>
+
+                {/* NEW TODAY - SECOND ROW */}
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1 w-8 bg-primary rounded-full" />
+                      <h2 className="font-serif text-lg font-semibold">Added Today</h2>
+                    </div>
+                    <Link
+                      href="/new"
+                      className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                    >
+                      View all
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+
+                  {/* Liquid glass separator */}
+                  <div className="relative mb-4">
+                    <div className="absolute -inset-x-12 -top-6 h-20 bg-gradient-to-r from-transparent via-primary/3 to-transparent rounded-full blur-3xl" />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {newProductsToday.slice(0, 3).map((product) => (
+                      <ProductCard key={product.id} product={product} variant="featured" />
+                    ))}
+                  </div>
+                </div>
+
+                {/* MORE TRENDING - THIRD ROW */}
+                <div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {trendingProducts.slice(3, 6).map((product) => (
+                      <ProductCard key={product.id} product={product} variant="featured" />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Glass Divider */}
+                <div className="relative h-20 flex items-center">
+                  <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                  <div className="absolute inset-x-0 h-16 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent blur-2xl rounded-full" />
+                </div>
+
+                {/* LATEST INSIGHT ARTICLE */}
                 {latestArticle && (
                   <div>
-                    <div className="flex items-center justify-between mb-5">
-                      <h2 className="font-serif text-xl font-semibold">Latest Insight</h2>
-                      <Link
-                        href="/insights"
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                      >
-                        All insights <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
+                    <div className="flex items-center gap-2 mb-5">
+                      <div className="h-1 w-8 bg-primary/60 rounded-full" />
+                      <h2 className="font-serif text-lg font-semibold">Latest Insight</h2>
                     </div>
                     <ArticleCard article={latestArticle} variant="featured" />
                   </div>
                 )}
 
                 {/* Market Pulse */}
-                <MarketPulse />
-
-                {/* Stats */}
-                <div className="grid grid-cols-4 gap-4">
-                  {[
-                    { value: products.filter(p => p.status === 'active').length, label: 'Active' },
-                    { value: deadProducts.length, label: 'Graveyard' },
-                    { value: 9, label: 'Categories' },
-                    { value: '24/7', label: 'Monitoring', highlight: true },
-                  ].map((stat) => (
-                    <div key={stat.label} className="text-center py-4 px-3 rounded-2xl bg-secondary/50">
-                      <p className={`text-2xl font-semibold tabular-nums ${stat.highlight ? 'text-primary' : ''}`}>
-                        {stat.value}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
-                    </div>
-                  ))}
+                <div>
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="h-1 w-8 bg-primary/40 rounded-full" />
+                    <h2 className="font-serif text-lg font-semibold">Market Pulse</h2>
+                  </div>
+                  <MarketPulse />
                 </div>
               </div>
 
-              {/* Right - News Feed */}
+              {/* Right Column - Live Stream (Sticky) */}
               <div className="lg:col-span-5">
-                <div className="lg:sticky lg:top-24">
-                  <NewsFeed limit={6} showNewsletter={true} />
+                <div className="lg:sticky lg:top-6 space-y-6">
+                  <NewsFeed limit={8} showNewsletter={true} />
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Featured Products */}
-        <section className="py-16 bg-secondary/30">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="flex items-end justify-between mb-8">
-              <div>
-                <h2 className="font-serif text-2xl font-semibold">Featured Today</h2>
-                <p className="text-muted-foreground mt-1">Products making waves right now</p>
-              </div>
-              <Button asChild variant="ghost" className="text-muted-foreground">
-                <Link href="/products">
-                  View all <ArrowRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} variant="featured" />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Trending & Graveyard */}
-        <section className="py-16">
+        {/* More Trending - Below fold */}
+        <section className="py-16 border-t border-border/30">
           <div className="mx-auto max-w-7xl px-6">
             <div className="grid gap-8 lg:grid-cols-2">
-              {/* Trending */}
-              <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
+              {/* Trending This Week */}
+              <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-secondary/20 p-6 backdrop-blur-sm">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="h-10 w-10 rounded-xl bg-[var(--sentinel-rising)]/10 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-lg bg-[var(--sentinel-rising)]/10 flex items-center justify-center">
                     <TrendingUp className="h-5 w-5 text-[var(--sentinel-rising)]" />
                   </div>
                   <div>
-                    <h2 className="font-serif text-lg font-semibold">Trending This Week</h2>
-                    <p className="text-sm text-muted-foreground">Most discussed</p>
+                    <h2 className="font-serif font-semibold">Trending This Week</h2>
+                    <p className="text-xs text-muted-foreground">Most discussed</p>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  {trendingProducts.map((product, i) => (
+                <div className="space-y-2">
+                  {getTrendingProducts(5).map((product, i) => (
                     <div key={product.id} className="flex items-center gap-3 group">
                       <span className="w-6 text-sm font-medium text-muted-foreground text-right">
                         {i + 1}
@@ -171,26 +180,18 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Graveyard */}
-              <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-[var(--sentinel-dead)]/10 flex items-center justify-center">
-                      <Skull className="h-5 w-5 text-[var(--sentinel-dead)]" />
-                    </div>
-                    <div>
-                      <h2 className="font-serif text-lg font-semibold">Product Graveyard</h2>
-                      <p className="text-sm text-muted-foreground">Learn from the past</p>
-                    </div>
+              {/* Product Graveyard */}
+              <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-secondary/20 p-6 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-10 w-10 rounded-lg bg-[var(--sentinel-dead)]/10 flex items-center justify-center">
+                    <Skull className="h-5 w-5 text-[var(--sentinel-dead)]" />
                   </div>
-                  <Link
-                    href="/graveyard"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    View all
-                  </Link>
+                  <div>
+                    <h2 className="font-serif font-semibold">Graveyard</h2>
+                    <p className="text-xs text-muted-foreground">Lessons learned</p>
+                  </div>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {deadProducts.map((product) => (
                     <ProductCard key={product.id} product={product} variant="compact" />
                   ))}
@@ -200,47 +201,30 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Insights */}
-        <section className="py-16 border-t border-border/50">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="flex items-end justify-between mb-8">
-              <div>
-                <h2 className="font-serif text-2xl font-semibold">Market Insights</h2>
-                <p className="text-muted-foreground mt-1">Analysis and trend reports</p>
-              </div>
-              <Button asChild variant="ghost" className="text-muted-foreground">
-                <Link href="/insights">
-                  All articles <ArrowRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {recentArticles.map((article) => (
-                <ArticleCard key={article.id} article={article} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="py-20">
+        {/* CTA Section */}
+        <section className="py-20 border-t border-border/30">
           <div className="mx-auto max-w-4xl px-6">
-            <div className="relative rounded-3xl bg-primary p-12 text-center text-primary-foreground overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.08),transparent_50%)]" />
+            <div className="relative rounded-3xl bg-gradient-to-br from-primary via-primary to-primary/90 p-12 text-center text-primary-foreground overflow-hidden">
+              {/* Liquid glass effect background */}
+              <div className="absolute inset-0">
+                <div className="absolute top-0 left-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 right-1/4 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+              </div>
               
               <div className="relative">
                 <Sparkles className="h-8 w-8 mx-auto mb-4 opacity-80" />
-                <h2 className="font-serif text-3xl font-semibold">
+                <h2 className="font-serif text-3xl sm:text-4xl font-semibold leading-tight">
                   Have a product to share?
                 </h2>
-                <p className="mt-3 text-primary-foreground/70 max-w-md mx-auto">
-                  Submit your product to get tracked on Product Sentinel with enhanced analytics.
+                <p className="mt-4 text-primary-foreground/80 max-w-lg mx-auto">
+                  Submit your product to get tracked with real-time buzz analytics.
                 </p>
-                <div className="mt-8 flex flex-wrap justify-center gap-4">
+                <div className="mt-8 flex justify-center gap-3">
                   <Button variant="secondary" size="lg" className="rounded-full px-8" asChild>
-                    <Link href="/submit">Submit Product</Link>
+                    <Link href="/submit">
+                      Submit Product
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
                   </Button>
                 </div>
               </div>
