@@ -12,18 +12,28 @@ Claude was about to return a new round of Latin/Italian-sounding names (I liked 
 
 **Translation**: name is still TBD. Don't rabbit-hole on it again. Keep `prism`. Move on.
 
-## The real blocker (aside from naming)
+## Wireframe status — Rounds 1–3 DONE, Round 4 still owed
 
-**Round 3 wireframes.** Rounds 1+2 are done (11 hi-def panels in `docs/wireframes/prism-ui-map.excalidraw`). Round 3 still owes:
+The current `prism-ui-map.excalidraw` has **12 panels, 4,171 elements**. The backup `prism-ui-map.backup-pre-round3.excalidraw` has 3,562 elements (609 fewer). The backup's filename means exactly what it says: snapshot *before* Round 3 was built.
 
-1. **Modal quick-preview panel** — when a user clicks a product card from the feed, does a modal open (like the current v0 skeleton), or does it route to `/dossier/[slug]`? Spec the modal layout.
-2. **Placeholder audit** — go through every Round 1+2 panel and label each element as *real data* vs *placeholder/hardcoded*. Specifically: is "pre-death signal" actually wired to the `product_signal_scores.is_breakout` field, or is it just visual filler? This is the question I asked Claude right before the freeze — never got a full answer.
-3. **Tablet breakpoint** — responsive clone of all 11 panels at tablet widths.
-4. **Mobile breakpoint** — responsive clone of all 11 panels at mobile widths.
-5. **User flow diagrams** — at least: signup → first dossier, browse → compare → save, search → filter → dossier, funding alert → dossier.
-6. **Component library panel** — reusable cards, buttons, badges, charts.
+**Panels 1–8 (Rounds 1+2) — hi-def route wireframes:**
+1. Sitemap (25 routes, 4 sections)
+2. `/` Home feed
+3. `/dossier/[slug]` (and 4. `/markets`, 5. `/products`, 6. `/insights/[slug]`, 7. `/functions/[slug]`, 8. `/compare`, plus `/companies/[slug]`, `/trending`, `/graveyard`)
 
-All of the above go into the same Excalidraw file via edits to `docs/wireframes/prism-wireframe-build.mjs` (re-run with `node prism-wireframe-build.mjs`).
+**Panels 9–12 (Round 3) — interaction + responsive:**
+- **Panel 9** — Quick Preview Modal (the click-card-opens-modal flow)
+- **Panel 10** — Placeholder Audit (every Rounds 1+2 element labeled real-data vs hardcoded)
+- **Panel 11** — Tablet breakpoint (768px)
+- **Panel 12** — Mobile breakpoint (375px)
+
+**Round 4 — still not built** (these are the only wireframe items still open):
+1. **User flow diagrams** — signup → first dossier, browse → compare → save, search → filter → dossier, funding alert → dossier
+2. **Component library panel** — reusable cards, buttons, badges, charts, pulled out as a standalone palette
+
+Additions go into the same file via edits to `docs/wireframes/prism-wireframe-build.mjs` (re-run with `node prism-wireframe-build.mjs`).
+
+**Note**: `PRISM-OVERVIEW.md` (the Obsidian doc snapshot) still shows Round 3 as "not yet built" — that doc is stale, taken before Round 3 was completed later in the continuation session. Trust this file (`NEXT.md`) and the excalidraw element counts over the overview snapshot.
 
 ## Then — after Round 3 wireframes are locked
 
