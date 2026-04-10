@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { BRAND, BRAND_COPYRIGHT } from '@/lib/branding'
 
 const footerLinks = {
   product: [
@@ -39,9 +40,9 @@ export function SiteFooter() {
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-md shadow-primary/25">
-                <span className="font-serif text-lg font-bold text-primary-foreground">S</span>
+                <span className="font-serif text-lg font-bold text-primary-foreground">{BRAND.initial}</span>
               </div>
-              <span className="font-serif text-xl font-semibold tracking-tight">Sentinel</span>
+              <span className="font-serif text-xl font-semibold tracking-tight">{BRAND.name}</span>
             </Link>
             
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
@@ -121,7 +122,7 @@ export function SiteFooter() {
         {/* Bottom bar */}
         <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-border/50 pt-8 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            &copy; 2026 Product Sentinel. All rights reserved.
+            {BRAND_COPYRIGHT}
           </p>
           <div className="flex gap-4">
             {footerLinks.legal.map(link => (

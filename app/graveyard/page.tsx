@@ -4,9 +4,10 @@ import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { Badge } from '@/components/ui/badge'
 import { getDeadProducts, type Product } from '@/lib/mock-data'
+import { brandTitle } from '@/lib/branding'
 
 export const metadata = {
-  title: 'Product Graveyard | Product Sentinel',
+  title: brandTitle('Product Graveyard'),
   description: 'A memorial for discontinued products. Learn from the past to build a better future.',
 }
 

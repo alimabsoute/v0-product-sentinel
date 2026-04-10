@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono, Fraunces } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { BRAND } from '@/lib/branding'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -8,8 +9,8 @@ const _geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono
 const _fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces" });
 
 export const metadata: Metadata = {
-  title: 'Product Sentinel - Track the Buzz',
-  description: 'Discover and track the hottest products with real-time social buzz monitoring. See what the internet is talking about.',
+  title: BRAND.metaTitle,
+  description: BRAND.metaDescription,
   generator: 'v0.app',
   icons: {
     icon: [

@@ -8,6 +8,7 @@ import { ArticleCard } from '@/components/article-card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { articles, products, type Article } from '@/lib/mock-data'
+import { BRAND } from '@/lib/branding'
 
 interface ArticlePageProps {
   params: Promise<{ slug: string }>
@@ -197,7 +198,7 @@ function generateArticleContent(article: Article): string {
     <p>
       The ${article.category} landscape continues to evolve rapidly. Staying informed about 
       these trends is essential for anyone building or evaluating products in this space. 
-      Keep watching Product Sentinel for the latest updates and analysis.
+      Keep watching ${BRAND.name} for the latest updates and analysis.
     </p>
   `
 

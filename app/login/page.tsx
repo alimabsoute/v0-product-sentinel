@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { BRAND } from "@/lib/branding"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -38,9 +39,9 @@ export default function LoginPage() {
           {/* Logo */}
           <Link href="/" className="inline-flex items-center gap-2 mb-8">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-xl font-serif text-primary-foreground">S</span>
+              <span className="text-xl font-serif text-primary-foreground">{BRAND.initial}</span>
             </div>
-            <span className="font-serif text-2xl">Sentinel</span>
+            <span className="font-serif text-2xl">{BRAND.name}</span>
           </Link>
 
           <h1 className="font-serif text-3xl mb-2">Welcome back</h1>

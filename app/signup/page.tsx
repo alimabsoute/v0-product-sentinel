@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
+import { BRAND } from "@/lib/branding"
 
 const benefits = [
   "Track unlimited products",
@@ -83,7 +84,7 @@ export default function SignupPage() {
               </div>
             </div>
             <p className="text-muted-foreground italic">
-              &quot;Product Sentinel helped me discover tools that gave our team a competitive edge. The buzz score feature is genius.&quot;
+              &quot;{BRAND.name} helped me discover tools that gave our team a competitive edge. The buzz score feature is genius.&quot;
             </p>
           </div>
         </div>
@@ -95,9 +96,9 @@ export default function SignupPage() {
           {/* Logo */}
           <Link href="/" className="inline-flex items-center gap-2 mb-8">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-xl font-serif text-primary-foreground">S</span>
+              <span className="text-xl font-serif text-primary-foreground">{BRAND.initial}</span>
             </div>
-            <span className="font-serif text-2xl">Sentinel</span>
+            <span className="font-serif text-2xl">{BRAND.name}</span>
           </Link>
 
           <h1 className="font-serif text-3xl mb-2">Create your account</h1>

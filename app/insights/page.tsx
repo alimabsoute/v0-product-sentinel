@@ -5,9 +5,10 @@ import { SiteFooter } from '@/components/site-footer'
 import { ArticleCard } from '@/components/article-card'
 import { Badge } from '@/components/ui/badge'
 import { articles } from '@/lib/mock-data'
+import { brandTitle } from '@/lib/branding'
 
 export const metadata = {
-  title: 'Insights | Product Sentinel',
+  title: brandTitle('Insights'),
   description: 'Market analysis, trend reports, and in-depth product comparisons.',
 }
 

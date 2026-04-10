@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { SearchCommand } from './search-command'
 import { cn } from '@/lib/utils'
+import { BRAND } from '@/lib/branding'
 
 export function SiteHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -51,11 +52,11 @@ export function SiteHeader() {
             style={{ transitionDelay: '100ms' }}
           >
             <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-md shadow-primary/25">
-              <span className="font-serif text-lg font-bold text-primary-foreground">S</span>
+              <span className="font-serif text-lg font-bold text-primary-foreground">{BRAND.initial}</span>
               <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 transition-opacity hover:opacity-100" />
             </div>
             <span className="hidden font-serif text-xl font-semibold tracking-tight sm:inline-block">
-              Sentinel
+              {BRAND.name}
             </span>
           </Link>
 

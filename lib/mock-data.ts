@@ -1,4 +1,4 @@
-// Product Sentinel - Comprehensive Mock Data
+// Prism — Comprehensive Mock Data (codename)
 
 export type ProductStatus = 'active' | 'inactive' | 'dead'
 export type PricingModel = 'free' | 'freemium' | 'paid' | 'enterprise' | 'open-source'

@@ -201,7 +201,7 @@ export default function CategoryPage({
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     switch (sortBy) {
       case "buzz":
-        return b.buzzScore.total - a.buzzScore.total
+        return b.buzz.score - a.buzz.score
       case "newest":
         return new Date(b.launchDate).getTime() - new Date(a.launchDate).getTime()
       case "oldest":
