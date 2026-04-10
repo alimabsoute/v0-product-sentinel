@@ -1,8 +1,15 @@
 #!/usr/bin/env node
-// Prism UI Wireframe Generator — v2 (hi-def)
-// Produces: prism-ui-map.excalidraw
-// Round 1: Sitemap + Home + Dossier  (upgraded fidelity)
-// Round 2: Markets, Products browse, Insights detail, Functions, Compare, Company, Trending, Graveyard
+// Prism UI Wireframe Generator — v3 (hi-def, Rounds 1-4)
+// Produces: ./prism-all-rounds-v2-with-round4.excalidraw
+//
+// NOTE: does NOT overwrite ./prism-all-rounds.excalidraw — that is the
+// canonical file (Rounds 1-3, manually laid out). The v2 output is the
+// generator's reproducible version with added Round 4 panels.
+//
+// Round 1 (x=80)    — Sitemap + Home + Dossier
+// Round 2 (x=1720)  — Markets, Products, Insights, Functions, Compare, Company, Trending, Graveyard
+// Round 3 (x=3360)  — Quick Preview Modal, Placeholder Audit, Tablet 768, Mobile 375
+// Round 4 (x=5000)  — User Flow diagrams (4), Component Library palette
 //
 // Run: node prism-wireframe-build.mjs
 
@@ -2221,6 +2228,616 @@ const R2_X = 1720; // second column x offset
   });
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// ROUND 3 — Interaction + Responsive
+// Column at x=3360. Four panels stacked vertically.
+// ══════════════════════════════════════════════════════════════════════
+
+const R3_X = 3360;
+
+// ─── Panel 9: QUICK PREVIEW MODAL ─────────────────────────────────────
+{
+  const X = R3_X, Y = 100, W = 1440, H = 1100;
+  add(pageFrame(X, Y, W, H, '/ → quick preview modal', 'Click any product card in the feed → modal opens with dossier excerpt. Esc or backdrop click closes. Full dossier via "Open full dossier →".'));
+  add(globalHeader(X, Y, W));
+
+  // Dimmed backdrop over a mini feed
+  const feedY = Y + 88;
+  push(rect(X + 16, feedY, W - 32, H - 104, { fill: SURFACE_2, stroke: BORDER, radius: 8 }));
+  // A few ghosted product cards showing the "behind the modal" state
+  const cardW = 220, cardH = 180, gap = 16;
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 5; col++) {
+      const cx = X + 32 + col * (cardW + gap);
+      const cy = feedY + 24 + row * (cardH + gap);
+      add(card(cx, cy, cardW, cardH, { fill: CANVAS, stroke: BORDER, strokeWidth: 1 }));
+      // ghosted content
+      push(rect(cx + 12, cy + 12, 36, 36, { fill: SURFACE_2, stroke: BORDER_STRONG, radius: 6 }));
+      push(rect(cx + 56, cy + 16, 90, 10, { fill: SURFACE_2, stroke: 'transparent', radius: 4 }));
+      push(rect(cx + 56, cy + 32, 60, 8, { fill: SURFACE_2, stroke: 'transparent', radius: 4 }));
+      push(rect(cx + 12, cy + 60, cardW - 24, 80, { fill: SURFACE, stroke: BORDER, radius: 6 }));
+      push(rect(cx + 12, cy + 150, 80, 14, { fill: SURFACE_2, stroke: 'transparent', radius: 4 }));
+    }
+  }
+
+  // Dim overlay to darken the feed
+  push(rect(X + 16, feedY, W - 32, H - 104, { fill: '#0f172a22', stroke: 'transparent', radius: 8 }));
+
+  // Highlight the "clicked" card (col 2, row 1) with accent outline
+  const hotX = X + 32 + 2 * (cardW + gap);
+  const hotY = feedY + 24 + 1 * (cardH + gap);
+  push(rect(hotX - 3, hotY - 3, cardW + 6, cardH + 6, { fill: 'transparent', stroke: ACCENT, strokeWidth: 3, radius: 14 }));
+  push(text(hotX + cardW + 10, hotY - 4, '① user clicked here', { size: 11, color: ACCENT_DEEP }));
+
+  // Modal card, centered
+  const modalW = 760, modalH = 560;
+  const modalX = X + (W - modalW) / 2;
+  const modalY = feedY + 100;
+  add(card(modalX, modalY, modalW, modalH, { fill: CANVAS, stroke: BORDER_STRONG, strokeWidth: 2, radius: 16 }));
+
+  // Modal close button
+  push(rect(modalX + modalW - 40, modalY + 16, 24, 24, { fill: SURFACE, stroke: BORDER, radius: 6 }));
+  push(text(modalX + modalW - 32, modalY + 20, '✕', { size: 13, color: INK_MED }));
+
+  // Modal header: logo + name + tagline
+  add(avatar(modalX + 28, modalY + 28, 56, 'N'));
+  push(text(modalX + 100, modalY + 32, 'Notion', { size: 22, color: INK }));
+  push(text(modalX + 100, modalY + 60, 'The all-in-one workspace for notes, docs, and databases', { size: 12, color: INK_LIGHT }));
+
+  // Pill row: category + attributes
+  add(pillRow(modalX + 28, modalY + 102, ['Productivity', 'collaborative', 'real-time', 'markdown', 'api-first'], { size: 10 }));
+
+  // Two-col stats
+  push(divider(modalX + 28, modalY + 140, modalW - 56));
+  const statY = modalY + 158;
+  push(text(modalX + 28, statY, 'BUZZ', { size: 9, color: INK_DIM, mono: true }));
+  push(text(modalX + 28, statY + 14, '94', { size: 24, color: SUCCESS }));
+  push(text(modalX + 80, statY + 24, '▲ 12%', { size: 10, color: SUCCESS }));
+  add(sparkline(modalX + 150, statY + 16, 120, 24, [3, 5, 4, 6, 8, 7, 9, 11], { stroke: SUCCESS }));
+
+  push(text(modalX + 300, statY, 'LAUNCHED', { size: 9, color: INK_DIM, mono: true }));
+  push(text(modalX + 300, statY + 14, '2016', { size: 18, color: INK }));
+  push(text(modalX + 300, statY + 36, '10 years active', { size: 10, color: INK_LIGHT }));
+
+  push(text(modalX + 440, statY, 'FUNDING', { size: 9, color: INK_DIM, mono: true }));
+  push(text(modalX + 440, statY + 14, '$343M', { size: 18, color: INK }));
+  push(text(modalX + 440, statY + 36, 'Series C · 2021', { size: 10, color: INK_LIGHT }));
+
+  push(text(modalX + 580, statY, 'USERS', { size: 9, color: INK_DIM, mono: true }));
+  push(text(modalX + 580, statY + 14, '30M+', { size: 18, color: INK }));
+  push(text(modalX + 580, statY + 36, '▲ 4M YoY', { size: 10, color: SUCCESS }));
+
+  // Description preview
+  push(divider(modalX + 28, modalY + 220, modalW - 56));
+  push(text(modalX + 28, modalY + 236, 'Notion combines a modern editor with block-based databases,', { size: 12, color: INK_MED }));
+  push(text(modalX + 28, modalY + 254, 'replacing Evernote, Airtable, and Google Docs in one canvas.', { size: 12, color: INK_MED }));
+  push(text(modalX + 28, modalY + 272, 'Popular with startups, product teams, and solo knowledge workers.', { size: 12, color: INK_MED }));
+
+  // Recent activity
+  push(text(modalX + 28, modalY + 310, 'RECENT SIGNALS', { size: 10, color: INK_DIM, mono: true }));
+  const sigs = [
+    ['▲ Buzz +8% this week', SUCCESS],
+    ['📰 Mentioned in TechCrunch (2h ago)', ACCENT_DEEP],
+    ['⭐ 2.1k new GitHub stars for notion-api (7d)', SUCCESS],
+    ['💬 Top of HN /show last Tuesday', WARNING],
+  ];
+  sigs.forEach(([label, color], i) => {
+    push(text(modalX + 28, modalY + 328 + i * 18, label, { size: 11, color }));
+  });
+
+  // Actions row
+  push(divider(modalX + 28, modalY + 420, modalW - 56));
+  add(button(modalX + 28, modalY + 440, 220, 40, 'Open full dossier →', { filled: true, size: 14 }));
+  add(button(modalX + 262, modalY + 440, 140, 40, '＋ Compare', { filled: false, size: 13 }));
+  add(button(modalX + 416, modalY + 440, 140, 40, '☆ Save', { filled: false, size: 13 }));
+  push(text(modalX + 580, modalY + 452, '⌘ + ↵ to open   ·   Esc to close', { size: 10, color: INK_DIM, mono: true }));
+
+  // Interaction arrow: from highlighted card to modal
+  add(arrow(hotX + cardW, hotY + cardH / 2, modalX, modalY + modalH / 2, { stroke: ACCENT, strokeWidth: 2 }));
+  push(text(hotX + cardW + 20, hotY + cardH / 2 - 20, '② opens modal', { size: 11, color: ACCENT_DEEP }));
+
+  // Interaction annotations strip
+  const annY = modalY + modalH + 24;
+  add(card(X + 16, annY, W - 32, 80, { fill: ACCENT_TINT, stroke: ACCENT, strokeWidth: 1.5 }));
+  push(text(X + 32, annY + 12, 'INTERACTION SPEC', { size: 11, color: ACCENT_DEEP, mono: true }));
+  push(text(X + 32, annY + 32, '• Click card or press ⌘ + ↵ on focused card → open modal (200ms fade + scale 0.95→1)', { size: 11, color: INK_MED }));
+  push(text(X + 32, annY + 48, '• Click backdrop or Esc → close. URL updates to ?preview={slug} (shareable). Back button closes modal.', { size: 11, color: INK_MED }));
+  push(text(X + 32, annY + 64, '• "Open full dossier →" navigates to /dossier/{slug}. Modal data is a cached fetch (30s stale-while-revalidate).', { size: 11, color: INK_MED }));
+}
+
+// ─── Panel 10: PLACEHOLDER AUDIT ──────────────────────────────────────
+{
+  const X = R3_X, Y = 1280, W = 1440, H = 1600;
+  add(pageFrame(X, Y, W, H, 'Placeholder audit — Rounds 1+2', 'Every home-feed element labeled REAL (wired to Supabase) or MOCK (hardcoded in lib/mock-data.ts). Run before Day 5 UI cut-over.'));
+
+  // Legend
+  const legY = Y + 16;
+  add(card(X + 16, legY, W - 32, 60, { fill: SURFACE, stroke: BORDER }));
+  push(rect(X + 32, legY + 20, 18, 18, { fill: DANGER_SOFT, stroke: DANGER, strokeWidth: 2, radius: 4 }));
+  push(text(X + 58, legY + 22, 'MOCK — hardcoded in lib/mock-data.ts (must replace)', { size: 12, color: INK_MED }));
+  push(rect(X + 460, legY + 20, 18, 18, { fill: SUCCESS_SOFT, stroke: SUCCESS, strokeWidth: 2, radius: 4 }));
+  push(text(X + 486, legY + 22, 'REAL — will query Supabase from day 5 onwards', { size: 12, color: INK_MED }));
+  push(rect(X + 880, legY + 20, 18, 18, { fill: WARNING_SOFT, stroke: WARNING, strokeWidth: 2, radius: 4 }));
+  push(text(X + 906, legY + 22, 'HYBRID — structure real, copy still TBD', { size: 12, color: INK_MED }));
+
+  // Audit rows — grouped by widget
+  const audit = [
+    { widget: '🏠  Hero / Global Header', real: ['nav routes (static)'], mock: ['logo wordmark', 'user menu (auth not wired)'], hybrid: [] },
+    { widget: '🚀  Launched Today 4×2', real: [], mock: ['8 product cards', 'buzz scores', 'sparklines', 'category tags', 'launched dates'], hybrid: ['REAL source = product_hunt.featured_today → query on day 5'] },
+    { widget: '🔥  Breakout Alerts', real: [], mock: ['velocity %', 'signal source pills'], hybrid: ['REAL source = signal_scores WHERE velocity > 1.5 → day 6'] },
+    { widget: '📈  Trending Feed', real: [], mock: ['rank numbers', '10 product rows', 'weekly change arrows'], hybrid: ['REAL source = ORDER BY buzz.weekly_change DESC LIMIT 10'] },
+    { widget: '🎯  Category Spotlight', real: [], mock: ['category name', 'lifecycle chart data', '3 featured products'], hybrid: ['REAL source = categories.pinned_slug + category_lifecycle view'] },
+    { widget: '📊  Market Pulse', real: [], mock: ['6 sparkline widgets', 'metric names', '% changes'], hybrid: ['REAL source = market_size_snapshots (last 30d rollup)'] },
+    { widget: '📰  News Feed', real: [], mock: ['article titles', 'source names', 'timestamps', 'thumbnails'], hybrid: ['REAL source = news_items (RSS feed, day 7 automation)'] },
+    { widget: '💰  Fresh Funding', real: [], mock: ['company names', 'round sizes', 'dates'], hybrid: ['REAL source = funding_rounds ORDER BY date DESC'] },
+    { widget: '⚰️  Graveyard strip', real: [], mock: ['4 dead product cards', 'death reasons', 'sunset dates'], hybrid: ['REAL source = products WHERE status = dead LIMIT 4'] },
+    { widget: '🦶  Footer', real: ['static links'], mock: ['newsletter form (not wired)'], hybrid: [] },
+  ];
+
+  let ay = legY + 80;
+  audit.forEach(row => {
+    add(card(X + 16, ay, W - 32, 96, { fill: CANVAS, stroke: BORDER }));
+    push(text(X + 32, ay + 12, row.widget, { size: 14, color: INK }));
+    // MOCK pills
+    if (row.mock.length) {
+      push(text(X + 32, ay + 36, 'MOCK:', { size: 10, color: DANGER, mono: true }));
+      add(pillRow(X + 80, ay + 34, row.mock, { fill: DANGER_SOFT, stroke: DANGER, color: DANGER, size: 10 }));
+    }
+    // REAL pills (inline)
+    if (row.real.length) {
+      push(text(X + 32, ay + 58, 'REAL:', { size: 10, color: SUCCESS, mono: true }));
+      add(pillRow(X + 80, ay + 56, row.real, { fill: SUCCESS_SOFT, stroke: SUCCESS, color: SUCCESS, size: 10 }));
+    }
+    // HYBRID notes
+    if (row.hybrid.length) {
+      push(text(X + 32, ay + 78, '→  ' + row.hybrid[0], { size: 10, color: WARNING, mono: true }));
+    }
+    ay += 108;
+  });
+
+  // Summary
+  const sumY = ay + 12;
+  add(card(X + 16, sumY, W - 32, 60, { fill: WARNING_TINT, stroke: WARNING, strokeWidth: 1.5 }));
+  push(text(X + 32, sumY + 14, 'SUMMARY', { size: 11, color: WARNING, mono: true }));
+  push(text(X + 32, sumY + 32, 'Only 2 static elements are real. 42 elements are MOCK. Supabase cut-over is a single large PR (Day 5 in STRATEGIC-PLAN).', { size: 12, color: INK_MED }));
+}
+
+// ─── Panel 11: TABLET BREAKPOINT (768px) ──────────────────────────────
+{
+  const X = R3_X, Y = 2960, W = 820, H = 1400;
+  const INNER = 768;
+  push(text(X, Y - 56, '/ @ tablet 768px', { size: 26, color: INK }));
+  push(text(X, Y - 24, 'Landscape tablet / narrow desktop. Nav collapses to icon row. Feed grid goes 4-col → 2-col. No sidebar.', { size: 12, color: INK_LIGHT }));
+  push(text(X + W - 120, Y - 24, `Tablet ${INNER}×${H}`, { size: 11, color: INK_DIM, mono: true }));
+
+  // Viewport outline
+  push(rect(X, Y, W, H, { fill: SURFACE, stroke: BORDER_STRONG, strokeWidth: 2, radius: 12 }));
+  const pad = (W - INNER) / 2;
+  const cx = X + pad;
+
+  // Tablet header (shorter)
+  add(rect(cx, Y + 20, INNER, 56, { fill: CANVAS, stroke: BORDER, radius: 0 }));
+  push(rect(cx + 16, Y + 34, 28, 28, { fill: ACCENT, stroke: ACCENT, radius: 6 }));
+  push(text(cx + 24, Y + 40, 'P', { size: 16, color: CANVAS }));
+  push(text(cx + 52, Y + 40, 'PRODUCT_NAME', { size: 15, color: INK }));
+  // Icon-only nav
+  ['🏠', '🔍', '📊', '📖', '☰'].forEach((ic, i) => {
+    push(text(cx + INNER - 200 + i * 40, Y + 40, ic, { size: 16 }));
+  });
+
+  // Hero strip
+  const heroY = Y + 96;
+  add(card(cx + 16, heroY, INNER - 32, 100, { fill: ACCENT_TINT, stroke: ACCENT, strokeWidth: 1.5 }));
+  push(text(cx + 32, heroY + 20, 'Track the entire arc of tech.', { size: 18, color: INK }));
+  push(text(cx + 32, heroY + 48, 'From 1960s → today. Signals + dossiers + market analytics.', { size: 11, color: INK_LIGHT }));
+  add(button(cx + 32, heroY + 68, 140, 28, 'Browse feed', { filled: true, size: 11 }));
+
+  // 2-col product grid
+  const gridY = heroY + 120;
+  push(text(cx + 16, gridY, '🚀  LAUNCHED TODAY', { size: 14, color: INK }));
+  const tCardW = (INNER - 48) / 2;
+  const tCardH = 140;
+  for (let i = 0; i < 6; i++) {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const tcx = cx + 16 + col * (tCardW + 16);
+    const tcy = gridY + 24 + row * (tCardH + 16);
+    add(productCardMock(tcx, tcy, tCardW, tCardH, {
+      name: ['Notion', 'Linear', 'Arc', 'Raycast', 'Vercel', 'Cursor'][i],
+      tag: 'Productivity',
+      cat: 'SaaS',
+      score: 80 + i,
+      spark: [3, 5, 4, 7, 6, 8, 10],
+    }));
+  }
+
+  // Trending list (single column)
+  const trendY = gridY + 24 + 3 * (tCardH + 16) + 16;
+  push(text(cx + 16, trendY, '📈  TRENDING', { size: 14, color: INK }));
+  ['Supabase', 'Bun', 'Tauri', 'Rive'].forEach((n, i) => {
+    add(productRowMock(cx + 16, trendY + 24 + i * 56, INNER - 32, 48, {
+      name: n, tag: 'Dev Tools', rightValue: `+${12 - i * 2}%`, rightColor: SUCCESS,
+    }));
+  });
+
+  // Annotation
+  const annY = trendY + 260;
+  add(card(cx + 16, annY, INNER - 32, 56, { fill: SURFACE, stroke: BORDER }));
+  push(text(cx + 32, annY + 16, '📐 Breakpoint notes', { size: 11, color: INK, mono: true }));
+  push(text(cx + 32, annY + 34, '• md breakpoint (768+): 2-col grid, icon nav, no sidebar, sparklines still visible', { size: 10, color: INK_LIGHT }));
+}
+
+// ─── Panel 12: MOBILE BREAKPOINT (375px) ──────────────────────────────
+{
+  const X = R3_X + 880, Y = 2960, W = 430, H = 1400;
+  const INNER = 375;
+  push(text(X, Y - 56, '/ @ mobile 375px', { size: 26, color: INK }));
+  push(text(X, Y - 24, 'iPhone 14/15 standard. Hamburger menu. 1-col feed. Bottom nav bar. Touch targets 44px+.', { size: 12, color: INK_LIGHT }));
+  push(text(X + W - 100, Y - 24, `Mobile ${INNER}×${H}`, { size: 11, color: INK_DIM, mono: true }));
+
+  push(rect(X, Y, W, H, { fill: SURFACE, stroke: BORDER_STRONG, strokeWidth: 2, radius: 24 }));
+  const pad = (W - INNER) / 2;
+  const mx = X + pad;
+
+  // Status bar
+  push(rect(mx, Y + 16, INNER, 20, { fill: 'transparent', stroke: 'transparent' }));
+  push(text(mx + 12, Y + 20, '9:41', { size: 10, color: INK }));
+  push(text(mx + INNER - 40, Y + 20, '▫️▫️🔋', { size: 10, color: INK }));
+
+  // Mobile header
+  add(rect(mx, Y + 40, INNER, 52, { fill: CANVAS, stroke: BORDER, radius: 0 }));
+  push(text(mx + 12, Y + 56, '☰', { size: 18, color: INK_MED }));
+  push(rect(mx + INNER / 2 - 14, Y + 52, 28, 28, { fill: ACCENT, stroke: ACCENT, radius: 6 }));
+  push(text(mx + INNER / 2 - 6, Y + 58, 'P', { size: 16, color: CANVAS }));
+  push(text(mx + INNER - 44, Y + 56, '🔍', { size: 16 }));
+
+  // Search bar
+  add(rect(mx + 12, Y + 104, INNER - 24, 36, { fill: SURFACE_2, stroke: BORDER, radius: 10 }));
+  push(text(mx + 24, Y + 116, '🔍  Search products, companies…', { size: 11, color: INK_DIM }));
+
+  // Hero card
+  const heroY = Y + 156;
+  add(card(mx + 12, heroY, INNER - 24, 120, { fill: ACCENT_TINT, stroke: ACCENT, strokeWidth: 1.5 }));
+  push(text(mx + 24, heroY + 14, 'The arc of tech.', { size: 16, color: INK }));
+  push(text(mx + 24, heroY + 36, '1960s → today.', { size: 16, color: INK }));
+  push(text(mx + 24, heroY + 60, 'Signals, dossiers, markets.', { size: 10, color: INK_LIGHT }));
+  add(button(mx + 24, heroY + 80, 140, 32, 'Open feed', { filled: true, size: 11 }));
+
+  // Section: Launched today (1-col)
+  let my = heroY + 140;
+  push(text(mx + 12, my, '🚀  LAUNCHED TODAY', { size: 13, color: INK }));
+  my += 20;
+  for (let i = 0; i < 3; i++) {
+    add(productRowMock(mx + 12, my, INNER - 24, 72, {
+      name: ['Notion AI', 'Linear', 'Arc'][i],
+      tag: ['Productivity', 'Project Mgmt', 'Browser'][i],
+      meta: `launched 2h ago · buzz ${90 - i * 3}`,
+      rightLabel: '▲ 12%',
+    }));
+    my += 80;
+  }
+
+  // Section: Trending
+  my += 12;
+  push(text(mx + 12, my, '📈  TRENDING', { size: 13, color: INK }));
+  my += 20;
+  for (let i = 0; i < 3; i++) {
+    add(productRowMock(mx + 12, my, INNER - 24, 56, {
+      name: ['Supabase', 'Bun', 'Tauri'][i],
+      tag: ['Dev Tools', 'Runtime', 'Desktop'][i],
+      rightValue: `+${14 - i * 3}%`,
+      rightColor: SUCCESS,
+    }));
+    my += 62;
+  }
+
+  // Bottom tab bar (fixed)
+  const btY = Y + H - 72;
+  push(rect(mx, btY, INNER, 72, { fill: CANVAS, stroke: BORDER, radius: 0 }));
+  push(line(mx, btY, mx + INNER, btY, { stroke: BORDER }));
+  const tabs = [
+    ['🏠', 'Feed', true],
+    ['🔍', 'Browse', false],
+    ['📊', 'Markets', false],
+    ['☰', 'More', false],
+  ];
+  tabs.forEach(([ic, lbl, active], i) => {
+    const tx = mx + 20 + i * (INNER - 40) / (tabs.length - 1) - 10;
+    push(text(tx, btY + 18, ic, { size: 18 }));
+    push(text(tx - 6, btY + 42, lbl, { size: 9, color: active ? ACCENT_DEEP : INK_DIM }));
+  });
+
+  // Annotation
+  const annY = btY - 80;
+  add(card(mx + 12, annY, INNER - 24, 60, { fill: SURFACE, stroke: BORDER }));
+  push(text(mx + 22, annY + 10, '📐 Breakpoint notes', { size: 10, color: INK, mono: true }));
+  push(text(mx + 22, annY + 26, '• sm: 1-col, hamburger, bottom nav', { size: 9, color: INK_LIGHT }));
+  push(text(mx + 22, annY + 40, '• 44px touch targets, sparklines hidden', { size: 9, color: INK_LIGHT }));
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ROUND 4 — User Flows + Component Library
+// Column at x=5000. Two large panels.
+// ══════════════════════════════════════════════════════════════════════
+
+const R4_X = 5000;
+
+// ─── Panel 13: USER FLOW DIAGRAMS ─────────────────────────────────────
+{
+  const X = R4_X, Y = 100, W = 1600, H = 2800;
+  push(text(X, Y - 56, 'User flows', { size: 26, color: INK }));
+  push(text(X, Y - 24, 'Four critical flows. Each row = one flow. Rectangles = pages/states. Diamonds = decisions. Arrows = transitions.', { size: 12, color: INK_LIGHT }));
+  push(rect(X, Y, W, H, { fill: CANVAS, stroke: BORDER_STRONG, strokeWidth: 2, radius: 8 }));
+
+  // Flow node helper (local to this panel)
+  const flowNode = (fx, fy, label, sub, color = ACCENT) => {
+    const w = 180, h = 68;
+    const items = [];
+    items.push(...card(fx, fy, w, h, { fill: CANVAS, stroke: color, strokeWidth: 1.5, radius: 10 }));
+    items.push(rect(fx + 12, fy + 12, 4, 44, { fill: color, stroke: color, rounded: false }));
+    items.push(text(fx + 24, fy + 14, label, { size: 13, color: INK }));
+    if (sub) items.push(text(fx + 24, fy + 36, sub, { size: 10, color: INK_LIGHT, mono: true }));
+    return { items, w, h };
+  };
+  const flowDecision = (fx, fy, label) => {
+    const w = 130, h = 74;
+    const items = [];
+    items.push(diamond(fx, fy, w, h, { fill: WARNING_SOFT, stroke: WARNING, strokeWidth: 1.5 }));
+    items.push(text(fx + 16, fy + h / 2 - 8, label, { size: 11, color: INK, align: 'center', width: w - 32 }));
+    return { items, w, h };
+  };
+
+  const drawFlow = (fy, title, tint, nodes, arrows) => {
+    // flow header
+    push(rect(X + 24, fy, W - 48, 52, { fill: tint, stroke: BORDER, radius: 8 }));
+    push(text(X + 40, fy + 16, title, { size: 15, color: INK }));
+    const startY = fy + 80;
+    let lastRight = null;
+    const positions = [];
+    nodes.forEach((n, i) => {
+      const nx = X + 48 + i * 230;
+      const ny = startY;
+      if (n.type === 'decision') {
+        const d = flowDecision(nx, ny, n.label);
+        d.items.forEach(el => elements.push(el));
+        positions.push({ x: nx, y: ny, w: d.w, h: d.h });
+      } else {
+        const node = flowNode(nx, ny, n.label, n.sub, n.color || ACCENT);
+        node.items.forEach(el => elements.push(el));
+        positions.push({ x: nx, y: ny, w: node.w, h: node.h });
+      }
+    });
+    // connect
+    arrows.forEach(([from, to, lbl]) => {
+      const a = positions[from];
+      const b = positions[to];
+      push(arrow(a.x + a.w, a.y + a.h / 2, b.x, b.y + b.h / 2));
+      if (lbl) {
+        const mx = (a.x + a.w + b.x) / 2;
+        push(text(mx - 20, a.y + a.h / 2 - 14, lbl, { size: 10, color: INK_DIM, mono: true }));
+      }
+    });
+  };
+
+  // Flow 1: Signup → first dossier
+  drawFlow(Y + 40, '① SIGNUP → FIRST DOSSIER VIEW', ACCENT_TINT, [
+    { label: '/signup', sub: 'email + password', color: ACCENT },
+    { label: 'email verify', sub: 'code → confirm', color: ACCENT },
+    { label: '/onboarding', sub: 'pick 3 categories', color: ACCENT },
+    { label: '/  (feed)', sub: 'personalized', color: SUCCESS },
+    { label: '/dossier/[slug]', sub: 'first open', color: SUCCESS },
+    { label: '★ saved', sub: 'localStorage + db', color: SUCCESS },
+  ], [[0, 1], [1, 2], [2, 3], [3, 4, 'click card'], [4, 5, '☆ save']]);
+
+  // Flow 2: Browse → compare → save
+  drawFlow(Y + 240, '② BROWSE → COMPARE → SAVE', SUCCESS_TINT, [
+    { label: '/products', sub: 'faceted filter', color: ACCENT },
+    { label: '+ add to compare', sub: 'sticky tray', color: ACCENT },
+    { label: '+ another', sub: 'tray shows 2', color: ACCENT },
+    { label: '/compare?a=&b=', sub: 'side-by-side', color: SUCCESS },
+    { label: 'AI verdict', sub: 'Claude-powered', color: PURPLE },
+    { label: '★ save set', sub: 'shareable URL', color: SUCCESS },
+  ], [[0, 1], [1, 2], [2, 3, 'open'], [3, 4], [4, 5]]);
+
+  // Flow 3: Search → filter → dossier
+  drawFlow(Y + 440, '③ SEARCH → FILTER → DOSSIER', WARNING_TINT, [
+    { label: '⌘K search', sub: 'command palette', color: ACCENT },
+    { label: '/search?q=', sub: 'fuzzy match', color: ACCENT },
+    { type: 'decision', label: 'refine?' },
+    { label: '/products + facet', sub: 'sidebar filters', color: ACCENT },
+    { label: '/dossier/[slug]', sub: 'full file', color: SUCCESS },
+    { label: '/dossier/[slug]', sub: 'via "similar to"', color: SUCCESS },
+  ], [[0, 1, 'enter'], [1, 2], [2, 3, 'yes'], [3, 4, 'click'], [1, 4, 'no'], [4, 5, 'similar →']]);
+
+  // Flow 4: Funding alert → dossier
+  drawFlow(Y + 640, '④ FUNDING ALERT → FOLLOW COMPANY', PURPLE_SOFT, [
+    { label: '🔔 push alert', sub: '$X raised Series B', color: DANGER },
+    { label: '/dossier/[slug]', sub: 'scrolled to funding', color: ACCENT },
+    { label: 'funding timeline', sub: 'expanded', color: ACCENT },
+    { label: '/companies/[slug]', sub: 'parent co.', color: SUCCESS },
+    { label: '★ follow', sub: 'email digest', color: SUCCESS },
+  ], [[0, 1, 'tap'], [1, 2, 'scroll'], [2, 3, 'open co.'], [3, 4]]);
+
+  // Legend
+  const legY = Y + 860;
+  add(card(X + 24, legY, W - 48, 80, { fill: SURFACE, stroke: BORDER }));
+  push(text(X + 40, legY + 14, 'LEGEND', { size: 11, color: INK, mono: true }));
+  push(rect(X + 40, legY + 40, 16, 16, { fill: CANVAS, stroke: ACCENT, strokeWidth: 1.5, radius: 4 }));
+  push(text(X + 62, legY + 42, 'Navigable route', { size: 11, color: INK_MED }));
+  push(rect(X + 220, legY + 40, 16, 16, { fill: CANVAS, stroke: SUCCESS, strokeWidth: 1.5, radius: 4 }));
+  push(text(X + 242, legY + 42, 'Success state / conversion event', { size: 11, color: INK_MED }));
+  push(diamond(X + 500, legY + 38, 24, 20, { fill: WARNING_SOFT, stroke: WARNING, strokeWidth: 1.5 }));
+  push(text(X + 530, legY + 42, 'Decision / branch', { size: 11, color: INK_MED }));
+  push(rect(X + 700, legY + 40, 16, 16, { fill: CANVAS, stroke: PURPLE, strokeWidth: 1.5, radius: 4 }));
+  push(text(X + 722, legY + 42, 'AI / LLM-assisted step', { size: 11, color: INK_MED }));
+  push(rect(X + 920, legY + 40, 16, 16, { fill: CANVAS, stroke: DANGER, strokeWidth: 1.5, radius: 4 }));
+  push(text(X + 942, legY + 42, 'Out-of-app entry (push, email, deeplink)', { size: 11, color: INK_MED }));
+
+  // Notes section
+  const noteY = Y + 960;
+  add(card(X + 24, noteY, W - 48, 200, { fill: CANVAS, stroke: BORDER }));
+  push(text(X + 40, noteY + 14, 'PHASE 1 COVERAGE', { size: 11, color: INK, mono: true }));
+  const notes = [
+    'Flow ① — Signup + onboarding blocked on auth (Phase 4). For Phase 1, skip onboarding, drop users straight to /.',
+    'Flow ② — /compare works with mock data today. Real data after Day 5 cut-over. AI verdict uses Claude Sonnet 4.6.',
+    'Flow ③ — ⌘K palette already built in components/search-command.tsx. Backend query = pg_trgm + pgvector hybrid.',
+    'Flow ④ — Push alerts are Phase 5+. For Phase 1, funding alerts are email digest only (resend.com integration).',
+    '',
+    'Metrics to instrument per flow: TTI (time to first meaningful action), drop-off per step, % completion, time per step.',
+    'Analytics tooling: PostHog event tracking on every node transition. Funnel reports wired in Week 4.',
+  ];
+  notes.forEach((n, i) => {
+    push(text(X + 40, noteY + 36 + i * 20, n, { size: 11, color: n === '' ? INK_DIM : INK_MED }));
+  });
+}
+
+// ─── Panel 14: COMPONENT LIBRARY ──────────────────────────────────────
+{
+  const X = R4_X, Y = 3000, W = 1600, H = 2200;
+  push(text(X, Y - 56, 'Component library', { size: 26, color: INK }));
+  push(text(X, Y - 24, 'Reusable primitives pulled out as a standalone palette. Reference when building any page.', { size: 12, color: INK_LIGHT }));
+  push(rect(X, Y, W, H, { fill: CANVAS, stroke: BORDER_STRONG, strokeWidth: 2, radius: 8 }));
+
+  // 3-col grid: width of each section ~500
+  const col = (i) => X + 32 + i * 512;
+
+  // ── Section: Product cards ───────────────────────────────────────
+  let sy = Y + 24;
+  push(text(col(0), sy, '🧩  PRODUCT CARDS', { size: 14, color: INK }));
+  push(text(col(0), sy + 22, '4 variants — default, compact, featured, list', { size: 10, color: INK_LIGHT, mono: true }));
+  // default
+  add(productCardMock(col(0), sy + 48, 220, 180, { name: 'Notion', tag: 'All-in-one workspace', cat: 'Productivity', score: 94 }));
+  push(text(col(0), sy + 236, 'default  (grid card, 220×180)', { size: 9, color: INK_DIM, mono: true }));
+  // compact
+  add(productCardMock(col(0) + 240, sy + 48, 180, 140, { name: 'Linear', tag: 'Issue tracker', cat: 'Dev Tools', score: 88 }));
+  push(text(col(0) + 240, sy + 196, 'compact  (180×140)', { size: 9, color: INK_DIM, mono: true }));
+  // featured
+  add(card(col(0), sy + 260, 420, 110, { fill: ACCENT_TINT, stroke: ACCENT, strokeWidth: 1.5 }));
+  add(avatar(col(0) + 16, sy + 276, 60, 'R'));
+  push(text(col(0) + 88, sy + 280, 'Raycast', { size: 18, color: INK }));
+  push(text(col(0) + 88, sy + 304, 'Supercharged launcher for Mac', { size: 11, color: INK_LIGHT }));
+  add(pillRow(col(0) + 88, sy + 324, ['Featured', 'Productivity', 'free'], { fill: ACCENT_SOFT, stroke: ACCENT, color: ACCENT_DEEP, size: 10 }));
+  push(text(col(0), sy + 380, 'featured  (hero 420×110)', { size: 9, color: INK_DIM, mono: true }));
+  // list
+  add(productRowMock(col(0), sy + 400, 420, 72, { name: 'Arc', tag: 'Browser', meta: 'launched 2022', rightValue: '+12%' }));
+  push(text(col(0), sy + 478, 'list  (row 420×72)', { size: 9, color: INK_DIM, mono: true }));
+
+  // ── Section: Buttons ─────────────────────────────────────────────
+  push(text(col(1), sy, '🔘  BUTTONS', { size: 14, color: INK }));
+  push(text(col(1), sy + 22, '4 variants × 3 sizes', { size: 10, color: INK_LIGHT, mono: true }));
+  add(button(col(1), sy + 48, 130, 40, 'Primary', { filled: true, size: 14 }));
+  add(button(col(1) + 146, sy + 48, 130, 40, 'Outline', { filled: false, size: 14 }));
+  add(button(col(1) + 292, sy + 48, 130, 40, 'Ghost', { filled: false, stroke: 'transparent' }));
+  add(button(col(1), sy + 100, 110, 32, 'Small', { filled: true, size: 12 }));
+  add(button(col(1) + 126, sy + 100, 110, 32, 'Small out', { filled: false, size: 12 }));
+  add(button(col(1) + 252, sy + 100, 90, 32, '＋ Save', { filled: false, size: 12 }));
+  add(button(col(1), sy + 148, 160, 48, 'Open dossier →', { filled: true, size: 15 }));
+
+  // ── Section: Pills / badges ──────────────────────────────────────
+  push(text(col(1), sy + 216, '🏷️  PILLS & BADGES', { size: 14, color: INK }));
+  push(text(col(1), sy + 238, 'Used in attribute panel, filter chips, category tags', { size: 10, color: INK_LIGHT, mono: true }));
+  add(pillRow(col(1), sy + 262, ['Productivity', 'Dev Tools', 'AI', 'Finance'], { size: 11 }));
+  add(pillRow(col(1), sy + 288, ['collaborative', 'real-time', 'api-first'], { fill: SUCCESS_SOFT, stroke: SUCCESS, color: SUCCESS, size: 11 }));
+  add(pillRow(col(1), sy + 314, ['free', 'open-source'], { fill: WARNING_SOFT, stroke: WARNING, color: WARNING, size: 11 }));
+  add(pillRow(col(1), sy + 340, ['soc2', 'gdpr', 'hipaa'], { fill: PURPLE_SOFT, stroke: PURPLE, color: PURPLE, size: 11 }));
+  add(pillRow(col(1), sy + 366, ['▲ trending', '🔥 breakout'], { fill: DANGER_SOFT, stroke: DANGER, color: DANGER, size: 11 }));
+
+  // ── Section: Charts ──────────────────────────────────────────────
+  push(text(col(2), sy, '📊  CHART PRIMITIVES', { size: 14, color: INK }));
+  push(text(col(2), sy + 22, 'sparkline, bar, line, radar, donut, heatmap', { size: 10, color: INK_LIGHT, mono: true }));
+  // sparkline
+  add(card(col(2), sy + 48, 220, 56, { fill: CANVAS, stroke: BORDER }));
+  add(sparkline(col(2) + 14, sy + 64, 190, 28, [2, 4, 3, 6, 5, 7, 9, 8, 11, 13]));
+  push(text(col(2) + 14, sy + 92, 'sparkline', { size: 9, color: INK_DIM, mono: true }));
+  // bar
+  add(card(col(2) + 240, sy + 48, 220, 56, { fill: CANVAS, stroke: BORDER }));
+  add(barChart(col(2) + 254, sy + 60, 190, 36, [5, 8, 4, 10, 7, 12, 9]));
+  push(text(col(2) + 254, sy + 92, 'bar chart', { size: 9, color: INK_DIM, mono: true }));
+  // line chart
+  add(card(col(2), sy + 120, 220, 100, { fill: CANVAS, stroke: BORDER }));
+  add(lineChart(col(2) + 14, sy + 134, 190, 70, [10, 20, 15, 30, 28, 40, 38, 55, 60, 70]));
+  push(text(col(2) + 14, sy + 206, 'line chart', { size: 9, color: INK_DIM, mono: true }));
+  // radar
+  add(card(col(2) + 240, sy + 120, 220, 100, { fill: CANVAS, stroke: BORDER }));
+  add(radarChart(col(2) + 350, sy + 170, 38, [0.8, 0.6, 0.9, 0.7, 0.5, 0.85], ['UX', 'Depth', 'Value', 'Support', 'Perf', 'Docs'], { stroke: ACCENT, fill: ACCENT_SOFT }));
+  push(text(col(2) + 254, sy + 206, 'radar chart', { size: 9, color: INK_DIM, mono: true }));
+
+  // donut
+  add(card(col(2), sy + 236, 220, 140, { fill: CANVAS, stroke: BORDER }));
+  add(donutChart(col(2) + 110, sy + 306, 56, 32, [40, 25, 15, 20], [ACCENT, SUCCESS, WARNING, DANGER]));
+  push(text(col(2) + 14, sy + 372, 'donut chart', { size: 9, color: INK_DIM, mono: true }));
+  // heatmap mini
+  add(card(col(2) + 240, sy + 236, 220, 140, { fill: CANVAS, stroke: BORDER }));
+  add(heatmap(col(2) + 256, sy + 252, 188, 108, [
+    [0.1, 0.2, 0.4, 0.6, 0.8],
+    [0.3, 0.4, 0.6, 0.7, 0.9],
+    [0.5, 0.6, 0.7, 0.8, 1.0],
+  ]));
+  push(text(col(2) + 254, sy + 372, 'heatmap', { size: 9, color: INK_DIM, mono: true }));
+
+  // ── Section: Avatars / logos ─────────────────────────────────────
+  let sy2 = Y + 560;
+  push(text(col(0), sy2, '👤  AVATARS & LOGOS', { size: 14, color: INK }));
+  push(text(col(0), sy2 + 22, '4 sizes — small 24, med 40, large 56, xl 80', { size: 10, color: INK_LIGHT, mono: true }));
+  add(avatar(col(0), sy2 + 48, 24, 'S'));
+  add(avatar(col(0) + 44, sy2 + 48, 40, 'M'));
+  add(avatar(col(0) + 104, sy2 + 48, 56, 'L'));
+  add(avatar(col(0) + 184, sy2 + 48, 80, 'XL'));
+
+  // ── Section: Dividers & misc ─────────────────────────────────────
+  push(text(col(1), sy2, '➖  DIVIDERS & MISC', { size: 14, color: INK }));
+  push(divider(col(1), sy2 + 52, 400));
+  push(text(col(1), sy2 + 60, 'default divider (BORDER)', { size: 9, color: INK_DIM, mono: true }));
+  push(divider(col(1), sy2 + 86, 400, ACCENT));
+  push(text(col(1), sy2 + 94, 'accent divider', { size: 9, color: INK_DIM, mono: true }));
+  add(dot(col(1), sy2 + 120, SUCCESS));
+  push(text(col(1) + 16, sy2 + 114, 'status dot (success, warning, danger)', { size: 10, color: INK_MED }));
+  add(dot(col(1), sy2 + 140, WARNING));
+  add(dot(col(1), sy2 + 160, DANGER));
+
+  // ── Section: Widget / card ───────────────────────────────────────
+  push(text(col(2), sy2, '🗂️  WIDGET / CARD', { size: 14, color: INK }));
+  push(text(col(2), sy2 + 22, 'card + accent bar + title + description', { size: 10, color: INK_LIGHT, mono: true }));
+  add(widget(col(2), sy2 + 48, 420, 120, '🏆 SAMPLE WIDGET', '→ data_source.join(other) WHERE condition   •   refresh rate: 1h'));
+  push(text(col(2) + 16, sy2 + 128, 'Content area. Any chart, list, or form fits here.', { size: 11, color: INK_MED }));
+
+  // ── Footer / usage notes ─────────────────────────────────────────
+  const footY = Y + H - 200;
+  add(card(X + 24, footY, W - 48, 160, { fill: SURFACE, stroke: BORDER }));
+  push(text(X + 40, footY + 14, 'USAGE NOTES', { size: 11, color: INK, mono: true }));
+  const usageNotes = [
+    'All primitives live in docs/wireframes/prism-wireframe-build.mjs — treat them as wireframe-only.',
+    'Production counterparts: components/product-card.tsx, components/market-pulse.tsx, components/ui/* (shadcn).',
+    'When a new page is designed, add it as a new { ... } block and reuse helpers — never duplicate primitives.',
+    '',
+    'Color tokens (kept in sync with app/globals.css):',
+    '  ACCENT = sky-500   SUCCESS = emerald-500   WARNING = amber-500   DANGER = red-500   PURPLE = violet-500',
+    '  CANVAS = white   SURFACE = slate-50   BORDER = slate-200   INK = slate-900   INK_LIGHT = slate-500',
+  ];
+  usageNotes.forEach((n, i) => {
+    push(text(X + 40, footY + 36 + i * 18, n, { size: 10, color: n === '' ? INK_DIM : INK_MED, mono: n.startsWith('  ') }));
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// SECTION HEADERS — big labels above each column
+// ══════════════════════════════════════════════════════════════════════
+{
+  const headerY = -60;
+  const headers = [
+    { x: 80,   w: 1440, label: 'ROUND 1 — FOUNDATION',              sub: 'sitemap · home · dossier',                  color: ACCENT,  tint: ACCENT_TINT },
+    { x: 1720, w: 1440, label: 'ROUND 2 — DESKTOP ROUTES',          sub: 'markets · products · insights · compare · etc', color: SUCCESS, tint: SUCCESS_TINT },
+    { x: 3360, w: 1440, label: 'ROUND 3 — INTERACTION + RESPONSIVE', sub: 'modal · audit · tablet · mobile',            color: WARNING, tint: WARNING_TINT },
+    { x: 5000, w: 1600, label: 'ROUND 4 — FLOWS + COMPONENTS',       sub: 'user flows · component library',            color: PURPLE,  tint: PURPLE_TINT },
+  ];
+  headers.forEach(h => {
+    push(rect(h.x, headerY, h.w, 120, { fill: h.tint, stroke: h.color, strokeWidth: 2, radius: 12 }));
+    push(rect(h.x + 20, headerY + 20, 6, 80, { fill: h.color, stroke: h.color, rounded: false }));
+    push(text(h.x + 40, headerY + 18, h.label, { size: 32, color: INK }));
+    push(text(h.x + 40, headerY + 66, h.sub, { size: 14, color: INK_LIGHT, mono: true }));
+  });
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // Write file
 // ──────────────────────────────────────────────────────────────────────
@@ -2236,7 +2853,7 @@ const file = {
   files: {},
 };
 
-const outPath = 'C:/Users/alima/Desktop/Excalidraw Files/prism-ui-map.excalidraw';
+const outPath = new URL('./prism-all-rounds-v2-with-round4.excalidraw', import.meta.url);
 writeFileSync(outPath, JSON.stringify(file));
-console.log(`Wrote prism-ui-map.excalidraw  (${elements.length} elements)`);
+console.log(`Wrote prism-all-rounds-v2-with-round4.excalidraw  (${elements.length} elements, Rounds 1-4)`);
 console.log(`File: ${outPath}`);

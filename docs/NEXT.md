@@ -1,89 +1,84 @@
 # NEXT — Prism resume point
 
-> **Last updated**: 2026-04-09, after recovering session `62a5c57e` (which froze mid-brainstorm) and session `61fa2303` (continuation).
+> **Last updated**: 2026-04-10, after an unblocked-work pass that ported Round 3 into the generator, built Round 4, and landed `lib/branding.ts`.
 > **Read this file first** when returning to the project.
 
-## Where I left off (the exact moment the terminal froze)
+## What just landed (2026-04-10 session)
 
-I was in a naming brainstorm with Claude. The last message I sent was:
-> *"Do another round, then give me your top choices (and check for availability)"*
+Unblocked work completed in a single pass — no API keys or MCP auth touched. All changes live on `feature/toolset-enhancement` (pending commit).
 
-Claude was about to return a new round of Latin/Italian-sounding names (I liked **Lumien** and **Prizma**). The terminal froze before the response came back. In the continuation session I decided to **park the naming decision** and keep the codename **`prism`** so I could stop losing momentum on naming and move forward.
+1. **Bug fix** — `app/categories/[slug]/page.tsx:204` referenced `b.buzzScore.total` but `Product.buzz.score` is the real field. Fixed to `b.buzz.score`. No more crash on `/categories/[slug]?sort=buzz`.
 
-**Translation**: name is still TBD. Don't rabbit-hole on it again. Keep `prism`. Move on.
+2. **`lib/branding.ts` — single source of truth** — codename `prism` is now referenced via `BRAND.name`, `BRAND.initial` (logo monogram), `BRAND.metaTitle`, `BRAND.metaDescription`, `BRAND_COPYRIGHT`, and a `brandTitle(pageTitle)` helper. Final name change is now a single-file edit.
 
-## Wireframe status — Rounds 1–3 DONE, Round 4 still owed
+3. **"Sentinel" → branding.ts across 8 code files**:
+   - `app/layout.tsx` — metadata title + description
+   - `app/insights/page.tsx` + `app/graveyard/page.tsx` — metadata titles via `brandTitle()`
+   - `app/insights/[slug]/page.tsx` — article body template
+   - `components/site-header.tsx` — logo monogram + wordmark
+   - `components/site-footer.tsx` — logo + copyright
+   - `app/login/page.tsx` + `app/signup/page.tsx` — logos + testimonial quote
+   - `lib/mock-data.ts` + `app/globals.css` — header comments
+   - No remaining user-facing "Sentinel" strings (only historical refs in `docs/` recovery transcripts).
 
-The current `prism-ui-map.excalidraw` has **12 panels, 4,171 elements**. The backup `prism-ui-map.backup-pre-round3.excalidraw` has 3,562 elements (609 fewer). The backup's filename means exactly what it says: snapshot *before* Round 3 was built.
+4. **Wireframe generator rebuilt to produce all 4 rounds** — `docs/wireframes/prism-wireframe-build.mjs` now produces **Round 1 + 2 + 3 + 4** instead of just 1 + 2. Round 3 is no longer dependent on manual JSON edits.
+   - **Round 3** (x=3360, amber): Panels 9-12 — Quick Preview Modal, Placeholder Audit (10 rows mapping every home-feed element to MOCK/REAL/HYBRID status), Tablet 768px breakpoint, Mobile 375px breakpoint with bottom nav.
+   - **Round 4** (x=5000, purple): Panel 13 — User Flows (4 flows: signup→first dossier, browse→compare→save, search→filter→dossier, funding alert→company follow). Panel 14 — Component Library palette with product cards, buttons, pills, charts (sparkline/bar/line/radar/donut/heatmap), avatars, dividers, widgets.
+   - Big section headers (ROUND 1-4) above each column with colored strips.
+   - Generator output path now lives in `docs/wireframes/prism-all-rounds.excalidraw` (was `Desktop/Excalidraw Files/`). Re-running is safe — no more zigzag, no more lost Round 3.
+   - **Output**: 9,581 elements, 5.7 MB. Valid Excalidraw v2 JSON. X bounds 80 → 6,600; Y bounds -60 → 17,500.
+   - **Backup**: previous canonical saved to `docs/wireframes/prism-all-rounds.backup-pre-generator-port.excalidraw` (4,183 elements, the manually-edited Round 3 version).
 
-**Panels 1–8 (Rounds 1+2) — hi-def route wireframes:**
-1. Sitemap (25 routes, 4 sections)
-2. `/` Home feed
-3. `/dossier/[slug]` (and 4. `/markets`, 5. `/products`, 6. `/insights/[slug]`, 7. `/functions/[slug]`, 8. `/compare`, plus `/companies/[slug]`, `/trending`, `/graveyard`)
+## Where we actually left off (pre-execution)
 
-**Panels 9–12 (Round 3) — interaction + responsive:**
-- **Panel 9** — Quick Preview Modal (the click-card-opens-modal flow)
-- **Panel 10** — Placeholder Audit (every Rounds 1+2 element labeled real-data vs hardcoded)
-- **Panel 11** — Tablet breakpoint (768px)
-- **Panel 12** — Mobile breakpoint (375px)
+Planning and wireframing are complete. Foundation execution (Day 1) is still blocked on credentials.
 
-**Round 4 — still not built** (these are the only wireframe items still open):
-1. **User flow diagrams** — signup → first dossier, browse → compare → save, search → filter → dossier, funding alert → dossier
-2. **Component library panel** — reusable cards, buttons, badges, charts, pulled out as a standalone palette
+### Still blocked on credentials
+- [ ] **MCP auth** — Supabase, Vercel, Firecrawl (one-time browser consent)
+- [ ] **API keys for GitHub Actions secrets**: `ANTHROPIC_API_KEY`, `PRODUCT_HUNT_DEVELOPER_TOKEN`, `FIRECRAWL_API_KEY`
 
-Additions go into the same file via edits to `docs/wireframes/prism-wireframe-build.mjs` (re-run with `node prism-wireframe-build.mjs`).
+Once those are resolved, `STRATEGIC-PLAN.md` Day 1 kicks in:
 
-**Note**: `PRISM-OVERVIEW.md` (the Obsidian doc snapshot) still shows Round 3 as "not yet built" — that doc is stale, taken before Round 3 was completed later in the continuation session. Trust this file (`NEXT.md`) and the excalidraw element counts over the overview snapshot.
-
-## Then — after Round 3 wireframes are locked
-
-The `STRATEGIC-PLAN.md` Day 1 checklist kicks in. Summary order:
-
-1. **Day 1: Foundation** — Supabase project, deps install, `lib/branding.ts` single-source-of-truth file
-2. **Day 2: Schema migration** — push the 11-table schema from `MASTER-SPEC.md` section 4 into Supabase
-3. **Day 2 cont.: Vocabulary seed** — `functions.sql` + `tags.sql` (AI draft + 1hr human review per locked decision)
+1. **Day 1: Foundation** — Supabase project, deps install, ~~`lib/branding.ts`~~ ✅ already done
+2. **Day 2: Schema migration** — push 11-table schema from `MASTER-SPEC.md` §4 into Supabase
+3. **Day 2 cont.: Vocabulary seed** — `functions.sql` + `tags.sql` (AI draft + 1hr human review)
 4. **Day 4: Logo pipeline + Product Hunt ingestion** — 50 real products, logo cascade PH → Brandfetch → Clearbit → Firecrawl → favicon
 5. **Day 5: UI cut-over** — delete `lib/mock-data.ts` (1,197 lines), query Supabase, deploy to preview
 6. **Day 6: GitHub Actions crons** — 4 parallel sources (PH, HN, GitHub Trending, Reddit)
-7. **Day 7: News feed** — RSS → Haiku classifier → Sonnet on funding articles (target $7/mo news cost vs $125 naive)
+7. **Day 7: News feed** — RSS → Haiku classifier → Sonnet on funding articles ($7/mo target)
 
-Full daily breakdown is in `STRATEGIC-PLAN.md` — that's the 1,708-line plan from this morning.
-
-## Blockers I need to resolve *before* Day 1 can start
-
-- [ ] **MCP auth** — Supabase, Vercel, Firecrawl (one-time browser consent)
-- [ ] **API keys for GitHub Actions secrets**: `ANTHROPIC_API_KEY`, `PRODUCT_HUNT_DEVELOPER_TOKEN`, `FIRECRAWL_API_KEY`
-- [ ] **Rename `brand` string in `site-header.tsx` + `app/layout.tsx`** (currently hardcoded to "Sentinel")
-- [ ] **Fix the latent bug** at `app/categories/[slug]/page.tsx:204` — references `b.buzzScore.total` but type is `b.buzz.score`. Will crash at runtime.
+### Unchecked from the pre-execution checklist
+- [x] ~~Rename `brand` string in `site-header.tsx` + `app/layout.tsx`~~ ✅ now reads from `lib/branding.ts`
+- [x] ~~Fix the latent bug at `app/categories/[slug]/page.tsx:204`~~ ✅ fixed
 
 ## Deferred (don't pull the thread)
 
-- Final product name — parked, keep `prism` codename
+- Final product name — parked, keep `prism` codename. `BRAND.isCodename = true` flag in `lib/branding.ts` marks this clearly.
 - Twitter API ($100/mo) — defer until after signal scoring proven
 - Crunchbase API ($49/mo) — scrape public pages with Firecrawl instead
 - SimilarWeb API ($250+/mo) — defer indefinitely
 - Phase 2 historical data (1960s-2000 curation) — Phase 1 first, historical depth later
-- `/gsd:new-project` — already have a better plan (`STRATEGIC-PLAN.md`) + spec (`MASTER-SPEC.md`) + overview (`PRISM-OVERVIEW.md`). Formalizing now would be busywork. Revisit when executing if GSD's atomic-commit structure adds value.
 
-## File map — where everything lives now
+## File map
 
 ```
 v0-product-sentinel/
+├── lib/
+│   ├── branding.ts             ← NEW. single source of truth for brand strings
+│   └── mock-data.ts            ← still 1,197 lines, deletion scheduled for Day 5
 ├── docs/
 │   ├── NEXT.md                 ← you are here
-│   ├── MASTER-SPEC.md          ← 15-section original spec (recovered, 30 KB)
-│   ├── STRATEGIC-PLAN.md       ← 1,708-line full execution plan (114 KB)
-│   ├── PRISM-OVERVIEW.md       ← richer synthesized overview (copied from Obsidian)
+│   ├── MASTER-SPEC.md          ← 15-section original spec
+│   ├── STRATEGIC-PLAN.md       ← 1,708-line full execution plan
+│   ├── PRISM-OVERVIEW.md       ← richer synthesized overview
 │   ├── wireframes/
-│   │   ├── prism-ui-map.excalidraw            ← Rounds 1+2, 11 panels
+│   │   ├── prism-all-rounds.excalidraw           ← REGENERATED from source, 9,581 elements, Rounds 1-4
+│   │   ├── prism-all-rounds.backup-pre-generator-port.excalidraw  ← previous canonical, 4,183 elements
+│   │   ├── prism-ui-map.excalidraw               ← original messy layout (pre-recovery)
 │   │   ├── prism-ui-map.backup-pre-round3.excalidraw
-│   │   └── prism-wireframe-build.mjs          ← 2,242-line generator, edit + rerun
+│   │   └── prism-wireframe-build.mjs             ← now 2,600+ lines, produces all 4 rounds
 │   └── recovery/               ← full chat transcripts from the frozen sessions
-│       ├── 62a5c57e-USER.md    (33 KB — my messages, main session)
-│       ├── 62a5c57e-ASSISTANT.md (81 KB — Claude's responses)
-│       ├── 61fa2303-USER.md    (21 KB — continuation session, mine)
-│       └── 61fa2303-ASSISTANT.md (12 KB — continuation, Claude's)
-└── [existing Next.js code]     ← 14 commits, v0.dev scaffold + iterations
+└── [existing Next.js code]     ← 14 commits + this pass, v0.dev scaffold + branding refactor
 ```
 
-The Obsidian doc `Claude Code Projects/Prism.md` stays as the narrative/changelog layer. Keep both in sync — `PRISM-OVERVIEW.md` is a snapshot, Obsidian is the living copy.
+The Obsidian doc `Claude Code Projects/Prism.md` stays as the narrative/changelog layer.
