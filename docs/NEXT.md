@@ -1,84 +1,143 @@
 # NEXT — Prism resume point
 
-> **Last updated**: 2026-04-10, after an unblocked-work pass that ported Round 3 into the generator, built Round 4, and landed `lib/branding.ts`.
+> **Last updated**: 2026-04-10 (post Day 1+2 Foundation — Supabase schema live)
 > **Read this file first** when returning to the project.
 
-## What just landed (2026-04-10 session)
+## Status: Day 1 + Day 2 Foundation COMPLETE ✅
 
-Unblocked work completed in a single pass — no API keys or MCP auth touched. All changes live on `feature/toolset-enhancement` (pending commit).
+Supabase schema is live. All blockers resolved.
 
-1. **Bug fix** — `app/categories/[slug]/page.tsx:204` referenced `b.buzzScore.total` but `Product.buzz.score` is the real field. Fixed to `b.buzz.score`. No more crash on `/categories/[slug]?sort=buzz`.
+### What's on the live database
 
-2. **`lib/branding.ts` — single source of truth** — codename `prism` is now referenced via `BRAND.name`, `BRAND.initial` (logo monogram), `BRAND.metaTitle`, `BRAND.metaDescription`, `BRAND_COPYRIGHT`, and a `brandTitle(pageTitle)` helper. Final name change is now a single-file edit.
+**Project**: `fnlmqkfmjfzzkkqcmahe` in org `izpyiciidhsswljgxmvq` (`alimabsoute's Org`, Pro plan, us-east-2)
+- **URL**: `https://fnlmqkfmjfzzkkqcmahe.supabase.co`
+- **Dashboard name**: still shows `LaunchSentinel` — pending manual rename to `prism-dev` (MCP has no `update_project`)
+- **Repurposed** from the abandoned product-hunt-app project. 27 old seed rows + 9 tables were dropped after backup; full audit trail in `docs/archive/launchsentinel-drop-manifest-2026-04-10.md`.
 
-3. **"Sentinel" → branding.ts across 8 code files**:
-   - `app/layout.tsx` — metadata title + description
-   - `app/insights/page.tsx` + `app/graveyard/page.tsx` — metadata titles via `brandTitle()`
-   - `app/insights/[slug]/page.tsx` — article body template
-   - `components/site-header.tsx` — logo monogram + wordmark
-   - `components/site-footer.tsx` — logo + copyright
-   - `app/login/page.tsx` + `app/signup/page.tsx` — logos + testimonial quote
-   - `lib/mock-data.ts` + `app/globals.css` — header comments
-   - No remaining user-facing "Sentinel" strings (only historical refs in `docs/` recovery transcripts).
+**Extensions installed** (migration `0001_prism_foundation`):
+- `pg_trgm` v1.6 — fuzzy name match for dedup cascade Layer 2
+- `vector` (pgvector) v0.8.0 — embedding similarity for dedup cascade Layer 6
+- `pg_cron` v1.6 — nightly signal score job scheduler (Day 6)
+- Plus existing: `uuid-ossp`, `pgcrypto`, `pg_graphql`, `pg_stat_statements`, `supabase_vault`, `plpgsql`
 
-4. **Wireframe generator rebuilt to produce all 4 rounds** — `docs/wireframes/prism-wireframe-build.mjs` now produces **Round 1 + 2 + 3 + 4** instead of just 1 + 2. Round 3 is no longer dependent on manual JSON edits.
-   - **Round 3** (x=3360, amber): Panels 9-12 — Quick Preview Modal, Placeholder Audit (10 rows mapping every home-feed element to MOCK/REAL/HYBRID status), Tablet 768px breakpoint, Mobile 375px breakpoint with bottom nav.
-   - **Round 4** (x=5000, purple): Panel 13 — User Flows (4 flows: signup→first dossier, browse→compare→save, search→filter→dossier, funding alert→company follow). Panel 14 — Component Library palette with product cards, buttons, pills, charts (sparkline/bar/line/radar/donut/heatmap), avatars, dividers, widgets.
-   - Big section headers (ROUND 1-4) above each column with colored strips.
-   - Generator output path now lives in `docs/wireframes/prism-all-rounds.excalidraw` (was `Desktop/Excalidraw Files/`). Re-running is safe — no more zigzag, no more lost Round 3.
-   - **Output**: 9,581 elements, 5.7 MB. Valid Excalidraw v2 JSON. X bounds 80 → 6,600; Y bounds -60 → 17,500.
-   - **Backup**: previous canonical saved to `docs/wireframes/prism-all-rounds.backup-pre-generator-port.excalidraw` (4,183 elements, the manually-edited Round 3 version).
+**Tables created** (14 total, all empty, RLS off — enabled later):
+1. `companies`
+2. `products` (with `GENERATED ALWAYS AS` lifespan_months + `task_search_tags TEXT[]` + `functionality_scores JSONB`)
+3. `funding_rounds`
+4. `revenue_snapshots`
+5. `tags` + `product_tags`
+6. `press_mentions`
+7. `product_relationships` (graph edges)
+8. `product_alternatives`
+9. `social_mentions` (time-series)
+10. `product_signal_scores`
+11. `product_graveyard`
+12. `product_changelog`
+13. `job_posting_snapshots`
 
-## Where we actually left off (pre-execution)
+**Indexes**: 12 total — category/status/source/launched_year/primary_function on products, FK indexes on press_mentions + funding_rounds + social_mentions + signal_scores, partial index on `is_breakout = TRUE`, plus trigram indexes for `products.name` and `companies.name`.
 
-Planning and wireframing are complete. Foundation execution (Day 1) is still blocked on credentials.
+### Credentials
 
-### Still blocked on credentials
-- [ ] **MCP auth** — Supabase, Vercel, Firecrawl (one-time browser consent)
-- [ ] **API keys for GitHub Actions secrets**: `ANTHROPIC_API_KEY`, `PRODUCT_HUNT_DEVELOPER_TOKEN`, `FIRECRAWL_API_KEY`
+**`.env.local`** (gitignored) now contains:
+- `ANTHROPIC_API_KEY`, `PRODUCT_HUNT_DEVELOPER_TOKEN`, `FIRECRAWL_API_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` = **TODO** (not auto-fetchable via MCP — Ali will paste manually from Supabase dashboard → Settings → API when needed for Day 4 ingestion)
 
-Once those are resolved, `STRATEGIC-PLAN.md` Day 1 kicks in:
+**GitHub Actions secrets** on `alimabsoute/v0-product-sentinel`:
+```
+ANTHROPIC_API_KEY                    (set 2026-04-10)
+FIRECRAWL_API_KEY                    (set 2026-04-10)
+PRODUCT_HUNT_DEVELOPER_TOKEN         (set 2026-04-10)
+NEXT_PUBLIC_SUPABASE_URL             (set 2026-04-10)
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (set 2026-04-10)
+NEXT_PUBLIC_SUPABASE_ANON_KEY        (set 2026-04-10)
+SUPABASE_SERVICE_ROLE_KEY            — TODO before Day 4
+```
 
-1. **Day 1: Foundation** — Supabase project, deps install, ~~`lib/branding.ts`~~ ✅ already done
-2. **Day 2: Schema migration** — push 11-table schema from `MASTER-SPEC.md` §4 into Supabase
-3. **Day 2 cont.: Vocabulary seed** — `functions.sql` + `tags.sql` (AI draft + 1hr human review)
-4. **Day 4: Logo pipeline + Product Hunt ingestion** — 50 real products, logo cascade PH → Brandfetch → Clearbit → Firecrawl → favicon
-5. **Day 5: UI cut-over** — delete `lib/mock-data.ts` (1,197 lines), query Supabase, deploy to preview
-6. **Day 6: GitHub Actions crons** — 4 parallel sources (PH, HN, GitHub Trending, Reddit)
-7. **Day 7: News feed** — RSS → Haiku classifier → Sonnet on funding articles ($7/mo target)
+### Dependencies installed (Day 1)
 
-### Unchecked from the pre-execution checklist
-- [x] ~~Rename `brand` string in `site-header.tsx` + `app/layout.tsx`~~ ✅ now reads from `lib/branding.ts`
-- [x] ~~Fix the latent bug at `app/categories/[slug]/page.tsx:204`~~ ✅ fixed
+```json
+"@supabase/supabase-js": "^2.103.0",
+"@anthropic-ai/sdk": "^0.87.0"
+```
+`zod` was already in the v0 scaffold.
 
-## Deferred (don't pull the thread)
+---
 
-- Final product name — parked, keep `prism` codename. `BRAND.isCodename = true` flag in `lib/branding.ts` marks this clearly.
-- Twitter API ($100/mo) — defer until after signal scoring proven
-- Crunchbase API ($49/mo) — scrape public pages with Firecrawl instead
-- SimilarWeb API ($250+/mo) — defer indefinitely
-- Phase 2 historical data (1960s-2000 curation) — Phase 1 first, historical depth later
+## Next: Day 3 / Day 4 — Vocabulary seed + first ingestion
+
+Day 3 in `STRATEGIC-PLAN.md` is wireframes (already done Rounds 1-4). So the next actual work is:
+
+### Day 3.5 — Vocabulary seed (`supabase/seed/functions.sql` + `tags.sql`)
+- Claude Sonnet 4.6 draft of ~400 leaf `primary_function` values + ~100 `sub_category` values
+- 10 attribute tag groups with controlled vocabularies (capability, audience, pricing_model, deployment, integration, compliance, tech_stack, data_format, ux_pattern, business_model)
+- 1hr human review per locked decision before seeding
+
+### Day 4 — Logo pipeline + Product Hunt ingestion (50 products)
+- Logo cascade: PH GraphQL → Brandfetch → Clearbit → Firecrawl → Google favicon
+- Ingestion script at `scripts/ingest-product-hunt.ts`:
+  - Fetch PH `featured_today` via GraphQL
+  - Claude Sonnet 4.6 extracts: primary_function, category, attributes, task_search_tags, functionality_scores
+  - Dedup cascade (slug → root domain → pg_trgm > 0.8 → twitter handle → github repo → pgvector > 0.9)
+  - Insert to `products` + `product_tags`
+- Target: 50 real products in the `products` table, each with proper attribute taxonomy + real logo URL.
+
+### Day 5 — UI cut-over
+- Delete `lib/mock-data.ts` (1,197 lines)
+- Create `lib/supabase-client.ts` — browser client
+- Create `lib/supabase-server.ts` — server-side admin client
+- Refactor pages to `await supabase.from('products').select(...)`
+- Fix all type mismatches (product-card, market-pulse, etc.)
+- Deploy preview via `vercel` CLI
+
+### Day 6 — GitHub Actions crons
+- Workflow: `.github/workflows/ingest-product-hunt.yml` (every 6h)
+- Workflow: `.github/workflows/ingest-hn.yml` (every 6h)
+- Workflow: `.github/workflows/ingest-github-trending.yml` (daily)
+- Workflow: `.github/workflows/ingest-reddit.yml` (every 12h)
+- All use the GitHub Actions secrets set above.
+
+### Day 7 — News feed automation
+- `scripts/ingest-news.ts` — 8 RSS sources
+- Keyword pre-filter → Haiku classifier → Sonnet escalation for funding articles
+- Target: $7/mo news cost vs $125/mo naive
+
+---
+
+## Still outstanding manual steps
+
+| Item | When needed | Action |
+|---|---|---|
+| Rename Supabase project `LaunchSentinel → prism-dev` | Cosmetic, anytime | Supabase dashboard → Settings → General → Rename |
+| Fetch `SUPABASE_SERVICE_ROLE_KEY` | Before Day 4 ingestion | Dashboard → Settings → API → service_role → copy → paste into `.env.local` + `gh secret set` |
+| Vercel MCP re-auth (optional) | Day 5 UI cut-over (nice-to-have, not required — `vercel` CLI works) | Claude.ai → Settings → Connectors → Vercel → Disconnect → Reconnect. OR file support ticket with reference `ofid_48d43f8e1baa57b4` |
+
+---
 
 ## File map
 
 ```
 v0-product-sentinel/
+├── .env.local                  ← gitignored, has all API keys + Supabase creds
 ├── lib/
-│   ├── branding.ts             ← NEW. single source of truth for brand strings
-│   └── mock-data.ts            ← still 1,197 lines, deletion scheduled for Day 5
+│   ├── branding.ts             ← single source of truth for brand strings
+│   ├── mock-data.ts            ← 1,197 lines, scheduled for deletion Day 5
+│   └── utils.ts
+├── supabase/
+│   └── migrations/
+│       └── 0001_prism_foundation.sql   ← NEW. 14 tables + 3 extensions + 12 indexes
 ├── docs/
 │   ├── NEXT.md                 ← you are here
-│   ├── MASTER-SPEC.md          ← 15-section original spec
-│   ├── STRATEGIC-PLAN.md       ← 1,708-line full execution plan
-│   ├── PRISM-OVERVIEW.md       ← richer synthesized overview
+│   ├── MASTER-SPEC.md          ← 690 lines, schema source of truth
+│   ├── STRATEGIC-PLAN.md       ← 1,708 lines, full execution plan
+│   ├── PRISM-OVERVIEW.md       ← narrative overview
+│   ├── archive/
+│   │   └── launchsentinel-drop-manifest-2026-04-10.md   ← NEW. what was dropped + why
 │   ├── wireframes/
-│   │   ├── prism-all-rounds.excalidraw           ← REGENERATED from source, 9,581 elements, Rounds 1-4
-│   │   ├── prism-all-rounds.backup-pre-generator-port.excalidraw  ← previous canonical, 4,183 elements
-│   │   ├── prism-ui-map.excalidraw               ← original messy layout (pre-recovery)
-│   │   ├── prism-ui-map.backup-pre-round3.excalidraw
-│   │   └── prism-wireframe-build.mjs             ← now 2,600+ lines, produces all 4 rounds
-│   └── recovery/               ← full chat transcripts from the frozen sessions
-└── [existing Next.js code]     ← 14 commits + this pass, v0.dev scaffold + branding refactor
+│   │   ├── prism-all-rounds.excalidraw           ← canonical R1-3 (4,183 elements)
+│   │   ├── prism-all-rounds-v2-with-round4.excalidraw ← generator output R1-4 (9,581 elements)
+│   │   └── prism-wireframe-build.mjs
+│   └── recovery/
+└── package.json                ← +@supabase/supabase-js, +@anthropic-ai/sdk
 ```
-
-The Obsidian doc `Claude Code Projects/Prism.md` stays as the narrative/changelog layer.
