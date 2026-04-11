@@ -42,8 +42,8 @@ type PHPost = {
 
 type ExtractedProduct = {
   name: string
-  tagline: string
-  description: string
+  tagline: string        // Claude-generated original — NOT the PH tagline verbatim
+  description: string   // Claude-generated original — NOT the PH description verbatim
   company_name: string | null
   website_url: string | null
   twitter_handle: string | null
@@ -306,6 +306,7 @@ Product Hunt post:
   Created: ${post.createdAt}
 
 IMPORTANT:
+- For "tagline" and "description": write original copy. Do NOT copy the Product Hunt tagline or description verbatim. Paraphrase independently based on what the product does.
 - For "website_url" return the value from "Website" above. If Website is "(none)" return null.
 - NEVER return the PH permalink as website_url — that is not the product's real site.
 - For category / sub_category / primary_function you MUST pick from the controlled vocabulary below. Do not invent slugs.
@@ -320,8 +321,8 @@ ${tagGroupsBlock}
 Return this JSON shape:
 {
   "name": "${post.name}",
-  "tagline": "${post.tagline}",
-  "description": "<1-3 sentence factual description, no marketing fluff>",
+  "tagline": "<write an original one-liner (max 12 words) describing what this product does — do NOT copy the Product Hunt tagline verbatim, paraphrase independently>",
+  "description": "<2-3 sentences describing what the product does, who it is for, and its main value — write independently, do not copy from the PH post>",
   "company_name": "<company name or null if same as product>",
   "website_url": "<canonical https URL or null>",
   "twitter_handle": "<handle without @ or null>",
