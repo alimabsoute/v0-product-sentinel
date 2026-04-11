@@ -37,7 +37,7 @@ type PHPost = {
   createdAt: string
   thumbnail: { url: string | null } | null
   topics: { edges: { node: { name: string; slug: string } }[] }
-  makers: { twitterUsername: string | null }[]
+  makers: { twitterUsername: string | null; username: string | null; websiteUrl: string | null }[]
 }
 
 type ExtractedProduct = {
@@ -155,7 +155,7 @@ async function fetchFeaturedPosts(limit: number): Promise<PHPost[]> {
             createdAt
             thumbnail { url }
             topics(first: 5) { edges { node { name slug } } }
-            makers { twitterUsername }
+            makers { twitterUsername username websiteUrl }
           }
         }
       }
@@ -175,7 +175,21 @@ async function fetchFeaturedPosts(limit: number): Promise<PHPost[]> {
   const json = await res.json()
   if (json.errors) throw new Error(`PH GraphQL errors: ${JSON.stringify(json.errors)}`)
 
-  return json.data.posts.edges.map((e: { node: PHPost }) => e.node)
+  const posts: PHPost[] = json.data.posts.edges.map((e: { node: PHPost }) => e.node)
+
+  // PH's Post.website field is an analytics redirect (producthunt.com/r/<code>).
+  // Following it fails: Cloudflare 403s every header combination (HEAD, GET,
+  // browser UAs, full sec-fetch headers). Real redirect resolution needs
+  // Firecrawl or a headless browser — deferred to Day 4.5 enrichment pass.
+  // For Day 4 MVP we leave website_url null and treat source_url (PH permalink)
+  // as the canonical product link.
+  for (const post of posts) {
+    if (post.website && post.website.includes('producthunt.com/r/')) {
+      post.website = null
+    }
+  }
+
+  return posts
 }
 
 // ─────────────────────────────────────────────────────────────
