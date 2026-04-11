@@ -29,13 +29,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { 
-  getProductBySlug, 
-  getCompetitors, 
+import {
   newsItems,
   formatRelativeTime,
-  type Product 
+  type Product
 } from '@/lib/mock-data'
+import { getProductBySlug, getProductsByCategory } from '@/lib/db/products'
 import { cn } from '@/lib/utils'
 
 interface ProductPageProps {
@@ -44,13 +43,20 @@ interface ProductPageProps {
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params
-  const product = getProductBySlug(slug)
+  const product = await getProductBySlug(slug)
 
   if (!product) {
     notFound()
   }
 
-  const competitors = getCompetitors(product.id)
+  // Related products from same category, excluding this one
+  const relatedRaw = await getProductsByCategory(
+    product.category.toLowerCase().replace(/ /g, '-'),
+    9
+  )
+  const competitors = relatedRaw.filter(p => p.id !== product.id).slice(0, 4)
+
+  // News items mentioning this product (mock for now — news ingestion is Day 7)
   const relatedNews = newsItems.filter(n => n.productMentions.includes(product.id)).slice(0, 4)
 
   return (

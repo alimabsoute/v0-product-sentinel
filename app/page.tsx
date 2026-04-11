@@ -1,7 +1,5 @@
-'use client'
-
 import Link from 'next/link'
-import { ArrowRight, TrendingUp, Skull, Sparkles, Activity, BarChart3 } from 'lucide-react'
+import { ArrowRight, TrendingUp, Skull, Sparkles, BarChart3 } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { ProductCard } from '@/components/product-card'
@@ -9,20 +7,21 @@ import { NewsFeed } from '@/components/news-feed'
 import { MarketPulse } from '@/components/market-pulse'
 import { ArticleCard } from '@/components/article-card'
 import { Button } from '@/components/ui/button'
+import { articles } from '@/lib/mock-data'
 import {
   getFeaturedProducts,
   getTrendingProducts,
   getDeadProducts,
-  articles,
-  products,
-} from '@/lib/mock-data'
+} from '@/lib/db/products'
 import { cn } from '@/lib/utils'
 
-export default function HomePage() {
-  const trendingProducts = getTrendingProducts(6).slice(0, 6)
-  const newProductsToday = products.filter(p => p.status === 'active').slice(0, 6)
+export default async function HomePage() {
+  const [featuredProducts, trendingProducts, deadProducts] = await Promise.all([
+    getFeaturedProducts(6),
+    getTrendingProducts(6),
+    getDeadProducts(3),
+  ])
   const latestArticle = articles[0]
-  const deadProducts = getDeadProducts().slice(0, 3)
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,7 +67,7 @@ export default function HomePage() {
                     </div>
                     
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {trendingProducts.slice(0, 3).map((product, i) => (
+                      {featuredProducts.slice(0, 3).map((product, i) => (
                         <div key={product.id} className="animate-fade-in-up stagger-{i+1}">
                           <ProductCard product={product} variant="featured" />
                         </div>
@@ -102,7 +101,7 @@ export default function HomePage() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {newProductsToday.slice(0, 3).map((product, i) => (
+                      {trendingProducts.slice(0, 3).map((product, i) => (
                         <div key={product.id} className="animate-fade-in-up stagger-{i+1}">
                           <ProductCard product={product} variant="featured" />
                         </div>
@@ -130,7 +129,7 @@ export default function HomePage() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {trendingProducts.slice(3, 6).map((product, i) => (
+                      {featuredProducts.slice(3, 6).map((product, i) => (
                         <div key={product.id} className="animate-fade-in-up stagger-{i+1}">
                           <ProductCard product={product} variant="featured" />
                         </div>
@@ -209,7 +208,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {getTrendingProducts(5).map((product, i) => (
+                  {trendingProducts.slice(0, 5).map((product, i) => (
                     <div key={product.id} className="flex items-center gap-3 group">
                       <span className="w-6 text-sm font-semibold text-primary/50">
                         #{i + 1}

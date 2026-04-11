@@ -1,9 +1,34 @@
 # NEXT — Prism resume point
 
-> **Last updated**: 2026-04-10 (post Day 3.5 — Vocabulary seed live)
+> **Last updated**: 2026-04-10 (night — Day 4 ingestion pipeline live, 20 products in DB)
 > **Read this file first** when returning to the project.
 
-## Status: Day 1 + Day 2 + Day 3.5 COMPLETE ✅
+## Status: Day 1 + Day 2 + Day 3.5 + Day 4 COMPLETE ✅
+
+### Day 4 state
+
+- `scripts/ingest-product-hunt.ts` — proven end-to-end. 20 real PH products live in Supabase.
+- DB: `products` 20 rows, `companies` 20 rows, `product_tags` ~300 rows.
+- `lib/supabase-client.ts` + `lib/supabase-server.ts` created.
+- `SUPABASE_SERVICE_ROLE_KEY` is in `.env.local` ✅ (was the last credential gap).
+- **Known gap**: `website_url` is NULL for all 20 products. PH redirect URLs (`ph.do/…`) are blocked by Cloudflare 403. Deferred to Day 4.5 Firecrawl enrichment.
+- PH GraphQL `featuredToday` cap = 20 products/day (not a bug — it's the API limit).
+- `npm run ingest:ph` = `tsx --env-file=.env.local scripts/ingest-product-hunt.ts`
+
+### Next session: Day 4.5 or Day 5
+
+**Option A — Day 4.5 Firecrawl enrichment (shorter session)**
+- Use Firecrawl to follow PH redirect URLs → extract real `website_url` + `twitter_handle` for all 20 existing products
+- Update `products` rows in place
+
+**Option B — Day 5 UI cut-over (bigger session)**
+- Delete `lib/mock-data.ts` (1,197 lines of mock data)
+- Wire all pages to Supabase queries via `supabase` / `supabaseAdmin` clients
+- Fix type mismatches (`product-card.tsx`, `market-pulse.tsx`, etc.)
+- Browser-verify each route
+- Deploy preview via `vercel` CLI
+
+---
 
 Day 3.5 landed on top of the foundation. Migrations 0002 + 0003 applied, taxonomy seeded:
 - `functions` table: **15 categories + 115 subcategories + 414 leaves = 544 rows**
@@ -51,7 +76,7 @@ Supabase schema is live. All blockers resolved.
 **`.env.local`** (gitignored) now contains:
 - `ANTHROPIC_API_KEY`, `PRODUCT_HUNT_DEVELOPER_TOKEN`, `FIRECRAWL_API_KEY`
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` = **TODO** (not auto-fetchable via MCP — Ali will paste manually from Supabase dashboard → Settings → API when needed for Day 4 ingestion)
+- `SUPABASE_SERVICE_ROLE_KEY` ✅ (pasted manually 2026-04-10, 219-char JWT, role=service_role, ref=fnlmqkfmjfzzkkqcmahe, exp=2035)
 
 **GitHub Actions secrets** on `alimabsoute/v0-product-sentinel`:
 ```
@@ -61,7 +86,7 @@ PRODUCT_HUNT_DEVELOPER_TOKEN         (set 2026-04-10)
 NEXT_PUBLIC_SUPABASE_URL             (set 2026-04-10)
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (set 2026-04-10)
 NEXT_PUBLIC_SUPABASE_ANON_KEY        (set 2026-04-10)
-SUPABASE_SERVICE_ROLE_KEY            — TODO before Day 4
+SUPABASE_SERVICE_ROLE_KEY            — TODO (paste from .env.local before Day 6 crons)
 ```
 
 ### Dependencies installed (Day 1)
@@ -74,7 +99,7 @@ SUPABASE_SERVICE_ROLE_KEY            — TODO before Day 4
 
 ---
 
-## Next: Day 4 — First ingestion
+## Roadmap
 
 ### Day 3.5 — Vocabulary seed ✅ DONE (2026-04-10)
 - Migration `0002_functions_taxonomy_and_product_detail` applied
@@ -83,14 +108,17 @@ SUPABASE_SERVICE_ROLE_KEY            — TODO before Day 4
 - `supabase/seed/functions.sql` → 544 function rows (15 / 115 / 414 across depths 0/1/2)
 - Naming rules locked: kebab-case, singular, vendor-neutral noun-phrases, `-other` catch-alls per subcategory, Futurepedia-style granularity
 
-### Day 4 — Logo pipeline + Product Hunt ingestion (50 products)
-- Logo cascade: PH GraphQL → Brandfetch → Clearbit → Firecrawl → Google favicon
-- Ingestion script at `scripts/ingest-product-hunt.ts`:
-  - Fetch PH `featured_today` via GraphQL
-  - Claude Sonnet 4.6 extracts: primary_function, category, attributes, task_search_tags, functionality_scores
-  - Dedup cascade (slug → root domain → pg_trgm > 0.8 → twitter handle → github repo → pgvector > 0.9)
-  - Insert to `products` + `product_tags`
-- Target: 50 real products in the `products` table, each with proper attribute taxonomy + real logo URL.
+### Day 4 — Product Hunt ingestion pipeline ✅ DONE (2026-04-10)
+- `scripts/ingest-product-hunt.ts` — proven end-to-end. Commits: `55f1c1f` → `e274d75` → `8715636`.
+- 20 real products live in Supabase (`products` 20 rows, `companies` 20 rows, `product_tags` ~300 rows).
+- Claude Sonnet 4.6 extraction with full 544-slug taxonomy tree in prompt. 90% accuracy.
+- Dedup cascade: slug → domain → pg_trgm → twitter → github.
+- Known gap: `website_url` NULL for all (CF 403 blocks PH redirect resolution). → Day 4.5.
+- PH GraphQL `featuredToday` hard cap = 20/day.
+
+### Day 4.5 — Firecrawl enrichment (NEXT)
+- For each of the 20 products with `website_url IS NULL`: use Firecrawl to follow `ph.do/...` redirect → extract real URL + Twitter handle → UPDATE `products` row.
+- Also: enrich `description`, `twitter_handle`, `github_repo` where missing.
 
 ### Day 5 — UI cut-over
 - Delete `lib/mock-data.ts` (1,197 lines)
@@ -119,7 +147,8 @@ SUPABASE_SERVICE_ROLE_KEY            — TODO before Day 4
 | Item | When needed | Action |
 |---|---|---|
 | Rename Supabase project `LaunchSentinel → prism-dev` | Cosmetic, anytime | Supabase dashboard → Settings → General → Rename |
-| Fetch `SUPABASE_SERVICE_ROLE_KEY` | Before Day 4 ingestion | Dashboard → Settings → API → service_role → copy → paste into `.env.local` + `gh secret set` |
+| ~~Fetch `SUPABASE_SERVICE_ROLE_KEY`~~ | ~~Before Day 4~~ | ✅ Done — pasted 2026-04-10, in `.env.local` |
+| Paste `SUPABASE_SERVICE_ROLE_KEY` to GitHub Actions | Before Day 6 crons | `gh secret set SUPABASE_SERVICE_ROLE_KEY` → paste value from `.env.local` |
 | Vercel MCP re-auth (optional) | Day 5 UI cut-over (nice-to-have, not required — `vercel` CLI works) | Claude.ai → Settings → Connectors → Vercel → Disconnect → Reconnect. OR file support ticket with reference `ofid_48d43f8e1baa57b4` |
 
 ---
