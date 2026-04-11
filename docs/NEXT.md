@@ -1,9 +1,18 @@
 # NEXT — Prism resume point
 
-> **Last updated**: 2026-04-10 (post Day 1+2 Foundation — Supabase schema live)
+> **Last updated**: 2026-04-10 (post Day 3.5 — Vocabulary seed live)
 > **Read this file first** when returning to the project.
 
-## Status: Day 1 + Day 2 Foundation COMPLETE ✅
+## Status: Day 1 + Day 2 + Day 3.5 COMPLETE ✅
+
+Day 3.5 landed on top of the foundation. Migrations 0002 + 0003 applied, taxonomy seeded:
+- `functions` table: **15 categories + 115 subcategories + 414 leaves = 544 rows**
+- `tags` table: **98 values across 10 attribute groups**
+- Products table extended with: `primary_function_id` (FK), `sub_category`, `website_url`, `twitter_handle`, `github_repo`, `docs_url`, `description`, `screenshots[]`, `logo_url`, `logo_source`, `logo_confidence`
+- `tags.slug` column added + `tags_slug_unique` constraint (replaces broken partial index from 0002)
+- Top categories by leaf count: AI Tools 73, Dev Tools 60, Productivity 40, Design 28, Marketing 28
+
+Day 1 + Day 2 state (unchanged):
 
 Supabase schema is live. All blockers resolved.
 
@@ -65,14 +74,14 @@ SUPABASE_SERVICE_ROLE_KEY            — TODO before Day 4
 
 ---
 
-## Next: Day 3 / Day 4 — Vocabulary seed + first ingestion
+## Next: Day 4 — First ingestion
 
-Day 3 in `STRATEGIC-PLAN.md` is wireframes (already done Rounds 1-4). So the next actual work is:
-
-### Day 3.5 — Vocabulary seed (`supabase/seed/functions.sql` + `tags.sql`)
-- Claude Sonnet 4.6 draft of ~400 leaf `primary_function` values + ~100 `sub_category` values
-- 10 attribute tag groups with controlled vocabularies (capability, audience, pricing_model, deployment, integration, compliance, tech_stack, data_format, ux_pattern, business_model)
-- 1hr human review per locked decision before seeding
+### Day 3.5 — Vocabulary seed ✅ DONE (2026-04-10)
+- Migration `0002_functions_taxonomy_and_product_detail` applied
+- Migration `0003_tags_slug_unique_constraint` applied (fix for broken partial index)
+- `supabase/seed/tags.sql` → 98 tags across 10 groups
+- `supabase/seed/functions.sql` → 544 function rows (15 / 115 / 414 across depths 0/1/2)
+- Naming rules locked: kebab-case, singular, vendor-neutral noun-phrases, `-other` catch-alls per subcategory, Futurepedia-style granularity
 
 ### Day 4 — Logo pipeline + Product Hunt ingestion (50 products)
 - Logo cascade: PH GraphQL → Brandfetch → Clearbit → Firecrawl → Google favicon
