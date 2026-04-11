@@ -19,7 +19,6 @@
  *   ANTHROPIC_API_KEY
  */
 
-import 'dotenv/config'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../lib/supabase-server'
 
@@ -36,9 +35,9 @@ type PHPost = {
   website: string | null
   description: string | null
   createdAt: string
-  thumbnail: { imageUrl: string | null } | null
+  thumbnail: { url: string | null } | null
   topics: { edges: { node: { name: string; slug: string } }[] }
-  makers: { edges: { node: { twitterUsername: string | null } }[] }
+  makers: { twitterUsername: string | null }[]
 }
 
 type ExtractedProduct = {
@@ -154,9 +153,9 @@ async function fetchFeaturedPosts(limit: number): Promise<PHPost[]> {
             website
             description
             createdAt
-            thumbnail { imageUrl }
+            thumbnail { url }
             topics(first: 5) { edges { node { name slug } } }
-            makers(first: 3) { edges { node { twitterUsername } } }
+            makers { twitterUsername }
           }
         }
       }
@@ -209,9 +208,9 @@ async function isDuplicate(post: PHPost): Promise<{ dup: boolean; layer?: string
     .maybeSingle()
   if (bySlug) return { dup: true, layer: 'slug', existingId: bySlug.id }
 
-  // Layer 2 — root domain match
-  const domain = extractRootDomain(post.website ?? post.url)
-  if (domain) {
+  // Layer 2 — root domain match (skip producthunt.com — that's a redirect host, not a real product domain)
+  const domain = extractRootDomain(post.website)
+  if (domain && domain !== 'producthunt.com') {
     const { data: byDomain } = await supabaseAdmin
       .from('products')
       .select('id, website_url')
@@ -240,7 +239,7 @@ async function isDuplicate(post: PHPost): Promise<{ dup: boolean; layer?: string
   }
 
   // Layer 4 — twitter handle match
-  const twitter = post.makers.edges[0]?.node.twitterUsername
+  const twitter = post.makers[0]?.twitterUsername
   if (twitter) {
     const { data: byTwitter } = await supabaseAdmin
       .from('products')
@@ -263,8 +262,18 @@ async function isDuplicate(post: PHPost): Promise<{ dup: boolean; layer?: string
 // ─────────────────────────────────────────────────────────────
 
 function buildExtractionPrompt(post: PHPost, vocab: Vocab): string {
-  const categoryList = vocab.categories.join(', ')
-  const leafExamples = Array.from(vocab.leafToId.keys()).slice(0, 30).join(', ')
+  // Build the full hierarchical tree: category → subcategory → leaves
+  const treeBlock = vocab.categories
+    .map((cat) => {
+      const subs = vocab.subcategories.get(cat) ?? []
+      const subLines = subs.map((sub) => {
+        const leaves = vocab.leaves.get(sub) ?? []
+        return `    ${sub}: [${leaves.join(', ')}]`
+      })
+      return `  ${cat}:\n${subLines.join('\n')}`
+    })
+    .join('\n')
+
   const tagGroupsBlock = Array.from(vocab.tagGroups.entries())
     .map(([g, slugs]) => `  ${g}: [${Array.from(slugs).join(', ')}]`)
     .join('\n')
@@ -278,20 +287,20 @@ Product Hunt post:
   Tagline: ${post.tagline}
   Description: ${post.description ?? '(none)'}
   Website: ${post.website ?? '(none)'}
-  URL: ${post.url}
+  PH permalink: ${post.url}
   Topics: ${post.topics.edges.map((e) => e.node.name).join(', ')}
   Created: ${post.createdAt}
 
-CONTROLLED VOCABULARY — you MUST pick values from these lists or null.
+IMPORTANT:
+- For "website_url" return the value from "Website" above. If Website is "(none)" return null.
+- NEVER return the PH permalink as website_url — that is not the product's real site.
+- For category / sub_category / primary_function you MUST pick from the controlled vocabulary below. Do not invent slugs.
+- If nothing fits precisely for primary_function, use the "-other" leaf of the closest subcategory (e.g. "ai-writing-assistant-other").
 
-Categories (depth 0, pick ONE):
-  ${categoryList}
+CONTROLLED VOCABULARY — hierarchical tree of category → subcategory → [leaves]:
+${treeBlock}
 
-Primary functions (depth 2 leaves — pick ONE, examples below, full list is 414 leaves):
-  ${leafExamples}
-  (If nothing fits precisely, use the "-other" leaf of the closest subcategory, e.g. "ai-writing-assistant-other".)
-
-Attribute tag groups (pick any number per group from these slugs):
+Attribute tag groups (pick any number per group from these slugs only):
 ${tagGroupsBlock}
 
 Return this JSON shape:
@@ -337,14 +346,17 @@ async function extractProduct(post: PHPost, vocab: Vocab): Promise<ExtractedProd
   const prompt = buildExtractionPrompt(post, vocab)
   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
+    max_tokens: 4096,
     messages: [{ role: 'user', content: prompt }],
   })
   const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
+  // Strip any stray ```json fences Claude may add despite instructions
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
   try {
-    return JSON.parse(text) as ExtractedProduct
+    return JSON.parse(cleaned) as ExtractedProduct
   } catch (e) {
     console.error(`Extraction JSON parse failed for ${post.slug}:`, e)
+    console.error(`  raw text (first 300):`, text.slice(0, 300))
     return null
   }
 }
@@ -354,9 +366,23 @@ async function extractProduct(post: PHPost, vocab: Vocab): Promise<ExtractedProd
 // ─────────────────────────────────────────────────────────────
 
 function validateAndFilter(extracted: ExtractedProduct, vocab: Vocab): { valid: boolean; reason?: string; cleaned?: ExtractedProduct } {
-  // primary_function must resolve to a leaf
-  if (!vocab.leafToId.has(extracted.primary_function)) {
-    return { valid: false, reason: `unknown primary_function: ${extracted.primary_function}` }
+  // category must be a depth-0 slug
+  if (!vocab.categories.includes(extracted.category)) {
+    return { valid: false, reason: `unknown category: ${extracted.category}` }
+  }
+  // sub_category must be a depth-1 slug under that category
+  const validSubcats = vocab.subcategories.get(extracted.category) ?? []
+  if (!validSubcats.includes(extracted.sub_category)) {
+    return { valid: false, reason: `unknown sub_category: ${extracted.sub_category} (category=${extracted.category})` }
+  }
+  // primary_function must resolve to a leaf under that subcategory
+  const validLeaves = vocab.leaves.get(extracted.sub_category) ?? []
+  if (!validLeaves.includes(extracted.primary_function)) {
+    return { valid: false, reason: `unknown primary_function: ${extracted.primary_function} (sub_category=${extracted.sub_category})` }
+  }
+  // Drop PH redirect URLs — Claude sometimes returns them despite instructions
+  if (extracted.website_url && extracted.website_url.includes('producthunt.com/r/')) {
+    extracted = { ...extracted, website_url: null }
   }
 
   // Filter attribute values not in the controlled vocab (log misses)
@@ -384,9 +410,9 @@ function validateAndFilter(extracted: ExtractedProduct, vocab: Vocab): { valid: 
 // ─────────────────────────────────────────────────────────────
 
 async function resolveLogoUrl(post: PHPost, _websiteDomain: string | null): Promise<{ url: string | null; source: string; confidence: number }> {
-  // Layer 1 — PH GraphQL thumbnail.imageUrl (best for PH-sourced products)
-  if (post.thumbnail?.imageUrl) {
-    return { url: post.thumbnail.imageUrl, source: 'product_hunt', confidence: 5 }
+  // Layer 1 — PH GraphQL thumbnail.url (best for PH-sourced products)
+  if (post.thumbnail?.url) {
+    return { url: post.thumbnail.url, source: 'product_hunt', confidence: 5 }
   }
   // Layers 2-5 (Brandfetch / Clearbit / Firecrawl og:image / Google favicon) — TODO Day 4.5
   return { url: null, source: 'none', confidence: 1 }

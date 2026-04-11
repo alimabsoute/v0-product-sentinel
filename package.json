@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "ingest:ph": "tsx scripts/ingest-product-hunt.ts"
+    "ingest:ph": "tsx --env-file=.env.local scripts/ingest-product-hunt.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",
