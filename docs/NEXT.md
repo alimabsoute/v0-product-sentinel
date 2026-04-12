@@ -1,32 +1,22 @@
 # NEXT — Prism resume point
 
-> **Last updated**: 2026-04-10 (night — Day 4 ingestion pipeline live, 20 products in DB)
+> **Last updated**: 2026-04-12 — Day 4.5 + Day 5 DONE (UI cut-over complete, 20 products with real URLs)
 > **Read this file first** when returning to the project.
 
-## Status: Day 1 + Day 2 + Day 3.5 + Day 4 COMPLETE ✅
+## Status: Day 1 + Day 2 + Day 3.5 + Day 4 + Day 4.5 + Day 5 COMPLETE ✅
 
-### Day 4 state
+### Day 5 state
 
-- `scripts/ingest-product-hunt.ts` — proven end-to-end. 20 real PH products live in Supabase.
-- DB: `products` 20 rows, `companies` 20 rows, `product_tags` ~300 rows.
-- `lib/supabase-client.ts` + `lib/supabase-server.ts` created.
-- `SUPABASE_SERVICE_ROLE_KEY` is in `.env.local` ✅ (was the last credential gap).
-- **Known gap**: `website_url` is NULL for all 20 products. PH redirect URLs (`ph.do/…`) are blocked by Cloudflare 403. Deferred to Day 4.5 Firecrawl enrichment.
-- PH GraphQL `featuredToday` cap = 20 products/day (not a bug — it's the API limit).
-- `npm run ingest:ph` = `tsx --env-file=.env.local scripts/ingest-product-hunt.ts`
+- `scripts/enrich-firecrawl.ts` — resolves PH redirect → `website_url` for all 20 products. Run: `pnpm enrich`
+- All 20 products now have `website_url` populated (clean URLs like `brila.ai`, `needle.app`, etc.)
+- `twitter_handle` partially populated (some are `@producthunt` false positives — Day 6+ cleanup)
+- **UI cut-over DONE**: all pages wired to real Supabase data. `lib/mock-data.ts` still exists (types only) but zero live data imports remain in pages/components.
+- Key changes: `market-pulse` is server component (real category counts), `search-command` uses `/api/products/search` route, `explore` page gets real products passed from server wrapper
+- `lib/mock-data.ts` retained for type definitions (`Product`, `Article`, etc.) — safe to delete when types are migrated to `lib/types.ts` (post-Day 7)
 
-### Next session: Day 4.5 or Day 5
+### Next session: Day 6
 
-**Option A — Day 4.5 Firecrawl enrichment (shorter session)**
-- Use Firecrawl to follow PH redirect URLs → extract real `website_url` + `twitter_handle` for all 20 existing products
-- Update `products` rows in place
-
-**Option B — Day 5 UI cut-over (bigger session)**
-- Delete `lib/mock-data.ts` (1,197 lines of mock data)
-- Wire all pages to Supabase queries via `supabase` / `supabaseAdmin` clients
-- Fix type mismatches (`product-card.tsx`, `market-pulse.tsx`, etc.)
-- Browser-verify each route
-- Deploy preview via `vercel` CLI
+**Day 6 — GitHub Actions crons (NEXT)**
 
 ---
 
