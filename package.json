@@ -12,6 +12,7 @@
     "ingest:reddit": "tsx --env-file=.env.local scripts/ingest-reddit.ts",
     "ingest:github": "tsx --env-file=.env.local scripts/ingest-github-trending.ts",
     "ingest:news": "tsx --env-file=.env.local scripts/ingest-news.ts",
+    "backfill:ph": "tsx --env-file=.env.local scripts/backfill-product-hunt.ts",
     "enrich": "tsx --env-file=.env.local scripts/enrich-firecrawl.ts"
   },
   "dependencies": {
