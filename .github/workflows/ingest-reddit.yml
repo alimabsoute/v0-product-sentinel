@@ -1,0 +1,37 @@
+name: Ingest — Reddit
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'   # every 12h
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Number of posts per subreddit to fetch'
+        default: '30'
+        required: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Reddit ingestion
+        run: pnpm tsx --env-file=/dev/null scripts/ingest-reddit.ts --limit=${{ github.event.inputs.limit || '30' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
