@@ -29,11 +29,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import {
-  newsItems,
-  formatRelativeTime,
-  type Product
-} from '@/lib/mock-data'
+import type { Product } from '@/lib/mock-data'
+// newsItems will be replaced by DB query in Day 7
+const newsItems: never[] = []
+function formatRelativeTime(dateString: string): string {
+  const diff = Date.now() - new Date(dateString).getTime()
+  const hours = Math.floor(diff / 3600000)
+  if (hours < 1) return 'just now'
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
 import { getProductBySlug, getProductsByCategory } from '@/lib/db/products'
 import { cn } from '@/lib/utils'
 

@@ -7,7 +7,6 @@ import { NewsFeed } from '@/components/news-feed'
 import { MarketPulse } from '@/components/market-pulse'
 import { ArticleCard } from '@/components/article-card'
 import { Button } from '@/components/ui/button'
-import { articles } from '@/lib/mock-data'
 import {
   getFeaturedProducts,
   getTrendingProducts,
@@ -21,7 +20,7 @@ export default async function HomePage() {
     getTrendingProducts(6),
     getDeadProducts(3),
   ])
-  const latestArticle = articles[0]
+  const latestArticle = null // articles ingestion is Day 7
 
   return (
     <div className="min-h-screen bg-background">

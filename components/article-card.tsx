@@ -2,7 +2,15 @@
 
 import Link from 'next/link'
 import { Clock, ArrowRight } from 'lucide-react'
-import { Article, formatRelativeTime, getProductById } from '@/lib/mock-data'
+import type { Article } from '@/lib/mock-data'
+
+function formatRelativeTime(dateString: string): string {
+  const diff = Date.now() - new Date(dateString).getTime()
+  const hours = Math.floor(diff / 3600000)
+  if (hours < 1) return 'just now'
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
 import { cn } from '@/lib/utils'
 
 interface ArticleCardProps {
@@ -19,10 +27,8 @@ const categoryLabels: Record<string, string> = {
 }
 
 export function ArticleCard({ article, variant = 'default' }: ArticleCardProps) {
-  const featuredProducts = article.featuredProducts
-    .map(id => getProductById(id))
-    .filter(Boolean)
-    .slice(0, 3)
+  // featuredProducts will be wired from DB in Day 7 when articles are ingested
+  const featuredProducts: never[] = []
 
   if (variant === 'featured') {
     return (

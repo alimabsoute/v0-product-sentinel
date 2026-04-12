@@ -5,7 +5,8 @@ import Link from "next/link"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { ProductCard } from "@/components/product-card"
-import { products } from "@/lib/mock-data"
+// Profile page is a placeholder until auth lands — use empty product stubs
+const products: never[] = []
 import { 
   Settings, 
   Bookmark, 
@@ -195,12 +196,8 @@ export default function ProfilePage() {
             </div>
             
             <div className="space-y-4">
-              {/* Alert items */}
-              {[
-                { product: products[0], type: "spike", change: "+45%", time: "2 hours ago" },
-                { product: products[2], type: "milestone", change: "1000 mentions", time: "5 hours ago" },
-                { product: products[4], type: "news", change: "Featured on TechCrunch", time: "Yesterday" },
-              ].map((alert, i) => (
+              {/* Alert items — empty until auth+saved products land */}
+              {([] as { product: null; type: string; change: string; time: string }[]).map((alert, i) => (
                 <div 
                   key={i}
                   className="flex items-center gap-4 p-4 bg-card border rounded-xl"

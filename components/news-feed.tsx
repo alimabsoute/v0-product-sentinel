@@ -1,11 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { NewsItem, getRecentNews, formatRelativeTime } from '@/lib/mock-data'
+// NewsItem type stub — news ingestion is Day 7
+type NewsItem = {
+  id: string
+  title: string
+  url: string
+  excerpt?: string
+  author?: string
+  sourceName: string
+  publishedAt: string
+  category?: string
+  productMentions: string[]
+}
+
+function formatRelativeTime(dateString: string): string {
+  const diff = Date.now() - new Date(dateString).getTime()
+  const hours = Math.floor(diff / 3600000)
+  if (hours < 1) return 'just now'
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
 import { cn } from '@/lib/utils'
 
 const categoryColors: Record<string, string> = {
@@ -26,20 +45,14 @@ interface NewsFeedProps {
 }
 
 export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true }: NewsFeedProps) {
-  const [news, setNews] = useState<NewsItem[]>([])
+  // News ingestion is Day 7 — no live data yet
+  const news: NewsItem[] = []
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [email, setEmail] = useState('')
 
-  useEffect(() => {
-    setNews(getRecentNews(limit))
-  }, [limit])
-
   const handleRefresh = () => {
     setIsRefreshing(true)
-    setTimeout(() => {
-      setNews(getRecentNews(limit))
-      setIsRefreshing(false)
-    }, 800)
+    setTimeout(() => setIsRefreshing(false), 800)
   }
 
   return (
@@ -67,9 +80,16 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true }
       )}
 
       <div className="space-y-0 divide-y divide-border/50">
-        {news.map((item) => (
-          <NewsItemCard key={item.id} item={item} />
-        ))}
+        {news.length > 0 ? (
+          news.map((item) => (
+            <NewsItemCard key={item.id} item={item} />
+          ))
+        ) : (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            <p className="font-medium">Live stream coming soon</p>
+            <p className="mt-1 text-xs">News ingestion launches in Day 7</p>
+          </div>
+        )}
       </div>
 
       <div className="mt-5">

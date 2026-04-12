@@ -7,7 +7,10 @@ import { ProductCard } from '@/components/product-card'
 import { ArticleCard } from '@/components/article-card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { articles, products, type Article } from '@/lib/mock-data'
+import type { Article } from '@/lib/mock-data'
+import { getActiveProducts } from '@/lib/db/products'
+// Articles ingestion is Day 7 — stub until then
+const articles: Article[] = []
 import { BRAND } from '@/lib/branding'
 
 interface ArticlePageProps {
@@ -22,7 +25,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     notFound()
   }
 
-  const mentionedProducts = products.filter(p => article.productMentions?.includes(p.id))
+  const mentionedProducts = [] // wired to DB in Day 7 when articles are ingested
   const relatedArticles = articles
     .filter(a => a.id !== article.id && a.category === article.category)
     .slice(0, 3)

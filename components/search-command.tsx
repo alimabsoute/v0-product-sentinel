@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, ArrowRight, TrendingUp, Zap, BookOpen } from 'lucide-react'
 import {
@@ -12,7 +12,15 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import { products, articles, categories } from '@/lib/mock-data'
+
+type ProductResult = {
+  id: string
+  slug: string
+  name: string
+  tagline: string
+  logo: string
+  category: string
+}
 
 interface SearchCommandProps {
   open: boolean
@@ -22,6 +30,8 @@ interface SearchCommandProps {
 export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
+  const [allProducts, setAllProducts] = useState<ProductResult[]>([])
+  const [loading, setLoading] = useState(false)
 
   // Keyboard shortcut
   useEffect(() => {
@@ -35,49 +45,48 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
     return () => document.removeEventListener('keydown', down)
   }, [onOpenChange])
 
+  // Load products once when dialog opens
+  useEffect(() => {
+    if (!open || allProducts.length > 0) return
+    setLoading(true)
+    fetch('/api/products/search')
+      .then((r) => r.json())
+      .then((data) => setAllProducts(data.products ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [open, allProducts.length])
+
   const filteredProducts = useMemo(() => {
-    if (!search) return products.filter(p => p.status === 'active').slice(0, 5)
-    return products
-      .filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.tagline.toLowerCase().includes(search.toLowerCase()) ||
-        p.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
+    if (!search) return allProducts.slice(0, 5)
+    const q = search.toLowerCase()
+    return allProducts
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.tagline.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q),
       )
       .slice(0, 8)
-  }, [search])
+  }, [search, allProducts])
 
-  const filteredArticles = useMemo(() => {
-    if (!search) return articles.slice(0, 3)
-    return articles
-      .filter(a =>
-        a.title.toLowerCase().includes(search.toLowerCase()) ||
-        a.excerpt.toLowerCase().includes(search.toLowerCase())
-      )
-      .slice(0, 3)
-  }, [search])
-
-  const filteredCategories = useMemo(() => {
-    if (!search) return []
-    return categories
-      .filter(c => c !== 'All' && c.toLowerCase().includes(search.toLowerCase()))
-      .slice(0, 4)
-  }, [search])
-
-  const handleSelect = (value: string) => {
-    onOpenChange(false)
-    setSearch('')
-    router.push(value)
-  }
+  const handleSelect = useCallback(
+    (value: string) => {
+      onOpenChange(false)
+      setSearch('')
+      router.push(value)
+    },
+    [onOpenChange, router],
+  )
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
       <CommandInput
-        placeholder="Search products, articles, categories..."
+        placeholder="Search products, categories..."
         value={search}
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>{loading ? 'Loading…' : 'No results found.'}</CommandEmpty>
 
         {filteredProducts.length > 0 && (
           <CommandGroup heading="Products">
@@ -99,77 +108,26 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
                     {product.tagline}
                   </span>
                 </div>
-                {product.buzz.trend === 'rising' && (
-                  <TrendingUp className="h-4 w-4 text-[var(--sentinel-rising)]" />
-                )}
               </CommandItem>
             ))}
           </CommandGroup>
         )}
 
-        {filteredArticles.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Insights">
-              {filteredArticles.map((article) => (
-                <CommandItem
-                  key={article.id}
-                  value={`article-${article.id}`}
-                  onSelect={() => handleSelect(`/insights/${article.slug}`)}
-                  className="flex items-center gap-3"
-                >
-                  <BookOpen className="h-5 w-5 text-muted-foreground" />
-                  <div className="flex flex-1 flex-col">
-                    <span className="font-medium">{article.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {article.readTime} min read
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
-
-        {filteredCategories.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Categories">
-              {filteredCategories.map((category) => (
-                <CommandItem
-                  key={category}
-                  value={`category-${category}`}
-                  onSelect={() => handleSelect(`/categories/${category.toLowerCase().replace(/\s+/g, '-')}`)}
-                  className="flex items-center gap-3"
-                >
-                  <Zap className="h-5 w-5 text-muted-foreground" />
-                  <span>{category}</span>
-                  <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
-
-        {!search && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Quick Actions">
-              <CommandItem onSelect={() => handleSelect('/products')}>
-                <Search className="mr-2 h-4 w-4" />
-                Browse all products
-              </CommandItem>
-              <CommandItem onSelect={() => handleSelect('/explore')}>
-                <Zap className="mr-2 h-4 w-4" />
-                Explore the graph
-              </CommandItem>
-              <CommandItem onSelect={() => handleSelect('/insights')}>
-                <BookOpen className="mr-2 h-4 w-4" />
-                Read latest insights
-              </CommandItem>
-            </CommandGroup>
-          </>
-        )}
+        <CommandSeparator />
+        <CommandGroup heading="Quick Actions">
+          <CommandItem onSelect={() => handleSelect('/products')}>
+            <Search className="mr-2 h-4 w-4" />
+            Browse all products
+          </CommandItem>
+          <CommandItem onSelect={() => handleSelect('/explore')}>
+            <Zap className="mr-2 h-4 w-4" />
+            Explore the graph
+          </CommandItem>
+          <CommandItem onSelect={() => handleSelect('/insights')}>
+            <BookOpen className="mr-2 h-4 w-4" />
+            Read latest insights
+          </CommandItem>
+        </CommandGroup>
       </CommandList>
     </CommandDialog>
   )

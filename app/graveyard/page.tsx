@@ -3,7 +3,8 @@ import { Skull, Calendar, ArrowLeft } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { Badge } from '@/components/ui/badge'
-import { getDeadProducts, type Product } from '@/lib/mock-data'
+import { getDeadProducts } from '@/lib/db/products'
+import type { Product } from '@/lib/mock-data'
 import { brandTitle } from '@/lib/branding'
 
 export const metadata = {
@@ -11,8 +12,8 @@ export const metadata = {
   description: 'A memorial for discontinued products. Learn from the past to build a better future.',
 }
 
-export default function GraveyardPage() {
-  const deadProducts = getDeadProducts()
+export default async function GraveyardPage() {
+  const deadProducts = await getDeadProducts(20)
 
   // Group by year
   const productsByYear = deadProducts.reduce((acc, product) => {

@@ -4,7 +4,8 @@ import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { ArticleCard } from '@/components/article-card'
 import { Badge } from '@/components/ui/badge'
-import { articles } from '@/lib/mock-data'
+// Articles ingestion is Day 7 — stub with empty array until then
+const articles: never[] = []
 import { brandTitle } from '@/lib/branding'
 
 export const metadata = {
