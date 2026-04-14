@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { ArrowRight, TrendingUp, Skull, Sparkles, BarChart3 } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { Skull, Calendar, ArrowLeft } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
