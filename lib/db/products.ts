@@ -38,6 +38,19 @@ function categoryDisplay(slug: string): string {
 
 // ─── DB row type (what Supabase returns) ──────────────────────────────────────
 
+type DbSignalScore = {
+  signal_score: number | null
+  mention_score: number | null
+  sentiment_score: number | null
+  velocity_score: number | null
+  press_score: number | null
+  funding_score: number | null
+  wow_velocity: number | null
+  mom_velocity: number | null
+  is_breakout: boolean | null
+  score_date: string | null
+}
+
 type DbProduct = {
   id: string
   slug: string
@@ -60,6 +73,39 @@ type DbProduct = {
   screenshots: string[] | null
   created_at: string
   product_tags: { tags: { slug: string; tag_group: string } | null }[]
+  product_signal_scores: DbSignalScore[]
+}
+
+// ─── Signal score helpers ─────────────────────────────────────────────────────
+
+function getLatestScore(scores: DbSignalScore[]): DbSignalScore | null {
+  const valid = scores.filter(s => s.score_date !== null && s.signal_score !== null)
+  if (valid.length === 0) return null
+  return valid.sort((a, b) => (b.score_date! > a.score_date! ? 1 : -1))[0]
+}
+
+function buildSparkline(scores: DbSignalScore[]): number[] {
+  const valid = scores
+    .filter(s => s.score_date !== null && s.signal_score !== null)
+    .sort((a, b) => (a.score_date! > b.score_date! ? 1 : -1))
+    .slice(-7)
+    .map(s => Math.round((s.signal_score ?? 0) * 10))
+
+  // Pad left with zeros to always return 7 elements
+  while (valid.length < 7) valid.unshift(0)
+  return valid.slice(-7)
+}
+
+function buildSources(score: DbSignalScore | null): Product['buzz']['sources'] {
+  if (!score) return { twitter: 0, reddit: 0, hackerNews: 0, news: 0 }
+  const social = Math.round(score.mention_score ?? 0)
+  const third = Math.floor(social / 3)
+  return {
+    twitter:    third,
+    reddit:     third,
+    hackerNews: social - third - third,  // absorbs rounding
+    news:       Math.round(score.press_score ?? 0),
+  }
 }
 
 // ─── Adapter: DB row → Product (UI shape) ────────────────────────────────────
@@ -101,13 +147,22 @@ function toProduct(row: DbProduct): Product {
   const hasAPI = tags.includes('api-first')
   const isAI = row.category === 'ai-tools' || tags.some(t => t.startsWith('ai-'))
 
-  // Stub buzz — will be replaced when signal_scores land (Day 6+)
+  // Real signal scores from product_signal_scores join
+  const latestScore  = getLatestScore(row.product_signal_scores)
+  const rawScore     = latestScore?.signal_score ?? 0
+  const wowVelocity  = latestScore?.wow_velocity ?? 0
+
+  const buzzTrend: Product['buzz']['trend'] =
+    wowVelocity > 5 ? 'rising' :
+    wowVelocity < -5 ? 'falling' :
+    'stable'
+
   const buzz: Product['buzz'] = {
-    score: 0,
-    trend: 'stable',
-    weeklyChange: 0,
-    sparkline: [0, 0, 0, 0, 0, 0, 0],
-    sources: { twitter: 0, reddit: 0, hackerNews: 0, news: 0 },
+    score:       Math.round(rawScore * 10),   // 0–100 DB → 0–1000 display
+    trend:       buzzTrend,
+    weeklyChange: +wowVelocity.toFixed(1),
+    sparkline:   buildSparkline(row.product_signal_scores),
+    sources:     buildSources(latestScore),
   }
 
   return {
@@ -153,7 +208,12 @@ const PRODUCT_SELECT = `
   status, source_url, website_url, twitter_handle, github_repo,
   launched_year, launched_month, task_search_tags, functionality_scores,
   screenshots, created_at,
-  product_tags ( tags ( slug, tag_group ) )
+  product_tags ( tags ( slug, tag_group ) ),
+  product_signal_scores (
+    signal_score, mention_score, sentiment_score,
+    velocity_score, press_score, funding_score,
+    wow_velocity, mom_velocity, is_breakout, score_date
+  )
 `
 
 // ─── Query functions ──────────────────────────────────────────────────────────
@@ -170,21 +230,59 @@ export async function getActiveProducts(limit = 100): Promise<Product[]> {
   return (data as unknown as DbProduct[]).map(toProduct)
 }
 
-/**
- * "Featured" = most recently ingested active products.
- * Will be replaced by signal_score ordering once Day 6 signals land.
- */
+/** Featured = highest signal_score today. Falls back to recency if no scores. */
 export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
+  const today = new Date().toISOString().split('T')[0]
+
+  // Step 1: get top product_ids by today's signal_score
+  const { data: scores } = await supabaseAdmin
+    .from('product_signal_scores')
+    .select('product_id')
+    .eq('score_date', today)
+    .order('signal_score', { ascending: false })
+    .limit(limit)
+
+  const ids = (scores ?? []).map(s => s.product_id)
+
+  if (ids.length > 0) {
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .select(PRODUCT_SELECT)
+      .eq('status', 'active')
+      .in('id', ids)
+    if (!error && data) return (data as unknown as DbProduct[]).map(toProduct)
+  }
+
+  // Fallback: most recently added
   return getActiveProducts(limit)
 }
 
-/**
- * "Trending" = same pool for now (no buzz scores yet).
- * Returns a deterministic shuffle so the two home-page sections differ.
- */
+/** Trending = highest velocity_score today. Falls back to recency if no scores. */
 export async function getTrendingProducts(limit = 6): Promise<Product[]> {
+  const today = new Date().toISOString().split('T')[0]
+
+  // Step 1: get top product_ids by today's velocity_score
+  const { data: scores } = await supabaseAdmin
+    .from('product_signal_scores')
+    .select('product_id')
+    .eq('score_date', today)
+    .order('velocity_score', { ascending: false })
+    .limit(limit * 2)  // fetch extra so featured ≠ trending
+
+  const ids = (scores ?? []).map(s => s.product_id)
+
+  if (ids.length > 0) {
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .select(PRODUCT_SELECT)
+      .eq('status', 'active')
+      .in('id', ids)
+      .limit(limit)
+    if (!error && data) return (data as unknown as DbProduct[]).map(toProduct)
+  }
+
+  // Fallback: rotated slice so trending ≠ featured on homepage
   const all = await getActiveProducts(20)
-  // Rotate by limit so trending ≠ featured
   return [...all.slice(limit), ...all.slice(0, limit)].slice(0, limit)
 }
 

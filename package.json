@@ -13,7 +13,9 @@
     "ingest:github": "tsx --env-file=.env.local scripts/ingest-github-trending.ts",
     "ingest:news": "tsx --env-file=.env.local scripts/ingest-news.ts",
     "backfill:ph": "tsx --env-file=.env.local scripts/backfill-product-hunt.ts",
-    "enrich": "tsx --env-file=.env.local scripts/enrich-firecrawl.ts"
+    "enrich": "tsx --env-file=.env.local scripts/enrich-firecrawl.ts",
+    "signals": "tsx --env-file=.env.local scripts/compute-signal-scores.ts",
+    "signals:new": "tsx --env-file=.env.local scripts/compute-signal-scores.ts --only-new"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",
