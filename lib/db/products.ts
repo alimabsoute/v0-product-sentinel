@@ -173,6 +173,7 @@ function toProduct(row: DbProduct): Product {
     description: row.description ?? '',
     logo: row.logo_url ?? FALLBACK_LOGO,
     url: row.website_url ?? row.source_url ?? '#',
+    source_url: row.source_url ?? null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     category: categoryDisplay(row.category) as any,
     tags,

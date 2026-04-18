@@ -165,6 +165,15 @@ IMPORTANT:
 - Use "-other" leaf if nothing fits precisely.
 - For website_url: use the Website value if given. Never return the source URL as website_url.
 
+TAXONOMY RULES (strictly enforced — violations cause the product to be dropped):
+- category must be one of the top-level slugs shown (e.g. "ai-tools", "dev-tools", "productivity")
+- sub_category must be a DIRECT child of category in the tree — never use a grandchild slug here
+- primary_function must be a DIRECT child of sub_category in the tree — never use a parent or sibling slug
+- Never assign a depth-2 leaf slug as sub_category, or a depth-1 subcategory slug as primary_function
+- Always use kebab-case with hyphens: "voip-sms" not "voip_sms"
+- Use exact plural forms shown: "marketplaces" not "marketplace", "reading-apps" not "reading-app"
+- If nothing fits, use the nearest "-other" catch-all at each level rather than inventing a new slug
+
 CONTROLLED VOCABULARY:
 ${treeBlock}
 

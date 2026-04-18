@@ -43,6 +43,7 @@ export interface Product {
   description: string
   logo: string
   url: string
+  source_url?: string | null
   category: Category
   tags: string[]
   characteristics: ProductCharacteristics

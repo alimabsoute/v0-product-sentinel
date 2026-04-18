@@ -253,28 +253,43 @@ async function main() {
   console.log(`  Press records:  ${pressMap.size} products with recent mentions`)
   console.log(`  Funding records: ${fundingIds.size} products with funding data\n`)
 
-  // ── Fetch products ──────────────────────────────────────────────────────────
-  let productQuery = supabaseAdmin
-    .from('products')
-    .select('id, slug, sub_category, launched_year, launched_month, status, website_url, twitter_handle, github_repo, description, confidence_score')
-    .eq('status', 'active')
-
+  // ── Fetch products (paginated — Supabase caps at 1,000 rows per query) ───────
+  let existingIds: string[] = []
   if (onlyNew) {
     const { data: existing } = await supabaseAdmin
       .from('product_signal_scores')
       .select('product_id')
       .eq('score_date', today)
-
-    const existingIds = (existing ?? []).map(r => r.product_id)
-    if (existingIds.length > 0) {
-      productQuery = productQuery.not('id', 'in', `(${existingIds.join(',')})`)
-    }
-    console.log(`  Skipping ${(existing ?? []).length} already-scored products`)
+    existingIds = (existing ?? []).map(r => r.product_id)
+    console.log(`  Skipping ${existingIds.length} already-scored products`)
   }
 
-  const { data: products, error } = await productQuery
-  if (error) throw error
-  console.log(`  Computing scores for ${products?.length ?? 0} products...\n`)
+  const FETCH_LIMIT = 500
+  type ProductRow = { id: string; slug: string; sub_category: string; launched_year: number | null; launched_month: number | null; status: string; website_url: string | null; twitter_handle: string | null; github_repo: string | null; description: string | null; confidence_score: number | null }
+  const allProducts: ProductRow[] = []
+  let offset = 0
+
+  while (true) {
+    let q = supabaseAdmin
+      .from('products')
+      .select('id, slug, sub_category, launched_year, launched_month, status, website_url, twitter_handle, github_repo, description, confidence_score')
+      .eq('status', 'active')
+      .range(offset, offset + FETCH_LIMIT - 1)
+
+    if (onlyNew && existingIds.length > 0) {
+      q = q.not('id', 'in', `(${existingIds.join(',')})`)
+    }
+
+    const { data: batch, error } = await q
+    if (error) throw error
+    if (!batch || batch.length === 0) break
+    allProducts.push(...batch)
+    offset += FETCH_LIMIT
+    if (batch.length < FETCH_LIMIT) break
+  }
+
+  const products = allProducts
+  console.log(`  Computing scores for ${products.length} products...\n`)
 
   // ── Score each product ──────────────────────────────────────────────────────
   const rows: SignalScoreUpsert[] = []
