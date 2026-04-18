@@ -323,6 +323,68 @@ export async function getProductsByCategory(categorySlug: string, limit = 8): Pr
   return (data as unknown as DbProduct[]).map(toProduct)
 }
 
+/**
+ * Related products: checks product_alternatives first, falls back to same
+ * category sorted by signal_score desc.
+ */
+export async function getRelatedProducts(
+  productId: string,
+  category: string,
+  limit = 6,
+): Promise<Product[]> {
+  // Step 1 — try product_alternatives table
+  const { data: altRows } = await supabaseAdmin
+    .from('product_alternatives')
+    .select('alternative_id')
+    .eq('product_id', productId)
+    .limit(limit)
+
+  const altIds = (altRows ?? []).map((r: { alternative_id: string }) => r.alternative_id)
+
+  if (altIds.length > 0) {
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .select(PRODUCT_SELECT)
+      .in('id', altIds)
+      .eq('status', 'active')
+    if (!error && data && data.length > 0) {
+      return (data as unknown as DbProduct[]).map(toProduct)
+    }
+  }
+
+  // Step 2 — fallback: same category by signal_score desc
+  const categorySlug = category.toLowerCase().replace(/\s+/g, '-')
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data: scoreRows } = await supabaseAdmin
+    .from('product_signal_scores')
+    .select('product_id')
+    .eq('score_date', today)
+    .order('signal_score', { ascending: false })
+    .limit(100)
+
+  const rankedIds = (scoreRows ?? []).map((r: { product_id: string }) => r.product_id)
+
+  const { data, error } = await supabaseAdmin
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .eq('category', categorySlug)
+    .eq('status', 'active')
+    .neq('id', productId)
+    .limit(limit)
+
+  if (error || !data) return []
+
+  const products = (data as unknown as DbProduct[]).map(toProduct)
+
+  if (rankedIds.length > 0) {
+    const idOrder = new Map(rankedIds.map((id, i) => [id, i]))
+    return products
+      .sort((a, b) => (idOrder.get(a.id) ?? 999) - (idOrder.get(b.id) ?? 999))
+  }
+  return products
+}
+
 /** Total active product count (for the Products page subtitle). */
 export async function getProductCount(): Promise<number> {
   const { count, error } = await supabaseAdmin

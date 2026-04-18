@@ -14,13 +14,15 @@ import {
   getTrendingProducts,
   getDeadProducts,
 } from '@/lib/db/products'
+import { getRecentPressMentions } from '@/lib/db/news'
 import { cn } from '@/lib/utils'
 
 export default async function HomePage() {
-  const [featuredProducts, trendingProducts, deadProducts] = await Promise.all([
+  const [featuredProducts, trendingProducts, deadProducts, recentNews] = await Promise.all([
     getFeaturedProducts(6),
     getTrendingProducts(6),
     getDeadProducts(3),
+    getRecentPressMentions(10),
   ])
   const latestArticle = null // articles ingestion is Day 7
 
@@ -186,7 +188,7 @@ export default async function HomePage() {
               {/* Right Column - Live Stream (Sticky) */}
               <div className="lg:col-span-5">
                 <div className="lg:sticky lg:top-6 space-y-6">
-                  <NewsFeed limit={8} showNewsletter={true} />
+                  <NewsFeed initialItems={recentNews} limit={8} showNewsletter={true} />
                 </div>
               </div>
             </div>

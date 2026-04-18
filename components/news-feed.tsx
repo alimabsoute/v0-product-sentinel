@@ -5,18 +5,8 @@ import Link from 'next/link'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-// NewsItem type stub — news ingestion is Day 7
-type NewsItem = {
-  id: string
-  title: string
-  url: string
-  excerpt?: string
-  author?: string
-  sourceName: string
-  publishedAt: string
-  category?: string
-  productMentions: string[]
-}
+import type { PressMentionWithProduct } from '@/lib/db/news'
+import { cn } from '@/lib/utils'
 
 function formatRelativeTime(dateString: string): string {
   const diff = Date.now() - new Date(dateString).getTime()
@@ -25,7 +15,6 @@ function formatRelativeTime(dateString: string): string {
   if (hours < 24) return `${hours}h ago`
   return `${Math.floor(hours / 24)}d ago`
 }
-import { cn } from '@/lib/utils'
 
 const categoryColors: Record<string, string> = {
   insights: 'bg-slate-800',
@@ -39,14 +28,19 @@ const categoryColors: Record<string, string> = {
 }
 
 interface NewsFeedProps {
+  initialItems?: PressMentionWithProduct[]
   limit?: number
   showHeader?: boolean
   showNewsletter?: boolean
 }
 
-export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true }: NewsFeedProps) {
-  // News ingestion is Day 7 — no live data yet
-  const news: NewsItem[] = []
+export function NewsFeed({
+  initialItems = [],
+  limit = 8,
+  showHeader = true,
+  showNewsletter = true,
+}: NewsFeedProps) {
+  const news = initialItems.slice(0, limit)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [email, setEmail] = useState('')
 
@@ -86,8 +80,8 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true }
           ))
         ) : (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            <p className="font-medium">Live stream coming soon</p>
-            <p className="mt-1 text-xs">News ingestion launches in Day 7</p>
+            <p className="font-medium">No press mentions yet</p>
+            <p className="mt-1 text-xs">Check back as products get covered</p>
           </div>
         )}
       </div>
@@ -123,11 +117,17 @@ export function NewsFeed({ limit = 8, showHeader = true, showNewsletter = true }
 }
 
 interface NewsItemCardProps {
-  item: NewsItem
+  item: PressMentionWithProduct
 }
 
 function NewsItemCard({ item }: NewsItemCardProps) {
-  const category = item.category || 'insights'
+  // Map source to a rough category color
+  const src = (item.source ?? 'insights').toLowerCase()
+  const category = src.includes('tech') ? 'engineering'
+    : src.includes('ai') || src.includes('openai') ? 'ai'
+    : src.includes('fund') || src.includes('venture') ? 'funding'
+    : src.includes('product') ? 'product'
+    : 'insights'
 
   return (
     <a
@@ -139,32 +139,36 @@ function NewsItemCard({ item }: NewsItemCardProps) {
       <div className="flex items-center gap-2 text-xs mb-1.5">
         <span className={cn(
           "px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide text-white",
-          categoryColors[category]
+          categoryColors[category] ?? 'bg-slate-800'
         )}>
-          {category}
+          {item.source ?? 'news'}
         </span>
-        <span className="text-muted-foreground">{formatRelativeTime(item.publishedAt)}</span>
+        <span className="text-muted-foreground">
+          {item.published_at ? formatRelativeTime(item.published_at) : ''}
+        </span>
       </div>
 
       <h3 className="font-medium leading-snug text-foreground group-hover:text-primary transition-colors">
         {item.title}
       </h3>
 
-      {item.excerpt && (
-        <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
-          {item.excerpt}
+      {item.product_name && (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          re: {item.product_name}
         </p>
       )}
 
       <div className="mt-2 flex items-center justify-between text-xs">
         <div className="flex items-center gap-1.5 text-muted-foreground">
-          {item.author && (
-            <>
-              <span className="font-medium text-foreground">{item.author}</span>
-              <span>·</span>
-            </>
+          {item.sentiment && (
+            <span className={cn(
+              'font-medium',
+              item.sentiment === 'positive' && 'text-[var(--sentinel-rising)]',
+              item.sentiment === 'negative' && 'text-[var(--sentinel-falling)]',
+            )}>
+              {item.sentiment}
+            </span>
           )}
-          <span>{item.sourceName}</span>
         </div>
         <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>

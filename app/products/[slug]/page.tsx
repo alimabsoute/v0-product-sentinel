@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { 
-  ExternalLink, 
-  Bookmark, 
-  Share2, 
+import {
+  ExternalLink,
+  Bookmark,
+  Share2,
   ArrowLeft,
   TrendingUp,
   TrendingDown,
@@ -12,7 +12,6 @@ import {
   Users,
   DollarSign,
   Globe,
-  Code,
   Zap,
   Clock,
   CheckCircle,
@@ -21,6 +20,7 @@ import {
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { ProductCard } from '@/components/product-card'
+import { SignalHistoryChart } from '@/components/signal-history-chart'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -30,8 +30,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import type { Product } from '@/lib/mock-data'
-// newsItems will be replaced by DB query in Day 7
-const newsItems: never[] = []
+import { getProductBySlug, getRelatedProducts } from '@/lib/db/products'
+import { getPressMentionsForProduct } from '@/lib/db/news'
+import { getProductRelationships } from '@/lib/db/relationships'
+import { supabaseAdmin } from '@/lib/supabase-server'
+import { cn } from '@/lib/utils'
+
 function formatRelativeTime(dateString: string): string {
   const diff = Date.now() - new Date(dateString).getTime()
   const hours = Math.floor(diff / 3600000)
@@ -39,8 +43,6 @@ function formatRelativeTime(dateString: string): string {
   if (hours < 24) return `${hours}h ago`
   return `${Math.floor(hours / 24)}d ago`
 }
-import { getProductBySlug, getProductsByCategory } from '@/lib/db/products'
-import { cn } from '@/lib/utils'
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>
@@ -54,15 +56,43 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound()
   }
 
-  // Related products from same category, excluding this one
-  const relatedRaw = await getProductsByCategory(
-    product.category.toLowerCase().replace(/ /g, '-'),
-    9
+  // Related products (checks product_alternatives first, falls back to same category)
+  const competitors = await getRelatedProducts(
+    product.id,
+    product.category,
+    4,
   )
-  const competitors = relatedRaw.filter(p => p.id !== product.id).slice(0, 4)
 
-  // News items mentioning this product (mock for now — news ingestion is Day 7)
-  const relatedNews = newsItems.filter(n => n.productMentions.includes(product.id)).slice(0, 4)
+  // Real press mentions for this product
+  const relatedNews = await getPressMentionsForProduct(product.id, 4)
+
+  // Product relationships (product_relationships + product_alternatives)
+  const relationships = await getProductRelationships(product.id)
+
+  // Signal history for the chart
+  const { data: signalHistory } = await supabaseAdmin
+    .from('product_signal_scores')
+    .select('score_date, signal_score, mention_score, sentiment_score, velocity_score, press_score, funding_score')
+    .eq('product_id', product.id)
+    .order('score_date', { ascending: true })
+
+  const chartData = (signalHistory ?? []).map((row: {
+    score_date: string
+    signal_score: number | null
+    mention_score: number | null
+    sentiment_score: number | null
+    velocity_score: number | null
+    press_score: number | null
+    funding_score: number | null
+  }) => ({
+    score_date: row.score_date,
+    score: row.signal_score ?? 0,
+    mention_score: row.mention_score,
+    sentiment_score: row.sentiment_score,
+    velocity_score: row.velocity_score,
+    press_score: row.press_score,
+    funding_score: row.funding_score,
+  }))
 
   return (
     <div className="min-h-screen bg-background">
@@ -146,13 +176,48 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <ProductCharacteristics product={product} />
             </section>
 
-            {/* Competitors */}
+            {/* Competitors from DB */}
             {competitors.length > 0 && (
               <section>
-                <h2 className="font-serif text-xl font-semibold mb-4">Alternatives & Competitors</h2>
+                <h2 className="font-serif text-xl font-semibold mb-4">Alternatives &amp; Competitors</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {competitors.map(competitor => (
                     <ProductCard key={competitor.id} product={competitor} variant="compact" />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Structured relationships (product_relationships + product_alternatives) */}
+            {relationships.length > 0 && (
+              <section>
+                <h2 className="font-serif text-xl font-semibold mb-4">Related &amp; Alternatives</h2>
+                <div className="space-y-3">
+                  {relationships.map((rel) => (
+                    <Link
+                      key={rel.product.id}
+                      href={`/products/${rel.product.slug}`}
+                      className="flex items-center gap-3 rounded-xl border border-border p-3 transition-all hover:border-primary/30 hover:bg-card"
+                    >
+                      {rel.product.logo_url ? (
+                        <img
+                          src={rel.product.logo_url}
+                          alt={rel.product.name}
+                          className="h-10 w-10 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-xs font-medium">
+                          {rel.product.name.charAt(0)}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{rel.product.name}</p>
+                        <p className="text-xs text-muted-foreground">{rel.product.category}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs capitalize shrink-0">
+                        {rel.type}
+                      </Badge>
+                    </Link>
                   ))}
                 </div>
               </section>
@@ -173,7 +238,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     >
                       <h3 className="font-medium">{news.title}</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {news.sourceName} • {formatRelativeTime(news.publishedAt)}
+                        {news.source ?? 'Unknown'} • {news.published_at ? formatRelativeTime(news.published_at) : ''}
                       </p>
                     </a>
                   ))}
@@ -184,6 +249,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Signal History Chart */}
+            <SignalHistoryChart data={chartData} />
+
             {/* Buzz Score Card */}
             <BuzzScoreCard product={product} />
 
