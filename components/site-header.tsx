@@ -14,7 +14,7 @@ import {
 import { SearchCommand } from './search-command'
 import { cn } from '@/lib/utils'
 import { BRAND } from '@/lib/branding'
-import { createBrowserSupabaseClient } from '@/lib/auth'
+import { createBrowserSupabaseClient } from '@/lib/auth-client'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 const NAV_LINKS = [

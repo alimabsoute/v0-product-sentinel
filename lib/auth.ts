@@ -12,7 +12,8 @@
  *   - Only call from Client Components (browser)
  */
 
-import { createServerClient, createBrowserClient } from '@supabase/ssr'
+import 'server-only'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Session, User, SupabaseClient } from '@supabase/supabase-js'
 
@@ -79,12 +80,4 @@ export async function getUser(): Promise<User | null> {
   return user
 }
 
-/**
- * Browser-side Supabase client for Client Components.
- * Uses @supabase/ssr createBrowserClient for cookie-based session sync
- * with the server (middleware can then refresh the token).
- */
-export function createBrowserSupabaseClient(): SupabaseClient {
-  const { url, anonKey } = getEnv()
-  return createBrowserClient(url, anonKey)
-}
+// Browser client lives in lib/auth-client.ts to avoid bundling next/headers into client components.
