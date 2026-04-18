@@ -196,12 +196,27 @@ Return JSON:
   "confidence_score": 3
 }`
 
-  const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001', // Haiku for cost — Sonnet not needed for this extraction
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: prompt }],
-  })
-  const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
+  // Retry with exponential backoff — guards against transient network blips
+  let msg: Awaited<ReturnType<typeof anthropic.messages.create>>
+  const maxRetries = 4
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      msg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001', // Haiku for cost — Sonnet not needed for this extraction
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
+      })
+      break
+    } catch (err) {
+      const isLast = attempt === maxRetries
+      const isRetryable = !(err instanceof Error && err.message.includes('credit balance'))
+      if (isLast || !isRetryable) throw err
+      const waitMs = 2000 * 2 ** attempt  // 2s, 4s, 8s, 16s
+      console.warn(`    API error (attempt ${attempt + 1}/${maxRetries}), retrying in ${waitMs / 1000}s: ${(err as Error).message?.slice(0, 80)}`)
+      await sleep(waitMs)
+    }
+  }
+  const text = msg!.content[0].type === 'text' ? msg!.content[0].text : ''
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
   try {
     return JSON.parse(cleaned) as ExtractedProduct
