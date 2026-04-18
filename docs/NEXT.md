@@ -3,7 +3,25 @@
 > **Last updated**: 2026-04-12 — Day 4.5 + Day 5 DONE (UI cut-over complete, 20 products with real URLs)
 > **Read this file first** when returning to the project.
 
-## Status: Day 1 + Day 2 + Day 3.5 + Day 4 + Day 4.5 + Day 5 COMPLETE ✅
+## Status: Days 1–7 COMPLETE ✅ | Vercel build broken | Backfill ready to resume
+
+### 🔴 IMMEDIATE FIX NEEDED — Vercel build failing on ALL deployments
+**Root cause**: `SUPABASE_SERVICE_ROLE_KEY` is set in GitHub Actions secrets but NOT in Vercel env vars.
+Build dies at `/explore` page prerender: "Missing Supabase server env vars."
+
+**Fix** (run once):
+```bash
+cd v0-product-sentinel && vercel env add SUPABASE_SERVICE_ROLE_KEY production
+# paste key from .env.local when prompted
+```
+Then redeploy: `vercel --prod --yes`
+
+### ✅ Backfill ready to resume (credits topped up)
+358 products in DB. Jan 2024 partial (ran out of credits mid-month).
+Resume: `pnpm backfill:ph --from=2020-01`
+Progress file `.backfill-progress.json` tracks completed months.
+
+---
 
 ### Day 5 state
 
