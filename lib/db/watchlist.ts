@@ -96,7 +96,8 @@ export async function saveProduct(userId: string, productId: string): Promise<vo
 
   const { error } = await admin
     .from('user_saves')
-    .upsert({ user_id: userId, product_id: productId }, { onConflict: 'user_id,product_id' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .upsert({ user_id: userId, product_id: productId } as any, { onConflict: 'user_id,product_id' })
 
   if (error) throw error
 }
