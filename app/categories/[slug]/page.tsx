@@ -1,6 +1,8 @@
+export const dynamic = 'force-dynamic'
+
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
-import { getProductsByCategory } from '@/lib/db/products'
+import { searchProducts } from '@/lib/db/products'
 import { CategoryClient } from './_client'
 
 function displayName(slug: string): string {
@@ -13,12 +15,20 @@ interface CategoryPageProps {
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params
-  const products = await getProductsByCategory(slug, 100)
+
+  // Fetch first page of products + total count for this category
+  const result = await searchProducts({ category: slug, limit: 50, status: 'all' })
 
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <CategoryClient slug={slug} displayName={displayName(slug)} products={products} />
+      <CategoryClient
+        slug={slug}
+        displayName={displayName(slug)}
+        initialProducts={result.products}
+        totalCount={result.total}
+        totalPages={result.totalPages}
+      />
       <SiteFooter />
     </div>
   )

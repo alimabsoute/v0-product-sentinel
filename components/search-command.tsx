@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, ArrowRight, TrendingUp, Zap, BookOpen } from 'lucide-react'
+import { Search, Zap, BookOpen } from 'lucide-react'
 import {
   CommandDialog,
   CommandEmpty,
@@ -30,8 +30,9 @@ interface SearchCommandProps {
 export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
-  const [allProducts, setAllProducts] = useState<ProductResult[]>([])
+  const [results, setResults] = useState<ProductResult[]>([])
   const [loading, setLoading] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
   // Keyboard shortcut
   useEffect(() => {
@@ -45,29 +46,53 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
     return () => document.removeEventListener('keydown', down)
   }, [onOpenChange])
 
-  // Load products once when dialog opens
+  // Load default results when dialog opens
   useEffect(() => {
-    if (!open || allProducts.length > 0) return
+    if (!open) return
     setLoading(true)
-    fetch('/api/products/search')
+    fetch('/api/products/search?minimal=true&limit=5')
       .then((r) => r.json())
-      .then((data) => setAllProducts(data.products ?? []))
+      .then((data) => setResults(data.products ?? []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [open, allProducts.length])
+  }, [open])
 
-  const filteredProducts = useMemo(() => {
-    if (!search) return allProducts.slice(0, 5)
-    const q = search.toLowerCase()
-    return allProducts
-      .filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.tagline.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q),
-      )
-      .slice(0, 8)
-  }, [search, allProducts])
+  // Debounced search as user types
+  useEffect(() => {
+    if (!open) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (!search.trim()) {
+      // Reset to default when cleared
+      fetch('/api/products/search?minimal=true&limit=5')
+        .then((r) => r.json())
+        .then((data) => setResults(data.products ?? []))
+        .catch(() => {})
+      return
+    }
+
+    debounceRef.current = setTimeout(() => {
+      setLoading(true)
+      const params = new URLSearchParams({ q: search.trim(), minimal: 'true', limit: '8' })
+      fetch(`/api/products/search?${params}`)
+        .then((r) => r.json())
+        .then((data) => setResults(data.products ?? []))
+        .catch(() => setResults([]))
+        .finally(() => setLoading(false))
+    }, 300)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [search, open])
+
+  // Reset on close
+  useEffect(() => {
+    if (!open) {
+      setSearch('')
+      setResults([])
+    }
+  }, [open])
 
   const handleSelect = useCallback(
     (value: string) => {
@@ -86,11 +111,11 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
         onValueChange={setSearch}
       />
       <CommandList>
-        <CommandEmpty>{loading ? 'Loading…' : 'No results found.'}</CommandEmpty>
+        <CommandEmpty>{loading ? 'Searching…' : 'No results found.'}</CommandEmpty>
 
-        {filteredProducts.length > 0 && (
+        {results.length > 0 && (
           <CommandGroup heading="Products">
-            {filteredProducts.map((product) => (
+            {results.map((product) => (
               <CommandItem
                 key={product.id}
                 value={`product-${product.id}`}
@@ -111,6 +136,18 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
               </CommandItem>
             ))}
           </CommandGroup>
+        )}
+
+        {search.trim() && results.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup>
+              <CommandItem onSelect={() => handleSelect(`/products?q=${encodeURIComponent(search.trim())}`)}>
+                <Search className="mr-2 h-4 w-4" />
+                Search all for &quot;{search.trim()}&quot;
+              </CommandItem>
+            </CommandGroup>
+          </>
         )}
 
         <CommandSeparator />

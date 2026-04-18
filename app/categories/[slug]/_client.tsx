@@ -1,18 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { ProductCard } from '@/components/product-card'
 import {
-  TrendingUp,
-  TrendingDown,
   Skull,
   Filter,
   SortAsc,
   Grid3X3,
   List,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Calendar,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -69,34 +70,72 @@ const categoryHistory: Record<string, {
   },
 }
 
-type SortOption = 'newest' | 'name'
+type SortOption = 'newest' | 'az'
 type ViewMode = 'grid' | 'list'
+
+const LIMIT = 50
 
 interface CategoryClientProps {
   slug: string
   displayName: string
-  products: Product[]
+  initialProducts: Product[]
+  totalCount: number
+  totalPages: number
 }
 
-export function CategoryClient({ slug, displayName, products }: CategoryClientProps) {
+export function CategoryClient({ slug, displayName, initialProducts, totalCount, totalPages: initialTotalPages }: CategoryClientProps) {
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [showHistory, setShowHistory] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'dead'>('active')
+  const [page, setPage] = useState(1)
+  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const [total, setTotal] = useState(totalCount)
+  const [totalPages, setTotalPages] = useState(initialTotalPages)
+  const [loading, setLoading] = useState(false)
 
   const history = categoryHistory[slug]
 
-  let filtered = products
-  if (statusFilter === 'active') filtered = filtered.filter((p) => p.status === 'active')
-  if (statusFilter === 'dead') filtered = filtered.filter((p) => p.status === 'dead')
+  // Fetch when filters/sort/page change (skip initial load)
+  const fetchProducts = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        category: slug,
+        sort: sortBy === 'az' ? 'az' : 'newest',
+        page: String(page),
+        limit: String(LIMIT),
+        status: statusFilter,
+      })
+      const res = await fetch(`/api/products/search?${params}`)
+      const data = await res.json()
+      setProducts(data.products ?? [])
+      setTotal(data.total ?? 0)
+      setTotalPages(data.totalPages ?? 0)
+    } catch {
+      // Keep existing data on error
+    } finally {
+      setLoading(false)
+    }
+  }, [slug, sortBy, page, statusFilter])
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === 'name') return a.name.localeCompare(b.name)
-    return new Date(b.launchDate).getTime() - new Date(a.launchDate).getTime()
-  })
+  // Re-fetch on filter/sort/page change (but not on initial mount)
+  const [initialized, setInitialized] = useState(false)
+  useEffect(() => {
+    if (!initialized) {
+      setInitialized(true)
+      return
+    }
+    fetchProducts()
+  }, [fetchProducts, initialized])
 
-  const activeCount = products.filter((p) => p.status === 'active').length
-  const deadCount = products.filter((p) => p.status === 'dead').length
+  // Reset page on filter/sort change
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, sortBy])
+
+  const activeCount = statusFilter === 'active' ? total : null
+  const deadCount = statusFilter === 'dead' ? total : null
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -112,20 +151,10 @@ export function CategoryClient({ slug, displayName, products }: CategoryClientPr
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-serif text-4xl font-medium">{displayName}</h1>
-
         <div className="flex flex-wrap gap-4 mt-6">
           <div className="px-4 py-2 bg-card border rounded-lg">
-            <span className="text-2xl font-serif">{products.length}</span>
+            <span className="text-2xl font-serif">{total.toLocaleString()}</span>
             <span className="text-sm text-muted-foreground ml-2">products tracked</span>
-          </div>
-          <div className="px-4 py-2 bg-card border rounded-lg flex items-center gap-2">
-            <span className="text-2xl font-serif text-green-600">{activeCount}</span>
-            <span className="text-sm text-muted-foreground">active</span>
-          </div>
-          <div className="px-4 py-2 bg-card border rounded-lg flex items-center gap-2">
-            <Skull className="h-4 w-4 text-muted-foreground" />
-            <span className="text-2xl font-serif text-muted-foreground">{deadCount}</span>
-            <span className="text-sm text-muted-foreground">dead</span>
           </div>
         </div>
       </div>
@@ -241,7 +270,7 @@ export function CategoryClient({ slug, displayName, products }: CategoryClientPr
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => setSortBy('newest')}>Newest First</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy('name')}>Name A-Z</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy('az')}>Name A-Z</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -264,23 +293,84 @@ export function CategoryClient({ slug, displayName, products }: CategoryClientPr
         </div>
       </div>
 
-      <div className="mb-4 text-sm text-muted-foreground">Showing {sorted.length} products</div>
+      <div className="mb-4 text-sm text-muted-foreground">
+        {loading ? (
+          <span className="flex items-center gap-1.5">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading...
+          </span>
+        ) : (
+          <>Showing {((page - 1) * LIMIT) + 1}–{Math.min(page * LIMIT, total)} of {total.toLocaleString()} products</>
+        )}
+      </div>
 
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sorted.map((p) => <ProductCard key={p.id} product={p} />)}
+          {products.map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
       ) : (
         <div className="space-y-4">
-          {sorted.map((p) => <ProductCard key={p.id} product={p} variant="list" />)}
+          {products.map((p) => <ProductCard key={p.id} product={p} variant="list" />)}
         </div>
       )}
 
-      {sorted.length === 0 && (
+      {products.length === 0 && !loading && (
         <div className="text-center py-20 text-muted-foreground">
           <p>No products found in this category yet.</p>
         </div>
       )}
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+            disabled={page <= 1}
+            onClick={() => setPage(p => p - 1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          {getPageNumbers(page, totalPages).map((p, i) =>
+            p === '...' ? (
+              <span key={`ellipsis-${i}`} className="px-2 text-sm text-muted-foreground">...</span>
+            ) : (
+              <Button
+                key={p}
+                variant={p === page ? 'default' : 'outline'}
+                size="sm"
+                className="h-9 w-9 p-0"
+                onClick={() => setPage(p as number)}
+              >
+                {p}
+              </Button>
+            )
+          )}
+
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => p + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </main>
   )
+}
+
+function getPageNumbers(current: number, total: number): (number | '...')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages: (number | '...')[] = [1]
+  if (current > 3) pages.push('...')
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+  for (let i = start; i <= end; i++) pages.push(i)
+  if (current < total - 2) pages.push('...')
+  pages.push(total)
+  return pages
 }

@@ -332,3 +332,181 @@ export async function getProductCount(): Promise<number> {
   if (error) throw error
   return count ?? 0
 }
+
+/** Distinct active category slugs (for filter pills). */
+export async function getDistinctCategories(): Promise<string[]> {
+  const { data, error } = await supabaseAdmin
+    .from('products')
+    .select('category')
+    .eq('status', 'active')
+  if (error) throw error
+  const slugs = [...new Set((data ?? []).map(r => r.category as string))].sort()
+  return slugs.map(categoryDisplay)
+}
+
+// ─── Server-side search + pagination ─────────────────────────────────────────
+
+export type SortOption = 'newest' | 'oldest' | 'az' | 'score' | 'trending'
+
+export type SearchParams = {
+  q?: string
+  category?: string         // display name OR slug both accepted
+  sort?: SortOption
+  page?: number
+  limit?: number
+  status?: 'active' | 'dead' | 'all'
+}
+
+export type SearchResult = {
+  products: Product[]
+  total: number
+  page: number
+  totalPages: number
+}
+
+/**
+ * Server-side paginated search with full-text and category filtering.
+ * Sort by 'score' or 'trending' requires a signal score JOIN done via
+ * a two-step query (fetch IDs ranked by score, then fetch full rows).
+ */
+export async function searchProducts(params: SearchParams = {}): Promise<SearchResult> {
+  const {
+    q,
+    category,
+    sort = 'newest',
+    page = 1,
+    limit = 50,
+    status = 'active',
+  } = params
+
+  const offset = (page - 1) * limit
+
+  // ── Score / velocity sorts need a two-step approach ──────────────────────
+  if (sort === 'score' || sort === 'trending') {
+    const today = new Date().toISOString().split('T')[0]
+    const scoreCol = sort === 'score' ? 'signal_score' : 'velocity_score'
+
+    // Step 1: get ranked product IDs from signal scores table
+    let scoreQ = supabaseAdmin
+      .from('product_signal_scores')
+      .select('product_id')
+      .eq('score_date', today)
+      .order(scoreCol, { ascending: false })
+      .limit(1000)
+
+    const { data: scoreRows } = await scoreQ
+    const rankedIds = (scoreRows ?? []).map(r => r.product_id)
+
+    // Step 2: count matching products
+    let countQ = supabaseAdmin
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+
+    if (status !== 'all') {
+      if (status === 'dead') {
+        countQ = countQ.in('status', ['dead', 'sunset', 'acquired'])
+      } else {
+        countQ = countQ.eq('status', 'active')
+      }
+    }
+    if (category) {
+      // Accept both display name ("AI Tools") and slug ("ai-tools")
+      const slug = category.toLowerCase().replace(/\s+/g, '-')
+      countQ = countQ.eq('category', slug)
+    }
+    if (q) {
+      countQ = countQ.textSearch('search_vector', q, { type: 'plain', config: 'english' })
+    }
+
+    const { count } = await countQ
+    const total = count ?? 0
+
+    if (rankedIds.length > 0) {
+      let dataQ = supabaseAdmin
+        .from('products')
+        .select(PRODUCT_SELECT)
+        .in('id', rankedIds)
+
+      if (status !== 'all') {
+        if (status === 'dead') {
+          dataQ = dataQ.in('status', ['dead', 'sunset', 'acquired'])
+        } else {
+          dataQ = dataQ.eq('status', 'active')
+        }
+      }
+      if (category) {
+        const slug = category.toLowerCase().replace(/\s+/g, '-')
+        dataQ = dataQ.eq('category', slug)
+      }
+      if (q) {
+        dataQ = dataQ.textSearch('search_vector', q, { type: 'plain', config: 'english' })
+      }
+
+      dataQ = dataQ.range(offset, offset + limit - 1)
+      const { data, error } = await dataQ
+      if (!error && data) {
+        // Re-sort to match signal score ranking
+        const idOrder = new Map(rankedIds.map((id, i) => [id, i]))
+        const sorted = (data as unknown as DbProduct[])
+          .sort((a, b) => (idOrder.get(a.id) ?? 999) - (idOrder.get(b.id) ?? 999))
+        return {
+          products: sorted.map(toProduct),
+          total,
+          page,
+          totalPages: Math.ceil(total / limit),
+        }
+      }
+    }
+
+    // Fallback to newest if no signal scores
+    return searchProducts({ ...params, sort: 'newest' })
+  }
+
+  // ── Standard sorts (newest / oldest / az) ────────────────────────────────
+  let query = supabaseAdmin.from('products').select(PRODUCT_SELECT, { count: 'exact' })
+
+  if (status !== 'all') {
+    if (status === 'dead') {
+      query = query.in('status', ['dead', 'sunset', 'acquired'])
+    } else {
+      query = query.eq('status', 'active')
+    }
+  }
+
+  if (category) {
+    const slug = category.toLowerCase().replace(/\s+/g, '-')
+    query = query.eq('category', slug)
+  }
+
+  if (q && q.trim().length >= 3) {
+    // Full-text search for 3+ chars
+    query = query.textSearch('search_vector', q.trim(), { type: 'plain', config: 'english' })
+  } else if (q && q.trim().length > 0) {
+    // Trigram / ilike fallback for short queries
+    query = query.ilike('name', `%${q.trim()}%`)
+  }
+
+  switch (sort) {
+    case 'oldest':
+      query = query.order('created_at', { ascending: true })
+      break
+    case 'az':
+      query = query.order('name', { ascending: true })
+      break
+    default: // newest
+      query = query.order('created_at', { ascending: false })
+  }
+
+  query = query.range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
+  if (error) throw error
+
+  const total = count ?? 0
+  return {
+    products: (data as unknown as DbProduct[]).map(toProduct),
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  }
+}
