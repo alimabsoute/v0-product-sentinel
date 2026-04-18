@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, Github, Mail } from "lucide-react"
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { BRAND } from "@/lib/branding"
 import { createBrowserSupabaseClient } from "@/lib/auth-client"
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
@@ -205,3 +205,4 @@ export default function LoginPage() {
     </div>
   )
 }
+export default function LoginPage() { return <Suspense><LoginPageInner /></Suspense> }

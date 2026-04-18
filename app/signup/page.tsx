@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Github, Check } from "lucide-react"
@@ -20,7 +20,7 @@ const benefits = [
   "Early access to new features"
 ]
 
-export default function SignupPage() {
+function SignupPageInner() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -332,3 +332,4 @@ export default function SignupPage() {
     </div>
   )
 }
+export default function SignupPage() { return <Suspense><SignupPageInner /></Suspense> }
