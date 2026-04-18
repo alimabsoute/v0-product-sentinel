@@ -208,7 +208,7 @@ export async function getDeathTimeline(): Promise<DeathTimeline[]> {
     const { data, error } = await supabaseAdmin
       .from('products')
       .select('launched_year')
-      .in('status', ['dead', 'sunset', 'acquired'])
+      .in('status', ['dead', 'sunset', 'acquired', 'discontinued', 'inactive'])
       .not('launched_year', 'is', null)
       .gte('launched_year', 2000)
 
@@ -255,7 +255,7 @@ export async function getRecentDeadProducts(limit = 12): Promise<EvolutionProduc
     const { data, error } = await supabaseAdmin
       .from('products')
       .select('id, slug, name, description, logo_url, launched_year, launched_month, created_at, status')
-      .in('status', ['dead', 'sunset', 'acquired'])
+      .in('status', ['dead', 'sunset', 'acquired', 'discontinued', 'inactive'])
       .order('created_at', { ascending: false })
       .limit(limit)
 

@@ -33,7 +33,7 @@ async function getGraveyardStats(): Promise<{
   const { count: totalDead } = await supabaseAdmin
     .from('products')
     .select('id', { count: 'exact', head: true })
-    .in('status', ['sunset', 'dead', 'acquired', 'inactive'])
+    .in('status', ['sunset', 'dead', 'acquired', 'discontinued', 'inactive'])
 
   // Avg signal score for dead products (from product_signal_scores)
   const { data: scoreData } = await supabaseAdmin
@@ -42,7 +42,7 @@ async function getGraveyardStats(): Promise<{
       id,
       product_signal_scores ( signal_score )
     `)
-    .in('status', ['sunset', 'dead', 'acquired', 'inactive'])
+    .in('status', ['sunset', 'dead', 'acquired', 'discontinued', 'inactive'])
 
   let totalScore = 0
   let scoreCount = 0
@@ -63,7 +63,7 @@ async function getGraveyardStats(): Promise<{
   const { data: catData } = await supabaseAdmin
     .from('products')
     .select('category')
-    .in('status', ['sunset', 'dead', 'acquired', 'inactive'])
+    .in('status', ['sunset', 'dead', 'acquired', 'discontinued', 'inactive'])
 
   const catMap: Record<string, number> = {}
   for (const row of (catData ?? []) as { category: string }[]) {

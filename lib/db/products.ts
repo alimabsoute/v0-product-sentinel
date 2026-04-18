@@ -292,7 +292,7 @@ export async function getDeadProducts(limit = 10): Promise<Product[]> {
   const { data, error } = await supabaseAdmin
     .from('products')
     .select(PRODUCT_SELECT)
-    .in('status', ['sunset', 'dead', 'acquired'])
+    .in('status', ['sunset', 'dead', 'acquired', 'discontinued', 'inactive'])
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
@@ -466,7 +466,7 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
 
     if (status !== 'all') {
       if (status === 'dead') {
-        countQ = countQ.in('status', ['dead', 'sunset', 'acquired'])
+        countQ = countQ.in('status', ['dead', 'sunset', 'acquired', 'discontinued', 'inactive'])
       } else {
         countQ = countQ.eq('status', 'active')
       }
@@ -491,7 +491,7 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
 
       if (status !== 'all') {
         if (status === 'dead') {
-          dataQ = dataQ.in('status', ['dead', 'sunset', 'acquired'])
+          dataQ = dataQ.in('status', ['dead', 'sunset', 'acquired', 'discontinued', 'inactive'])
         } else {
           dataQ = dataQ.eq('status', 'active')
         }
@@ -529,7 +529,7 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
 
   if (status !== 'all') {
     if (status === 'dead') {
-      query = query.in('status', ['dead', 'sunset', 'acquired'])
+      query = query.in('status', ['dead', 'sunset', 'acquired', 'discontinued', 'inactive'])
     } else {
       query = query.eq('status', 'active')
     }
