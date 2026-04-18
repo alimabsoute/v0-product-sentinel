@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { BRAND } from "@/lib/branding"
-import { createBrowserSupabaseClient } from "@/lib/auth"
+import { createBrowserSupabaseClient } from "@/lib/auth-client"
 
 const benefits = [
   "Track unlimited products",
