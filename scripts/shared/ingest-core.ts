@@ -13,6 +13,8 @@ export type Vocab = {
   subcategories: Map<string, string[]>
   leaves: Map<string, string[]>
   leafToId: Map<string, string>
+  leafToParent: Map<string, string>    // depth-2 slug → depth-1 parent slug
+  subToCategory: Map<string, string>   // depth-1 slug → depth-0 parent slug
   tagGroups: Map<string, Set<string>>
   tagSlugToId: Map<string, string>
 }
@@ -83,6 +85,8 @@ export async function loadVocabulary(): Promise<Vocab> {
   const subcategories = new Map<string, string[]>()
   const leaves = new Map<string, string[]>()
   const leafToId = new Map<string, string>()
+  const leafToParent = new Map<string, string>()   // depth-2 → depth-1
+  const subToCategory = new Map<string, string>()  // depth-1 → depth-0
 
   for (const f of functions!) {
     if (f.depth === 0) { categories.push(f.slug); subcategories.set(f.slug, []) }
@@ -90,14 +94,20 @@ export async function loadVocabulary(): Promise<Vocab> {
   for (const f of functions!) {
     if (f.depth === 1 && f.parent_id) {
       const parent = byId.get(f.parent_id)
-      if (parent) subcategories.get(parent.slug)?.push(f.slug)
+      if (parent) {
+        subcategories.get(parent.slug)?.push(f.slug)
+        subToCategory.set(f.slug, parent.slug)
+      }
       leaves.set(f.slug, [])
     }
   }
   for (const f of functions!) {
     if (f.depth === 2 && f.parent_id) {
       const parent = byId.get(f.parent_id)
-      if (parent) leaves.get(parent.slug)?.push(f.slug)
+      if (parent) {
+        leaves.get(parent.slug)?.push(f.slug)
+        leafToParent.set(f.slug, parent.slug)
+      }
       leafToId.set(f.slug, f.id)
     }
   }
@@ -109,7 +119,7 @@ export async function loadVocabulary(): Promise<Vocab> {
     tagGroups.get(t.tag_group)!.add(t.slug)
     tagSlugToId.set(t.slug, t.id)
   }
-  return { categories, subcategories, leaves, leafToId, tagGroups, tagSlugToId }
+  return { categories, subcategories, leaves, leafToId, leafToParent, subToCategory, tagGroups, tagSlugToId }
 }
 
 // ─── Dedup cascade ────────────────────────────────────────────────────────────
@@ -238,12 +248,59 @@ Return JSON:
 // ─── Validate + filter vocab ──────────────────────────────────────────────────
 
 export function validateAndFilter(extracted: ExtractedProduct, vocab: Vocab): { valid: boolean; reason?: string; cleaned?: ExtractedProduct } {
-  if (!vocab.categories.includes(extracted.category))
-    return { valid: false, reason: `unknown category: ${extracted.category}` }
-  if (!(vocab.subcategories.get(extracted.category) ?? []).includes(extracted.sub_category))
-    return { valid: false, reason: `unknown sub_category: ${extracted.sub_category}` }
-  if (!(vocab.leaves.get(extracted.sub_category) ?? []).includes(extracted.primary_function))
-    return { valid: false, reason: `unknown primary_function: ${extracted.primary_function}` }
+  let { category, sub_category, primary_function } = extracted
+
+  // ── Category coercion ────────────────────────────────────────────────────────
+  if (!vocab.categories.includes(category)) {
+    // Claude used a sub_category slug as category — infer real category from it
+    const inferred = vocab.subToCategory.get(category)
+    if (inferred) {
+      category = inferred
+    } else {
+      return { valid: false, reason: `unknown category: ${category}` }
+    }
+  }
+
+  // ── Sub-category coercion ────────────────────────────────────────────────────
+  if (!(vocab.subcategories.get(category) ?? []).includes(sub_category)) {
+    // Case 1: Claude used a depth-2 leaf as sub_category
+    // → promote it: real sub = its parent, real primary = the leaf itself
+    if (vocab.leafToParent.has(sub_category)) {
+      const realSub = vocab.leafToParent.get(sub_category)!
+      const realCat = vocab.subToCategory.get(realSub)
+      if (realCat && vocab.categories.includes(realCat)) {
+        // Only coerce if the inferred leaf is also valid as primary_function
+        // (use the original sub_category slug as primary_function)
+        primary_function = sub_category
+        sub_category = realSub
+        category = realCat
+      } else {
+        return { valid: false, reason: `unknown sub_category: ${sub_category}` }
+      }
+    }
+    // Case 2: Claude used the right sub_category but wrong parent category
+    else if (vocab.subToCategory.has(sub_category)) {
+      const realCat = vocab.subToCategory.get(sub_category)!
+      if (vocab.categories.includes(realCat)) {
+        category = realCat
+      } else {
+        return { valid: false, reason: `unknown sub_category: ${sub_category}` }
+      }
+    } else {
+      return { valid: false, reason: `unknown sub_category: ${sub_category}` }
+    }
+  }
+
+  // ── Primary function validation ──────────────────────────────────────────────
+  if (!(vocab.leaves.get(sub_category) ?? []).includes(primary_function)) {
+    // Claude used a depth-1 slug as primary_function — fall back to -other leaf
+    const otherLeaf = (vocab.leaves.get(sub_category) ?? []).find(l => l.endsWith('-other'))
+    if (otherLeaf) {
+      primary_function = otherLeaf
+    } else {
+      return { valid: false, reason: `unknown primary_function: ${primary_function}` }
+    }
+  }
 
   const cleanedAttrs: Record<string, string[]> = {}
   for (const [group, values] of Object.entries(extracted.attributes ?? {})) {
@@ -251,7 +308,10 @@ export function validateAndFilter(extracted: ExtractedProduct, vocab: Vocab): { 
     if (!allowed) continue
     cleanedAttrs[group] = (values ?? []).filter(v => allowed.has(v))
   }
-  return { valid: true, cleaned: { ...extracted, attributes: cleanedAttrs } }
+  return {
+    valid: true,
+    cleaned: { ...extracted, category, sub_category, primary_function, attributes: cleanedAttrs }
+  }
 }
 
 // ─── Insert product + tags ────────────────────────────────────────────────────
