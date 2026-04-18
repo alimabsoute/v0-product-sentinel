@@ -1,7 +1,9 @@
 'use client'
 
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, Minus, Bookmark, ExternalLink } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { TrendingUp, TrendingDown, Minus, Bookmark, BookmarkCheck, ExternalLink, GitCompare } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +14,80 @@ import {
 } from '@/components/ui/tooltip'
 import { Product } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
+
+// ─── Bookmark Button ──────────────────────────────────────────────────────────
+
+interface BookmarkButtonProps {
+  productId: string
+  initialSaved?: boolean
+  size?: 'sm' | 'default'
+  className?: string
+}
+
+function BookmarkButton({ productId, initialSaved = false, size = 'default', className }: BookmarkButtonProps) {
+  const router = useRouter()
+  const [saved, setSaved] = useState(initialSaved)
+  const [isPending, setIsPending] = useState(false)
+
+  const handleClick = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    setIsPending(true)
+    // Optimistic update
+    const nextSaved = !saved
+    setSaved(nextSaved)
+
+    try {
+      const res = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, action: nextSaved ? 'save' : 'unsave' }),
+      })
+
+      if (res.status === 401) {
+        // Not logged in — revert optimistic update and redirect to login
+        setSaved(!nextSaved)
+        router.push('/login')
+        return
+      }
+
+      if (!res.ok) {
+        // Server error — revert optimistic update
+        setSaved(!nextSaved)
+      }
+    } catch {
+      // Network error — revert optimistic update
+      setSaved(!nextSaved)
+    } finally {
+      setIsPending(false)
+    }
+  }, [productId, saved, router])
+
+  const iconSize = size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'
+  const btnSize = size === 'sm' ? 'h-7 w-7' : 'h-8 w-8'
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn(
+        btnSize,
+        saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+        isPending && 'opacity-60 cursor-wait',
+        className
+      )}
+      onClick={handleClick}
+      title={saved ? 'Remove from watchlist' : 'Save to watchlist'}
+      disabled={isPending}
+    >
+      {saved
+        ? <BookmarkCheck className={iconSize} />
+        : <Bookmark className={iconSize} />
+      }
+    </Button>
+  )
+}
 
 interface ProductCardProps {
   product: Product
@@ -33,28 +109,38 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
 
   if (variant === 'compact') {
     return (
-      <Link 
-        href={`/products/${product.slug}`}
-        className="group flex items-center gap-3 rounded-xl p-2.5 transition-all hover:bg-secondary/80"
-      >
-        <img
-          src={product.logo}
-          alt={product.name}
-          className="h-10 w-10 rounded-lg object-cover"
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{product.name}</span>
-            {product.badges.includes('verified') && (
-              <Badge variant="secondary" className="h-4 px-1 text-[10px]">
-                Verified
-              </Badge>
-            )}
+      <div className="group flex items-center gap-3 rounded-xl p-2.5 transition-all hover:bg-secondary/80">
+        <Link
+          href={`/products/${product.slug}`}
+          className="flex items-center gap-3 flex-1 min-w-0"
+        >
+          <img
+            src={product.logo}
+            alt={product.name}
+            className="h-10 w-10 rounded-lg object-cover"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium truncate">{product.name}</span>
+              {product.badges.includes('verified') && (
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                  Verified
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground truncate">{product.tagline}</p>
           </div>
-          <p className="text-xs text-muted-foreground truncate">{product.tagline}</p>
-        </div>
+        </Link>
         <BuzzIndicator product={product} size="sm" />
-      </Link>
+        <Link
+          href={`/compare?a=${product.slug}`}
+          title="Compare"
+          onClick={(e) => e.stopPropagation()}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
+        >
+          <GitCompare className="h-3.5 w-3.5" />
+        </Link>
+      </div>
     )
   }
 
@@ -93,16 +179,7 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
         <div className="flex items-center gap-4 shrink-0">
           <BuzzIndicator product={product} />
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.preventDefault()
-              }}
-            >
-              <Bookmark className="h-4 w-4" />
-            </Button>
+            <BookmarkButton productId={product.id} />
             {product.source_url && product.url !== product.source_url && (
               <Button
                 variant="ghost"
@@ -223,16 +300,18 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
         <BuzzIndicator product={product} />
         <div className="flex items-center gap-1">
+          <BookmarkButton productId={product.id} />
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={(e) => {
               e.preventDefault()
-              // Save functionality
+              window.location.href = `/compare?a=${product.slug}`
             }}
+            title="Compare with another product"
           >
-            <Bookmark className="h-4 w-4" />
+            <GitCompare className="h-4 w-4" />
           </Button>
           {product.source_url && product.url !== product.source_url && (
             <Button

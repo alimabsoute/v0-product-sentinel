@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { BRAND } from "@/lib/branding"
+import { createBrowserSupabaseClient } from "@/lib/auth"
 
 const benefits = [
   "Track unlimited products",
@@ -24,6 +25,8 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -33,15 +36,47 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!agreed) return
-    
+    setError(null)
+
+    // Client-side validation
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters.")
+      return
+    }
+
+    // Basic email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError("Please enter a valid email address.")
+      return
+    }
+
     setIsLoading(true)
-    
-    // Simulate signup - in real app this would call auth API
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // For demo, just redirect to home
-    router.push("/")
-    setIsLoading(false)
+
+    try {
+      const supabase = createBrowserSupabaseClient()
+      const { error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+          },
+        },
+      })
+
+      if (authError) {
+        setError(authError.message)
+        return
+      }
+
+      // Show confirmation message — Supabase sends a confirmation email
+      setSuccess(true)
+    } catch {
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const passwordStrength = (password: string) => {
@@ -55,6 +90,39 @@ export default function SignupPage() {
 
   const strength = passwordStrength(formData.password)
 
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <div className="w-full max-w-md text-center">
+          <Link href="/" className="inline-flex items-center gap-2 mb-8 justify-center">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+              <span className="text-xl font-serif text-primary-foreground">{BRAND.initial}</span>
+            </div>
+            <span className="font-serif text-2xl">{BRAND.name}</span>
+          </Link>
+
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Check className="h-8 w-8 text-primary" />
+          </div>
+
+          <h1 className="font-serif text-3xl mb-3">Check your email</h1>
+          <p className="text-muted-foreground mb-6">
+            We&apos;ve sent a confirmation link to{" "}
+            <span className="font-medium text-foreground">{formData.email}</span>.
+            Click the link to activate your account.
+          </p>
+
+          <p className="text-sm text-muted-foreground">
+            Already confirmed?{" "}
+            <Link href="/login" className="text-primary hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex">
       {/* Left side - Decorative */}
@@ -63,7 +131,7 @@ export default function SignupPage() {
           <h2 className="font-serif text-4xl mb-6">
             Join the community tracking tomorrow&apos;s products today
           </h2>
-          
+
           <ul className="space-y-4">
             {benefits.map((benefit, i) => (
               <li key={i} className="flex items-center gap-3">
@@ -144,6 +212,13 @@ export default function SignupPage() {
             </div>
           </div>
 
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
           {/* Email Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -176,10 +251,11 @@ export default function SignupPage() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a password"
+                  placeholder="Create a password (min 8 characters)"
                   value={formData.password}
                   onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                   required
+                  minLength={8}
                 />
                 <button
                   type="button"
@@ -189,7 +265,7 @@ export default function SignupPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              
+
               {/* Password strength indicator */}
               {formData.password && (
                 <div className="space-y-2">
@@ -213,9 +289,9 @@ export default function SignupPage() {
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {strength <= 1 && "Weak - add numbers, symbols, and uppercase letters"}
-                    {strength === 2 && "Fair - add more variety"}
-                    {strength === 3 && "Good - almost there"}
+                    {strength <= 1 && "Weak — add numbers, symbols, and uppercase letters"}
+                    {strength === 2 && "Fair — add more variety"}
+                    {strength === 3 && "Good — almost there"}
                     {strength === 4 && "Strong password"}
                   </p>
                 </div>
@@ -223,8 +299,8 @@ export default function SignupPage() {
             </div>
 
             <div className="flex items-start gap-2">
-              <Checkbox 
-                id="terms" 
+              <Checkbox
+                id="terms"
                 checked={agreed}
                 onCheckedChange={(checked) => setAgreed(checked as boolean)}
               />

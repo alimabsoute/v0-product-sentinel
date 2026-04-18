@@ -2,18 +2,21 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, Github, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { BRAND } from "@/lib/branding"
+import { createBrowserSupabaseClient } from "@/lib/auth"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -22,13 +25,29 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    
-    // Simulate login - in real app this would call auth API
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // For demo, just redirect to home
-    router.push("/")
-    setIsLoading(false)
+    setError(null)
+
+    try {
+      const supabase = createBrowserSupabaseClient()
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (authError) {
+        setError(authError.message)
+        return
+      }
+
+      // Redirect to the page they came from, or /profile
+      const redirectTo = searchParams.get("redirectTo") || "/profile"
+      router.push(redirectTo)
+      router.refresh()
+    } catch {
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -87,6 +106,13 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
           {/* Email Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -104,8 +130,8 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link 
-                  href="/forgot-password" 
+                <Link
+                  href="/forgot-password"
                   className="text-sm text-primary hover:underline"
                 >
                   Forgot password?
@@ -158,11 +184,11 @@ export default function LoginPage() {
           <p className="text-muted-foreground">
             Get real-time buzz scores, save your favorite products, and discover tools before they go mainstream.
           </p>
-          
+
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-border">
             <div>
-              <div className="text-2xl font-serif">2,400+</div>
+              <div className="text-2xl font-serif">7,800+</div>
               <div className="text-xs text-muted-foreground">Products tracked</div>
             </div>
             <div>
@@ -170,7 +196,7 @@ export default function LoginPage() {
               <div className="text-xs text-muted-foreground">Daily signals</div>
             </div>
             <div>
-              <div className="text-2xl font-serif">6</div>
+              <div className="text-2xl font-serif">18</div>
               <div className="text-xs text-muted-foreground">Categories</div>
             </div>
           </div>
