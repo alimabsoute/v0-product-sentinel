@@ -1,9 +1,13 @@
-import { getActiveProducts } from '@/lib/db/products'
+import { getGraphData, getGraphCategories } from '@/lib/db/graph'
 import { ExplorePage } from './_client'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default async function ExploreServerPage() {
-  const products = await getActiveProducts(100)
-  return <ExplorePage initialProducts={products} />
+  const [graphData, categories] = await Promise.all([
+    getGraphData({ limit: 500 }),
+    getGraphCategories(),
+  ])
+  return <ExplorePage initialGraph={graphData} categories={categories} />
 }

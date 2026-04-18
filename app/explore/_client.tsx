@@ -1,439 +1,653 @@
 'use client'
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ZoomIn, ZoomOut, Maximize2, Filter, Search, Info } from 'lucide-react'
+import { Search, X, RotateCcw, ExternalLink } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
-import { SiteFooter } from '@/components/site-footer'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-// products and categories are loaded from the DB via the parent server wrapper
-import type { Product } from '@/lib/mock-data'
-type Category = string
-import { cn } from '@/lib/utils'
+import type { GraphData, GraphNode, GraphLink } from '@/lib/db/graph'
 
-interface Node {
-  id: string
-  label: string
-  type: 'product' | 'category' | 'tag'
-  x: number
-  y: number
-  radius: number
-  color: string
-  product?: Product
-}
+// ─── Dynamic import: react-force-graph is canvas/WebGL → client-only ─────────
+// The package ships ESM + DOM APIs; importing at module level during SSR throws
+// "self is not defined". `ssr: false` is required.
+const ForceGraph2D = dynamic(
+  () => import('react-force-graph-2d').then(m => m.default),
+  { ssr: false, loading: () => <GraphSkeleton /> }
+) as unknown as React.ComponentType<any>
 
-interface Edge {
-  source: string
-  target: string
-  strength: number
-  type: 'category' | 'competitor' | 'similar'
-}
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ExplorePageProps {
-  initialProducts?: Product[]
+  initialGraph: GraphData
+  categories: { slug: string; name: string }[]
 }
 
-export function ExplorePage({ initialProducts = [] }: ExplorePageProps) {
-  const svgRef = useRef<SVGSVGElement>(null)
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null)
-  const [hoveredNode, setHoveredNode] = useState<Node | null>(null)
-  const [zoom, setZoom] = useState(1)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<Category>('All')
+// react-force-graph mutates nodes in place with x/y/vx/vy.
+interface RGNode extends GraphNode {
+  x?: number
+  y?: number
+  vx?: number
+  vy?: number
+  __bckgDimensions?: [number, number]
+}
 
-  // Derive categories from real products
-  const categories = ['All', ...Array.from(new Set(initialProducts.map(p => p.category)))]
+interface RGLink extends Omit<GraphLink, 'source' | 'target'> {
+  source: string | RGNode
+  target: string | RGNode
+}
 
-  // Generate graph data
-  const { nodes, edges } = useMemo(() => {
-    const activeProducts = initialProducts.filter(p => p.status === 'active')
-    const filteredProducts = selectedCategory === 'All'
-      ? activeProducts
-      : activeProducts.filter(p => p.category === selectedCategory)
+// ─── Category colour palette (Bloomberg-ish neon on dark) ────────────────────
 
-    // Create nodes
-    const nodeMap: Record<string, Node> = {}
-    const edgeList: Edge[] = []
+const CATEGORY_COLORS: Record<string, string> = {
+  'ai-tools':       '#a78bfa', // violet
+  'dev-tools':      '#38bdf8', // sky
+  'productivity':   '#34d399', // emerald
+  'design':         '#f472b6', // pink
+  'marketing':      '#fb923c', // orange
+  'analytics':      '#60a5fa', // blue
+  'finance':        '#facc15', // yellow
+  'communication':  '#f87171', // red
+  'security':       '#4ade80', // green
+  'hardware':       '#94a3b8', // slate
+  'entertainment':  '#c084fc', // purple
+  'education':      '#22d3ee', // cyan
+  'health':         '#fda4af', // rose
+  'e-commerce':     '#fbbf24', // amber
+  'gaming':         '#a3e635', // lime
+}
 
-    // Category nodes (center clusters)
-    const categoryAngles: Record<string, number> = {}
-    const usedCategories = [...new Set(filteredProducts.map(p => p.category))]
-    usedCategories.forEach((cat, i) => {
-      const angle = (i / usedCategories.length) * Math.PI * 2
-      categoryAngles[cat] = angle
-      
-      nodeMap[`cat-${cat}`] = {
-        id: `cat-${cat}`,
-        label: cat,
-        type: 'category',
-        x: 400 + Math.cos(angle) * 180,
-        y: 300 + Math.sin(angle) * 180,
-        radius: 40,
-        color: getCategoryColor(cat),
-      }
-    })
+function colorForCategory(slug: string): string {
+  return CATEGORY_COLORS[slug] ?? '#64748b'
+}
 
-    // Product nodes (around categories)
-    filteredProducts.forEach((product, i) => {
-      const catAngle = categoryAngles[product.category] || 0
-      const productsInCategory = filteredProducts.filter(p => p.category === product.category)
-      const indexInCategory = productsInCategory.indexOf(product)
-      const spreadAngle = catAngle + ((indexInCategory - productsInCategory.length / 2) * 0.3)
-      const distance = 120 + (indexInCategory % 3) * 40
+// Log-scale node radius so huge scores don't swamp the canvas
+function radiusForScore(score: number): number {
+  const clamped = Math.max(0, Math.min(100, score))
+  return 4 + Math.log10(clamped + 1) * 4  // 4..12 roughly
+}
 
-      const buzzRadius = Math.max(15, Math.min(35, product.buzz.score / 30))
+// ─── Debounce hook ───────────────────────────────────────────────────────────
 
-      nodeMap[product.id] = {
-        id: product.id,
-        label: product.name,
-        type: 'product',
-        x: 400 + Math.cos(spreadAngle) * (180 + distance),
-        y: 300 + Math.sin(spreadAngle) * (180 + distance),
-        radius: buzzRadius,
-        color: getBuzzColor(product.buzz.trend),
-        product,
-      }
+function useDebounced<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), ms)
+    return () => clearTimeout(id)
+  }, [value, ms])
+  return debounced
+}
 
-      // Edge to category
-      edgeList.push({
-        source: product.id,
-        target: `cat-${product.category}`,
-        strength: 1,
-        type: 'category',
-      })
+// ─── Main component ──────────────────────────────────────────────────────────
 
-      // Edges between competitors (competitors array contains slugs)
-      if (product.competitors) {
-        product.competitors.forEach(compSlug => {
-          // Find the product by slug
-          const competitor = filteredProducts.find(p => p.slug === compSlug)
-          if (competitor && nodeMap[competitor.id]) {
-            edgeList.push({
-              source: product.id,
-              target: competitor.id,
-              strength: 0.8,
-              type: 'competitor',
-            })
-          }
-        })
-      }
+export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
+  const fgRef = useRef<any>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const [dims, setDims] = useState({ width: 1200, height: 800 })
+  const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const [selectedNode, setSelectedNode] = useState<RGNode | null>(null)
+  const [hoveredNode, setHoveredNode] = useState<RGNode | null>(null)
+
+  const debouncedSearch = useDebounced(search, 200)
+
+  // ── Image cache (logo_url → HTMLImageElement) ─────────────────────────────
+  const imgCache = useRef<Map<string, HTMLImageElement>>(new Map())
+
+  const getLogoImage = useCallback((url: string): HTMLImageElement | null => {
+    const cache = imgCache.current
+    const existing = cache.get(url)
+    if (existing) {
+      return existing.complete && existing.naturalWidth > 0 ? existing : null
+    }
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.src = url
+    img.onload = () => {
+      // Nudge the graph to redraw once the image is ready.
+      fgRef.current?.d3ReheatSimulation?.()
+    }
+    img.onerror = () => {
+      // Replace with a sentinel so we stop trying.
+      const broken = new Image()
+      cache.set(url, broken)
+    }
+    cache.set(url, img)
+    return null
+  }, [])
+
+  // ── Viewport sizing ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const measure = () => {
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      setDims({ width: rect.width, height: rect.height })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [])
+
+  // ── Filtered graph data ───────────────────────────────────────────────────
+  const filteredData = useMemo(() => {
+    const { nodes, links } = initialGraph
+
+    // Apply category filter
+    let visibleProducts = nodes.filter(n => n.type === 'product')
+    if (categoryFilter) {
+      visibleProducts = visibleProducts.filter(n => n.categorySlug === categoryFilter)
+    }
+
+    const productIds = new Set(visibleProducts.map(n => n.id))
+
+    // Category hubs: keep only hubs referenced by visible products
+    const visibleHubSlugs = new Set(visibleProducts.map(n => n.categorySlug))
+    const visibleHubs = nodes.filter(
+      n => n.type === 'category' && visibleHubSlugs.has(n.categorySlug),
+    )
+    const hubIds = new Set(visibleHubs.map(n => n.id))
+
+    const allVisibleIds = new Set([...productIds, ...hubIds])
+
+    const visibleLinks = links.filter(l => {
+      const src = typeof l.source === 'string' ? l.source : (l.source as RGNode).id!
+      const tgt = typeof l.target === 'string' ? l.target : (l.target as RGNode).id!
+      return allVisibleIds.has(src) && allVisibleIds.has(tgt)
     })
 
     return {
-      nodes: Object.values(nodeMap),
-      edges: edgeList,
+      nodes: [...visibleProducts, ...visibleHubs] as RGNode[],
+      links: visibleLinks as RGLink[],
     }
-  }, [selectedCategory])
+  }, [initialGraph, categoryFilter])
 
-  // Filter nodes by search
-  const visibleNodes = useMemo(() => {
-    if (!searchQuery) return nodes
-    const query = searchQuery.toLowerCase()
-    return nodes.filter(n => n.label.toLowerCase().includes(query))
-  }, [nodes, searchQuery])
+  // ── Neighbour index for hover highlighting ────────────────────────────────
+  const neighbourIndex = useMemo(() => {
+    const map = new Map<string, Set<string>>()
+    for (const link of filteredData.links) {
+      const src = typeof link.source === 'string' ? link.source : (link.source as RGNode).id!
+      const tgt = typeof link.target === 'string' ? link.target : (link.target as RGNode).id!
+      if (!map.has(src)) map.set(src, new Set())
+      if (!map.has(tgt)) map.set(tgt, new Set())
+      map.get(src)!.add(tgt)
+      map.get(tgt)!.add(src)
+    }
+    return map
+  }, [filteredData])
 
-  const visibleEdges = useMemo(() => {
-    const visibleIds = new Set(visibleNodes.map(n => n.id))
-    return edges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target))
-  }, [edges, visibleNodes])
+  // ── Search match set (for highlighting) ───────────────────────────────────
+  const searchMatches = useMemo(() => {
+    if (!debouncedSearch.trim()) return null
+    const q = debouncedSearch.toLowerCase().trim()
+    const matches = filteredData.nodes.filter(
+      n => n.type === 'product' && n.name.toLowerCase().includes(q),
+    )
+    return new Set(matches.map(n => n.id))
+  }, [debouncedSearch, filteredData])
 
-  // Find node by id for edges
-  const getNode = useCallback((id: string) => {
-    return nodes.find(n => n.id === id)
-  }, [nodes])
+  // Zoom to first search match when search changes
+  useEffect(() => {
+    if (!searchMatches || searchMatches.size === 0) return
+    const firstId = searchMatches.values().next().value
+    const node = filteredData.nodes.find(n => n.id === firstId) as RGNode | undefined
+    if (node && node.x != null && node.y != null && fgRef.current) {
+      fgRef.current.centerAt(node.x, node.y, 800)
+      fgRef.current.zoom(3, 800)
+    }
+  }, [searchMatches, filteredData])
 
-  const handleZoom = (direction: 'in' | 'out') => {
-    setZoom(prev => {
-      if (direction === 'in') return Math.min(prev * 1.2, 3)
-      return Math.max(prev / 1.2, 0.5)
+  // ── Physics config (applied once on mount of the graph) ───────────────────
+  const handleEngineReady = useCallback(() => {
+    const fg = fgRef.current
+    if (!fg) return
+    // Stronger repulsion so clusters don't clump
+    fg.d3Force('charge')?.strength(-120)
+    // Variable link distance: shorter for alternatives, longer for category spokes
+    fg.d3Force('link')?.distance((link: RGLink) => {
+      if (link.type === 'alternative') return 30
+      if (link.type === 'relationship') return 40
+      return 60
     })
-  }
+  }, [])
 
-  const handleReset = () => {
-    setZoom(1)
-    setPan({ x: 0, y: 0 })
-  }
+  // ── Node rendering (canvas) ───────────────────────────────────────────────
+  const drawNode = useCallback(
+    (node: RGNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const x = node.x ?? 0
+      const y = node.y ?? 0
+      const isHub = node.type === 'category'
+      const radius = isHub ? 16 : radiusForScore(node.signal_score)
+      const catColor = colorForCategory(node.categorySlug)
+
+      // ── Dimming logic ──
+      let opacity = 1
+      if (hoveredNode) {
+        const isHover = node.id === hoveredNode.id
+        const isNeighbour = neighbourIndex.get(hoveredNode.id)?.has(node.id!)
+        opacity = isHover || isNeighbour ? 1 : 0.1
+      } else if (searchMatches) {
+        opacity = searchMatches.has(node.id!) ? 1 : 0.15
+      }
+
+      ctx.globalAlpha = opacity
+
+      // ── Category hub: big solid circle with label ──
+      if (isHub) {
+        ctx.beginPath()
+        ctx.arc(x, y, radius, 0, 2 * Math.PI, false)
+        ctx.fillStyle = catColor
+        ctx.fill()
+        ctx.strokeStyle = '#fff'
+        ctx.lineWidth = 2 / globalScale
+        ctx.stroke()
+
+        // Label (always visible for hubs)
+        const label = node.name.toUpperCase()
+        const fontSize = Math.max(11 / globalScale, 3)
+        ctx.font = `600 ${fontSize}px Inter, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.fillStyle = '#fff'
+        ctx.fillText(label, x, y + radius + 4 / globalScale)
+        ctx.globalAlpha = 1
+        return
+      }
+
+      // ── Product node ──
+      // Logo if available, score > 60, and node is big enough
+      const tryLogo = node.logo_url && node.signal_score > 60 && globalScale > 0.6
+      let drewLogo = false
+      if (tryLogo) {
+        const img = getLogoImage(node.logo_url!)
+        if (img) {
+          ctx.save()
+          ctx.beginPath()
+          ctx.arc(x, y, radius, 0, 2 * Math.PI, false)
+          ctx.closePath()
+          ctx.clip()
+          try {
+            ctx.drawImage(img, x - radius, y - radius, radius * 2, radius * 2)
+            drewLogo = true
+          } catch {
+            // Tainted canvas from cross-origin image — fall back to circle
+          }
+          ctx.restore()
+
+          // Ring
+          ctx.beginPath()
+          ctx.arc(x, y, radius, 0, 2 * Math.PI, false)
+          ctx.lineWidth = 1.5 / globalScale
+          ctx.strokeStyle = catColor
+          ctx.stroke()
+        }
+      }
+
+      if (!drewLogo) {
+        // Filled circle (category colour, slightly transparent)
+        ctx.beginPath()
+        ctx.arc(x, y, radius, 0, 2 * Math.PI, false)
+        ctx.fillStyle = catColor + 'cc' // ~80% alpha
+        ctx.fill()
+        ctx.strokeStyle = catColor
+        ctx.lineWidth = 1 / globalScale
+        ctx.stroke()
+
+        // First letter fallback if node is big enough
+        if (radius > 7 && globalScale > 0.8) {
+          const letter = (node.name[0] ?? '?').toUpperCase()
+          const fontSize = Math.max(radius * 1.1, 6)
+          ctx.font = `700 ${fontSize}px Inter, sans-serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillStyle = '#0a0a0a'
+          ctx.fillText(letter, x, y)
+        }
+      }
+
+      // Hover label
+      if (hoveredNode?.id === node.id) {
+        const label = node.name
+        const fontSize = Math.max(11 / globalScale, 3)
+        ctx.font = `500 ${fontSize}px Inter, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        const textWidth = ctx.measureText(label).width
+        const pad = 4 / globalScale
+        ctx.fillStyle = 'rgba(10,10,10,0.9)'
+        ctx.fillRect(
+          x - textWidth / 2 - pad,
+          y + radius + 2 / globalScale,
+          textWidth + pad * 2,
+          fontSize + pad,
+        )
+        ctx.fillStyle = '#fff'
+        ctx.fillText(label, x, y + radius + 2 / globalScale + pad / 2)
+      }
+
+      ctx.globalAlpha = 1
+    },
+    [hoveredNode, neighbourIndex, searchMatches, getLogoImage],
+  )
+
+  // ── Link colour + opacity (for dim-on-hover) ──────────────────────────────
+  const linkColor = useCallback(
+    (link: RGLink) => {
+      const src = typeof link.source === 'string' ? link.source : (link.source as RGNode).id!
+      const tgt = typeof link.target === 'string' ? link.target : (link.target as RGNode).id!
+
+      let opacity = link.type === 'category' ? 0.25 : 0.5
+      if (hoveredNode) {
+        const touches = src === hoveredNode.id || tgt === hoveredNode.id
+        opacity = touches ? 0.9 : 0.05
+      }
+
+      const base = link.type === 'alternative' ? '#f472b6' : link.type === 'relationship' ? '#60a5fa' : '#475569'
+      return hexWithAlpha(base, opacity)
+    },
+    [hoveredNode],
+  )
+
+  const linkWidth = useCallback(
+    (link: RGLink) => {
+      if (link.type === 'alternative' || link.type === 'relationship') return 1.2
+      return 0.6
+    },
+    [],
+  )
+
+  // ── Interaction handlers ──────────────────────────────────────────────────
+  const handleNodeClick = useCallback((node: RGNode) => {
+    if (node.type === 'category') {
+      // Toggle category filter
+      setCategoryFilter(prev => (prev === node.categorySlug ? null : node.categorySlug))
+      setSelectedNode(null)
+      return
+    }
+    setSelectedNode(node)
+  }, [])
+
+  const handleNodeRightClick = useCallback((node: RGNode) => {
+    if (node.type !== 'product') return
+    window.open(`/products/${node.slug}`, '_blank', 'noopener')
+  }, [])
+
+  const handleReset = useCallback(() => {
+    setSearch('')
+    setCategoryFilter(null)
+    setSelectedNode(null)
+    fgRef.current?.zoomToFit?.(600, 60)
+  }, [])
+
+  const nodeCount = filteredData.nodes.filter(n => n.type === 'product').length
+  const hubCount = filteredData.nodes.filter(n => n.type === 'category').length
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex h-screen flex-col bg-[#0a0a0a] text-white">
       <SiteHeader />
 
-      <main className="relative h-[calc(100vh-64px)]">
-        {/* Controls */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-4">
-          <div className="rounded-xl border border-border bg-card p-3 shadow-lg">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div ref={containerRef} className="relative flex-1 overflow-hidden">
+        {/* ── Controls bar (top-left) ── */}
+        <div className="absolute left-4 top-4 z-20 flex flex-col gap-3">
+          <div className="rounded-lg border border-white/10 bg-black/60 p-3 shadow-lg backdrop-blur">
+            <div className="relative mb-2">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
               <Input
-                placeholder="Search nodes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-48 pl-8 h-8 text-sm"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search products…"
+                className="h-8 w-64 border-white/10 bg-white/5 pl-8 pr-8 text-sm text-white placeholder:text-white/40 focus-visible:ring-white/20"
               />
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-3 shadow-lg">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Filter by Category</p>
-            <div className="flex flex-wrap gap-1.5 max-w-[200px]">
-              {categories.slice(0, 7).map(cat => (
-                <Badge
-                  key={cat}
-                  variant={selectedCategory === cat ? 'default' : 'outline'}
-                  className="cursor-pointer text-xs"
-                  onClick={() => setSelectedCategory(cat as Category)}
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                  aria-label="Clear search"
                 >
-                  {cat}
-                </Badge>
-              ))}
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-          </div>
-        </div>
-
-        {/* Zoom Controls */}
-        <div className="absolute top-4 right-4 z-10">
-          <div className="rounded-xl border border-border bg-card p-1 shadow-lg flex flex-col">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleZoom('in')}>
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleZoom('out')}>
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleReset}>
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Legend */}
-        <div className="absolute bottom-4 left-4 z-10 rounded-xl border border-border bg-card p-3 shadow-lg">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Legend</p>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-[var(--sentinel-rising)]" />
-              <span className="text-xs">Rising</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-muted-foreground/50" />
-              <span className="text-xs">Stable</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-[var(--sentinel-falling)]" />
-              <span className="text-xs">Falling</span>
-            </div>
-            <div className="flex items-center gap-2 pt-1 border-t border-border">
-              <div className="h-4 w-4 rounded-full border-2 border-primary bg-muted" />
-              <span className="text-xs">Category</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-0.5 w-5 bg-primary rounded" />
-              <span className="text-xs">Competitor</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Selected Node Info */}
-        {selectedNode?.product && (
-          <div className="absolute bottom-4 right-4 z-10 w-72 rounded-xl border border-border bg-card p-4 shadow-lg">
-            <div className="flex items-start gap-3">
-              <img
-                src={selectedNode.product.logo}
-                alt={selectedNode.product.name}
-                className="h-10 w-10 rounded-lg object-cover"
-              />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold truncate">{selectedNode.product.name}</h3>
-                <p className="text-xs text-muted-foreground">{selectedNode.product.category}</p>
-              </div>
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-              {selectedNode.product.tagline}
-            </p>
-            <div className="mt-3 flex items-center justify-between">
-              <div>
-                <p className="text-lg font-bold">{selectedNode.product.buzz.score}</p>
-                <p className="text-xs text-muted-foreground">Buzz Score</p>
-              </div>
-              <Button asChild size="sm">
-                <Link href={`/products/${selectedNode.product.slug}`}>
-                  View Details
-                </Link>
+            <div className="flex items-center justify-between gap-2">
+              <select
+                value={categoryFilter ?? ''}
+                onChange={(e) => setCategoryFilter(e.target.value || null)}
+                className="h-7 flex-1 rounded-md border border-white/10 bg-white/5 px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+              >
+                <option value="">All categories</option>
+                {categories.map(c => (
+                  <option key={c.slug} value={c.slug}>{c.name}</option>
+                ))}
+              </select>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-white/70 hover:bg-white/10 hover:text-white"
+                onClick={handleReset}
+              >
+                <RotateCcw className="mr-1 h-3 w-3" />
+                Reset
               </Button>
             </div>
           </div>
-        )}
 
-        {/* Graph Canvas */}
-        <svg
-          ref={svgRef}
-          className="h-full w-full cursor-grab active:cursor-grabbing"
-          style={{
-            background: 'radial-gradient(circle at center, hsl(var(--muted)) 0%, hsl(var(--background)) 100%)',
-          }}
-        >
-          {/* Simple definitions */}
-          <defs>
-            <linearGradient id="categoryGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity="0.1" />
-              <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity="0.3" />
-            </linearGradient>
-          </defs>
-
-          <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-            {/* Category Edges (subtle, behind everything) */}
-            {visibleEdges.filter(e => e.type === 'category').map((edge, i) => {
-              const source = getNode(edge.source)
-              const target = getNode(edge.target)
-              if (!source || !target) return null
-
-              return (
-                <line
-                  key={`cat-edge-${i}`}
-                  x1={source.x}
-                  y1={source.y}
-                  x2={target.x}
-                  y2={target.y}
-                  stroke="url(#categoryGradient)"
-                  strokeWidth={0.5}
-                  strokeOpacity={0.4}
-                />
-              )
-            })}
-
-            {/* Competitor Edges */}
-            {visibleEdges.filter(e => e.type === 'competitor').map((edge, i) => {
-              const source = getNode(edge.source)
-              const target = getNode(edge.target)
-              if (!source || !target) return null
-
-              const isHighlighted = hoveredNode && 
-                (hoveredNode.id === edge.source || hoveredNode.id === edge.target)
-              const isSelected = selectedNode &&
-                (selectedNode.id === edge.source || selectedNode.id === edge.target)
-
-              return (
-                <line
-                  key={`comp-edge-${i}`}
-                  x1={source.x}
-                  y1={source.y}
-                  x2={target.x}
-                  y2={target.y}
-                  stroke={isHighlighted || isSelected ? "hsl(var(--primary))" : "hsl(var(--border))"}
-                  strokeWidth={isHighlighted || isSelected ? 2.5 : 1}
-                  strokeOpacity={isHighlighted || isSelected ? 0.9 : 0.3}
-                  strokeDasharray={isHighlighted || isSelected ? "none" : "4 2"}
-                  className="transition-all duration-500"
-                />
-              )
-            })}
-
-            {/* Nodes */}
-            {visibleNodes.map(node => {
-              const isHovered = hoveredNode?.id === node.id
-              const isSelected = selectedNode?.id === node.id
-              const isCategory = node.type === 'category'
-
-              return (
-                <g
-                  key={node.id}
-                  transform={`translate(${node.x}, ${node.y})`}
-                  className="cursor-pointer transition-transform"
-                  onClick={() => setSelectedNode(node.type === 'product' ? node : null)}
-                  onMouseEnter={() => setHoveredNode(node)}
-                  onMouseLeave={() => setHoveredNode(null)}
-                >
-                  {/* Node circle */}
-                  <circle
-                    r={node.radius}
-                    fill={isCategory ? 'hsl(var(--muted))' : node.color}
-                    stroke={isSelected ? 'hsl(var(--primary))' : isCategory ? node.color : 'transparent'}
-                    strokeWidth={isSelected ? 3 : isCategory ? 2 : 0}
-                    className="transition-all"
-                    style={{
-                      filter: isHovered ? 'brightness(1.2)' : undefined,
-                      transform: isHovered ? 'scale(1.1)' : undefined,
-                    }}
-                  />
-
-                  {/* Product logo */}
-                  {node.product && (
-                    <clipPath id={`clip-${node.id}`}>
-                      <circle r={node.radius - 2} />
-                    </clipPath>
-                  )}
-                  {node.product && (
-                    <image
-                      href={node.product.logo}
-                      x={-(node.radius - 2)}
-                      y={-(node.radius - 2)}
-                      width={(node.radius - 2) * 2}
-                      height={(node.radius - 2) * 2}
-                      clipPath={`url(#clip-${node.id})`}
-                      preserveAspectRatio="xMidYMid slice"
-                    />
-                  )}
-
-                  {/* Label */}
-                  {(isHovered || isSelected || isCategory) && (
-                    <text
-                      y={node.radius + 14}
-                      textAnchor="middle"
-                      fontSize={isCategory ? 12 : 10}
-                      fontWeight={isCategory ? 600 : 500}
-                      fill="currentColor"
-                      className="pointer-events-none"
-                    >
-                      {node.label}
-                    </text>
-                  )}
-                </g>
-              )
-            })}
-          </g>
-        </svg>
-
-        {/* Instructions */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-          <div className="rounded-full bg-card/80 backdrop-blur px-4 py-2 text-xs text-muted-foreground border border-border">
-            Click a product to view details • Scroll to zoom • Drag to pan
+          {/* Stats */}
+          <div className="rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-[11px] text-white/60 backdrop-blur">
+            <span className="text-white/90">{nodeCount}</span> products{' '}
+            <span className="text-white/30">·</span>{' '}
+            <span className="text-white/90">{hubCount}</span> categories{' '}
+            {searchMatches && (
+              <>
+                <span className="text-white/30">·</span>{' '}
+                <span className="text-amber-400">{searchMatches.size}</span> match{searchMatches.size === 1 ? '' : 'es'}
+              </>
+            )}
           </div>
         </div>
-      </main>
+
+        {/* ── Legend (bottom-left) ── */}
+        <div className="absolute bottom-4 left-4 z-20 rounded-lg border border-white/10 bg-black/60 p-3 text-[11px] text-white/70 backdrop-blur">
+          <div className="mb-1.5 font-medium text-white/90">Legend</div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="block h-3 w-3 rounded-full border-2 border-white bg-violet-400" />
+              <span>Category hub</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="block h-2.5 w-2.5 rounded-full bg-sky-400/80" />
+              <span>Product (size = signal)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="block h-px w-4 bg-slate-500" />
+              <span>Category link</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="block h-px w-4 bg-pink-400" />
+              <span>Alternative</span>
+            </div>
+          </div>
+          <div className="mt-2 border-t border-white/10 pt-2 text-[10px] text-white/40">
+            Click product for details · Right-click to open · Click hub to filter
+          </div>
+        </div>
+
+        {/* ── Side panel (right, slide-in) ── */}
+        {selectedNode && selectedNode.type === 'product' && (
+          <aside className="absolute right-0 top-0 z-20 h-full w-[320px] animate-in slide-in-from-right border-l border-white/10 bg-black/80 p-5 backdrop-blur-md duration-300">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                {selectedNode.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedNode.logo_url}
+                    alt={selectedNode.name}
+                    className="h-12 w-12 rounded-lg border border-white/10 bg-white/5 object-cover"
+                  />
+                ) : (
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-lg font-bold text-black"
+                    style={{ background: colorForCategory(selectedNode.categorySlug) }}
+                  >
+                    {selectedNode.name[0]?.toUpperCase() ?? '?'}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h3 className="truncate text-base font-semibold text-white">
+                    {selectedNode.name}
+                  </h3>
+                  <Badge
+                    variant="outline"
+                    className="mt-1 border-white/20 text-[10px] text-white/70"
+                    style={{ borderColor: colorForCategory(selectedNode.categorySlug) }}
+                  >
+                    {selectedNode.category}
+                  </Badge>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedNode(null)}
+                className="text-white/40 hover:text-white"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5">
+              <div className="mb-1 flex items-center justify-between text-[11px] text-white/60">
+                <span>Signal score</span>
+                <span className="font-mono text-white">{selectedNode.signal_score.toFixed(1)}</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, selectedNode.signal_score))}%`,
+                    background: colorForCategory(selectedNode.categorySlug),
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-2">
+              <Link
+                href={`/products/${selectedNode.slug}`}
+                className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white transition hover:bg-white/10"
+              >
+                View details
+                <ExternalLink className="h-3.5 w-3.5 text-white/50" />
+              </Link>
+            </div>
+
+            {/* Neighbours list */}
+            {(() => {
+              const neighbours = Array.from(neighbourIndex.get(selectedNode.id!) ?? [])
+                .map(id => filteredData.nodes.find(n => n.id === id) as RGNode | undefined)
+                .filter((n): n is RGNode => !!n && n.type === 'product')
+                .slice(0, 6)
+              if (neighbours.length === 0) return null
+              return (
+                <div className="mt-6">
+                  <div className="mb-2 text-[11px] uppercase tracking-wider text-white/40">
+                    Connected
+                  </div>
+                  <div className="space-y-1">
+                    {neighbours.map(n => (
+                      <button
+                        key={n.id}
+                        onClick={() => setSelectedNode(n)}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-white/80 transition hover:bg-white/5"
+                      >
+                        <span
+                          className="block h-2 w-2 rounded-full"
+                          style={{ background: colorForCategory(n.categorySlug) }}
+                        />
+                        <span className="truncate">{n.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+          </aside>
+        )}
+
+        {/* ── The graph ── */}
+        <ForceGraph2D
+          ref={fgRef}
+          graphData={filteredData}
+          width={dims.width}
+          height={dims.height}
+          backgroundColor="#0a0a0a"
+          cooldownTicks={100}
+          d3AlphaDecay={0.02}
+          d3VelocityDecay={0.3}
+          warmupTicks={20}
+          onEngineStop={handleEngineReady}
+          nodeRelSize={1}
+          nodeVal={(n: RGNode) => (n.type === 'category' ? 40 : radiusForScore(n.signal_score))}
+          nodeLabel={(n: RGNode) =>
+            n.type === 'category'
+              ? `<div style="font:600 12px Inter">${escapeHtml(n.name)}</div><div style="color:#aaa;font:11px Inter">${n.product_count} products</div>`
+              : `<div style="font:600 12px Inter">${escapeHtml(n.name)}</div><div style="color:#aaa;font:11px Inter">${escapeHtml(n.category)} · signal ${n.signal_score.toFixed(1)}</div>`
+          }
+          nodeCanvasObject={drawNode}
+          nodePointerAreaPaint={(n: RGNode, color: string, ctx: CanvasRenderingContext2D) => {
+            const x = n.x ?? 0
+            const y = n.y ?? 0
+            const r = n.type === 'category' ? 16 : radiusForScore(n.signal_score)
+            ctx.fillStyle = color
+            ctx.beginPath()
+            ctx.arc(x, y, r, 0, 2 * Math.PI, false)
+            ctx.fill()
+          }}
+          linkColor={linkColor}
+          linkWidth={linkWidth}
+          onNodeHover={(node: RGNode | null) => setHoveredNode(node)}
+          onNodeClick={handleNodeClick}
+          onNodeRightClick={handleNodeRightClick}
+          onBackgroundClick={() => setSelectedNode(null)}
+          enableNodeDrag={true}
+          enableZoomInteraction={true}
+          enablePanInteraction={true}
+          minZoom={0.2}
+          maxZoom={8}
+        />
+      </div>
     </div>
   )
 }
 
-function getCategoryColor(category: string): string {
-  const colors: Record<string, string> = {
-    'AI Tools': 'hsl(280, 70%, 50%)',
-    'Developer Tools': 'hsl(200, 70%, 50%)',
-    'Productivity': 'hsl(150, 70%, 50%)',
-    'Design': 'hsl(320, 70%, 50%)',
-    'Marketing': 'hsl(30, 70%, 50%)',
-    'Analytics': 'hsl(220, 70%, 50%)',
-    'Collaboration': 'hsl(170, 70%, 50%)',
-    'Finance': 'hsl(100, 70%, 50%)',
-    'Communication': 'hsl(350, 70%, 50%)',
-  }
-  return colors[category] || 'hsl(var(--muted-foreground))'
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function GraphSkeleton() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-[#0a0a0a] text-white/40">
+      <div className="text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+        <div className="mt-3 text-xs">Loading graph…</div>
+      </div>
+    </div>
+  )
 }
 
-function getBuzzColor(trend: 'rising' | 'falling' | 'stable'): string {
-  switch (trend) {
-    case 'rising':
-      return 'var(--sentinel-rising)'
-    case 'falling':
-      return 'var(--sentinel-falling)'
-    default:
-      return 'var(--sentinel-stable)'
-  }
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function hexWithAlpha(hex: string, alpha: number): string {
+  // Convert `#rrggbb` to `rgba(r,g,b,a)`. If alpha provided inline, we overwrite.
+  const clean = hex.replace('#', '')
+  if (clean.length !== 6) return hex
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, alpha))})`
 }

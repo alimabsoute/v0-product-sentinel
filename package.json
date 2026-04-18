@@ -17,7 +17,8 @@
     "backfill:watch": "bash scripts/watch-backfill.sh",
     "enrich": "tsx --env-file=.env.local scripts/enrich-firecrawl.ts",
     "signals": "tsx --env-file=.env.local scripts/compute-signal-scores.ts",
-    "signals:new": "tsx --env-file=.env.local scripts/compute-signal-scores.ts --only-new"
+    "signals:new": "tsx --env-file=.env.local scripts/compute-signal-scores.ts --only-new",
+    "enrich:relationships": "tsx --env-file=.env.local scripts/enrich-relationships.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",
