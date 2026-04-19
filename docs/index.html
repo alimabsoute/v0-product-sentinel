@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prism — Data & Feature Completion Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060810;
+  --surface:#0d1117;
+  --surface2:#161b22;
+  --border:#21262d;
+  --border2:#30363d;
+  --text:#e6edf3;
+  --muted:#7d8590;
+  --accent:#58a6ff;
+  --accent2:#1f6feb;
+  --green:#3fb950;
+  --yellow:#d29922;
+  --purple:#bc8cff;
+  --red:#f85149;
+  --orange:#e3b341;
+  --font:'Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.6;min-height:100vh}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(6,8,16,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;height:52px;gap:2rem}
+.nav-logo{display:flex;align-items:center;gap:.6rem;font-weight:700;font-size:1rem;color:var(--text);text-decoration:none}
+.logo-mark{width:28px;height:28px;background:linear-gradient(135deg,#58a6ff,#bc8cff);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.85rem;font-weight:500;transition:color .15s}
+.nav-links a:hover{color:var(--text)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:1rem}
+.badge-live{background:#0d2818;border:1px solid #238636;color:var(--green);font-size:.72rem;font-weight:600;padding:.2rem .6rem;border-radius:20px;font-family:var(--mono)}
+
+/* LAYOUT */
+.container{max-width:1280px;margin:0 auto;padding:0 2rem}
+section{padding:5rem 0 4rem}
+section+section{border-top:1px solid var(--border)}
+
+/* HERO */
+.hero{padding:6rem 0 5rem;text-align:center}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:.5rem;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.2);color:var(--accent);font-size:.8rem;font-weight:600;padding:.3rem .9rem;border-radius:20px;margin-bottom:1.5rem;font-family:var(--mono)}
+.hero h1{font-size:clamp(2.2rem,5vw,3.8rem);font-weight:700;line-height:1.15;letter-spacing:-.03em;max-width:820px;margin:0 auto 1.2rem}
+.hero h1 span{background:linear-gradient(90deg,#58a6ff,#bc8cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{color:var(--muted);font-size:1.1rem;max-width:560px;margin:0 auto 3rem}
+.hero-meta{display:flex;align-items:center;justify-content:center;gap:2.5rem;flex-wrap:wrap}
+.hero-stat{text-align:center}
+.hero-stat-n{font-size:2rem;font-weight:700;font-family:var(--mono);color:var(--text)}
+.hero-stat-n.green{color:var(--green)}
+.hero-stat-n.yellow{color:var(--yellow)}
+.hero-stat-n.red{color:var(--red)}
+.hero-stat-l{font-size:.78rem;color:var(--muted);margin-top:.15rem}
+.hero-divider{width:1px;height:40px;background:var(--border2)}
+
+/* SECTION HEADS */
+.section-tag{display:inline-block;font-family:var(--mono);font-size:.72rem;font-weight:600;color:var(--accent);background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.15);padding:.2rem .7rem;border-radius:4px;margin-bottom:1rem;letter-spacing:.06em;text-transform:uppercase}
+h2{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:700;line-height:1.2;letter-spacing:-.02em;margin-bottom:.6rem}
+.section-sub{color:var(--muted);font-size:.95rem;max-width:640px;margin-bottom:3rem}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.card-grid{display:grid;gap:1.5rem}
+.card-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.card-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.card-grid.cols-4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.card-grid.cols-4{grid-template-columns:repeat(2,1fr)}.card-grid.cols-3{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.card-grid.cols-2,.card-grid.cols-3,.card-grid.cols-4{grid-template-columns:1fr}}
+
+/* STATUS PILLS */
+.pill{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:600;padding:.2rem .6rem;border-radius:20px;font-family:var(--mono)}
+.pill.built{background:#0d2818;color:var(--green);border:1px solid #238636}
+.pill.modified{background:#2d1f02;color:var(--yellow);border:1px solid #6e5200}
+.pill.missing{background:#2d0f0f;color:var(--red);border:1px solid #6e1313}
+.pill.new{background:#1f0f3d;color:var(--purple);border:1px solid #6e3aff}
+.pill.planned{background:#0d1b2d;color:var(--accent);border:1px solid #1f6feb}
+
+/* WIREFRAME WRAPPER */
+.wf-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.wf-label{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid var(--border);font-size:.8rem;font-weight:600;font-family:var(--mono);color:var(--muted)}
+.wf-label span{color:var(--text)}
+.wf-svg{display:block;width:100%;height:auto;background:#f8fafc}
+.wf-annotation{padding:.75rem 1rem;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:.5rem}
+
+/* FLOW / PIPELINE */
+.pipeline-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden;padding:2rem}
+.pipeline-svg{display:block;width:100%;height:auto}
+
+/* WAVE HEADER */
+.wave-header{display:flex;align-items:baseline;gap:1rem;margin-bottom:2rem}
+.wave-num{font-size:3.5rem;font-weight:700;font-family:var(--mono);color:var(--border2);line-height:1}
+.wave-info h3{font-size:1.3rem;font-weight:700;letter-spacing:-.01em}
+.wave-info p{color:var(--muted);font-size:.88rem;margin-top:.2rem}
+
+/* STEPS LIST */
+.steps{list-style:none;display:flex;flex-direction:column;gap:1rem}
+.step{display:flex;gap:1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.2rem}
+.step-num{width:28px;height:28px;min-width:28px;background:var(--accent2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;font-family:var(--mono)}
+.step-body h4{font-size:.95rem;font-weight:600;margin-bottom:.25rem}
+.step-body p{color:var(--muted);font-size:.85rem}
+.step-meta{display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap}
+
+/* CODE BLOCK */
+.code-block{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;font-family:var(--mono);font-size:.82rem;color:#e6edf3;overflow-x:auto;line-height:1.7}
+.code-comment{color:var(--muted)}
+.code-key{color:var(--accent)}
+.code-val{color:var(--green)}
+.code-str{color:var(--orange)}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:.875rem}
+th{background:var(--surface2);color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border)}
+td{padding:.75rem 1rem;border-bottom:1px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+
+/* GRID UTILS */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5rem}
+@media(max-width:860px){.two-col{grid-template-columns:1fr}.three-col{grid-template-columns:1fr}}
+
+/* CALLOUT */
+.callout{background:rgba(88,166,255,.06);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:1rem 1.2rem;font-size:.88rem;color:var(--muted)}
+.callout strong{color:var(--text)}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:2rem;text-align:center;color:var(--muted);font-size:.82rem}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAVIGATION ═══ -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="#">
+      <div class="logo-mark">P</div>
+      Prism Plan
+    </a>
+    <ul class="nav-links">
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#wave1">Wave 1</a></li>
+      <li><a href="#wave2">Wave 2</a></li>
+      <li><a href="#wave3">Wave 3</a></li>
+      <li><a href="#wave4">Wave 4</a></li>
+      <li><a href="#existing">Existing</a></li>
+      <li><a href="#cost">Cost</a></li>
+      <li><a href="#commands">Commands</a></li>
+    </ul>
+    <div class="nav-right">
+      <span class="badge-live">● v0-product-sentinel</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<div class="hero">
+  <div class="container">
+    <div class="hero-eyebrow">Data &amp; Feature Completion Plan · 2026-04-18</div>
+    <h1>From <span>fake signals</span><br>to real intelligence</h1>
+    <p class="hero-sub">Complete roadmap covering every pipeline, script, page, and data flow needed to finish Prism.</p>
+    <div class="hero-meta">
+      <div class="hero-stat"><div class="hero-stat-n">14,114</div><div class="hero-stat-l">Products in DB</div></div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat"><div class="hero-stat-n yellow">6,275</div><div class="hero-stat-l">Scored (44%)</div></div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat"><div class="hero-stat-n red">0</div><div class="hero-stat-l">product_tags rows</div></div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat"><div class="hero-stat-n red">0</div><div class="hero-stat-l">social_mentions rows</div></div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat"><div class="hero-stat-n green">6</div><div class="hero-stat-l">Live crons</div></div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat"><div class="hero-stat-n green">10</div><div class="hero-stat-l">Sprints complete</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ARCHITECTURE ═══ -->
+<section id="architecture">
+<div class="container">
+  <div class="section-tag">Architecture</div>
+  <h2>Full Data Pipeline</h2>
+  <p class="section-sub">Every system, how it connects, and what it writes to. Green = exists. Blue = new. Yellow = modified.</p>
+
+  <div class="pipeline-wrap">
+    <svg class="pipeline-svg" viewBox="0 0 1200 520" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono,monospace">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#30363d"/>
+        </marker>
+        <marker id="arrb" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#1f6feb"/>
+        </marker>
+        <marker id="arrg" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#238636"/>
+        </marker>
+      </defs>
+
+      <!-- Column labels -->
+      <text x="90" y="24" font-size="10" fill="#6e7681" text-anchor="middle" font-weight="600" letter-spacing="1">DATA SOURCES</text>
+      <text x="330" y="24" font-size="10" fill="#6e7681" text-anchor="middle" font-weight="600" letter-spacing="1">INGESTION</text>
+      <text x="570" y="24" font-size="10" fill="#6e7681" text-anchor="middle" font-weight="600" letter-spacing="1">ENRICHMENT</text>
+      <text x="810" y="24" font-size="10" fill="#6e7681" text-anchor="middle" font-weight="600" letter-spacing="1">DATABASE</text>
+      <text x="1060" y="24" font-size="10" fill="#6e7681" text-anchor="middle" font-weight="600" letter-spacing="1">UI</text>
+
+      <!-- Column separators -->
+      <line x1="210" y1="30" x2="210" y2="510" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="450" y1="30" x2="450" y2="510" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="690" y1="30" x2="690" y2="510" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="930" y1="30" x2="930" y2="510" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
+
+      <!-- ── DATA SOURCES ── -->
+      <!-- Product Hunt -->
+      <rect x="10" y="48" width="160" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="90" y="63" font-size="9.5" fill="#3fb950" text-anchor="middle" font-weight="600">Product Hunt API</text>
+      <text x="90" y="76" font-size="8.5" fill="#6e7681" text-anchor="middle">PH_DEVELOPER_TOKEN ✓</text>
+
+      <!-- GitHub API -->
+      <rect x="10" y="106" width="160" height="40" rx="7" fill="#161b22" stroke="#1f6feb" stroke-width="1.5"/>
+      <text x="90" y="121" font-size="9.5" fill="#58a6ff" text-anchor="middle" font-weight="600">GitHub REST API</text>
+      <text x="90" y="134" font-size="8.5" fill="#6e7681" text-anchor="middle">free · GITHUB_TOKEN ✓</text>
+
+      <!-- HN -->
+      <rect x="10" y="164" width="160" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="90" y="179" font-size="9.5" fill="#3fb950" text-anchor="middle" font-weight="600">HN Algolia API</text>
+      <text x="90" y="192" font-size="8.5" fill="#6e7681" text-anchor="middle">free · no key required</text>
+
+      <!-- Reddit -->
+      <rect x="10" y="222" width="160" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="90" y="237" font-size="9.5" fill="#3fb950" text-anchor="middle" font-weight="600">Reddit Public API</text>
+      <text x="90" y="250" font-size="8.5" fill="#6e7681" text-anchor="middle">free · no auth needed</text>
+
+      <!-- RSS Feeds -->
+      <rect x="10" y="280" width="160" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="90" y="295" font-size="9.5" fill="#3fb950" text-anchor="middle" font-weight="600">RSS Feeds (8 sources)</text>
+      <text x="90" y="308" font-size="8.5" fill="#6e7681" text-anchor="middle">TechCrunch, VentureBeat…</text>
+
+      <!-- Firecrawl -->
+      <rect x="10" y="338" width="160" height="40" rx="7" fill="#161b22" stroke="#1f6feb" stroke-width="1.5"/>
+      <text x="90" y="353" font-size="9.5" fill="#58a6ff" text-anchor="middle" font-weight="600">Firecrawl API</text>
+      <text x="90" y="366" font-size="8.5" fill="#6e7681" text-anchor="middle">FIRECRAWL_API_KEY ✓</text>
+
+      <!-- Claude Haiku -->
+      <rect x="10" y="396" width="160" height="40" rx="7" fill="#161b22" stroke="#1f6feb" stroke-width="1.5"/>
+      <text x="90" y="411" font-size="9.5" fill="#58a6ff" text-anchor="middle" font-weight="600">Claude Haiku</text>
+      <text x="90" y="424" font-size="8.5" fill="#6e7681" text-anchor="middle">ANTHROPIC_API_KEY ✓</text>
+
+      <!-- ── ARROWS source → ingestion ── -->
+      <line x1="171" y1="68" x2="228" y2="68" stroke="#238636" stroke-width="1.5" marker-end="url(#arrg)"/>
+      <line x1="171" y1="126" x2="228" y2="116" stroke="#1f6feb" stroke-width="1.5" marker-end="url(#arrb)"/>
+      <line x1="171" y1="184" x2="228" y2="164" stroke="#238636" stroke-width="1.5" marker-end="url(#arrg)"/>
+      <line x1="171" y1="242" x2="228" y2="212" stroke="#238636" stroke-width="1.5" marker-end="url(#arrg)"/>
+      <line x1="171" y1="300" x2="228" y2="256" stroke="#238636" stroke-width="1.5" marker-end="url(#arrg)"/>
+      <line x1="171" y1="358" x2="500" y2="358" stroke="#1f6feb" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrb)"/>
+      <line x1="171" y1="416" x2="500" y2="398" stroke="#1f6feb" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrb)"/>
+
+      <!-- ── INGESTION SCRIPTS ── -->
+      <!-- ingest-product-hunt.ts -->
+      <rect x="230" y="48" width="190" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="325" y="63" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">ingest-product-hunt.ts</text>
+      <text x="325" y="76" font-size="8" fill="#6e7681" text-anchor="middle">daily 6am · inserts products</text>
+
+      <!-- snapshot-github-stars.ts [NEW] -->
+      <rect x="230" y="98" width="190" height="40" rx="7" fill="#0d1b2d" stroke="#1f6feb" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="325" y="113" font-size="9" fill="#58a6ff" text-anchor="middle" font-weight="600">snapshot-github-stars.ts ✦NEW</text>
+      <text x="325" y="126" font-size="8" fill="#6e7681" text-anchor="middle">daily 4am · star/fork counts</text>
+
+      <!-- ingest-hn -->
+      <rect x="230" y="148" width="190" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="325" y="163" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">ingest-hn.ts</text>
+      <text x="325" y="176" font-size="8" fill="#6e7681" text-anchor="middle">every 6h · Show HN posts</text>
+
+      <!-- ingest-reddit -->
+      <rect x="230" y="198" width="190" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="325" y="213" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">ingest-reddit.ts</text>
+      <text x="325" y="226" font-size="8" fill="#6e7681" text-anchor="middle">every 12h · SideProject</text>
+
+      <!-- ingest-news -->
+      <rect x="230" y="248" width="190" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="325" y="263" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">ingest-news.ts</text>
+      <text x="325" y="276" font-size="8" fill="#6e7681" text-anchor="middle">hourly · 8 RSS sources</text>
+
+      <!-- compute-signal-scores [MODIFIED] -->
+      <rect x="230" y="308" width="190" height="40" rx="7" fill="#2d1f02" stroke="#d29922" stroke-width="1.5"/>
+      <text x="325" y="323" font-size="9" fill="#d29922" text-anchor="middle" font-weight="600">compute-signal-scores.ts ✦MOD</text>
+      <text x="325" y="336" font-size="8" fill="#6e7681" text-anchor="middle">daily 5am · +github_velocity</text>
+
+      <!-- ── ENRICHMENT ── -->
+      <!-- enrich-firecrawl -->
+      <rect x="500" y="48" width="175" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="587" y="63" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">enrich-firecrawl.ts</text>
+      <text x="587" y="76" font-size="8" fill="#6e7681" text-anchor="middle">finds website/twitter/github</text>
+
+      <!-- enrich-attributes [NEW] -->
+      <rect x="500" y="108" width="175" height="50" rx="7" fill="#0d1b2d" stroke="#1f6feb" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="587" y="126" font-size="9" fill="#58a6ff" text-anchor="middle" font-weight="600">enrich-attributes.ts ✦NEW</text>
+      <text x="587" y="140" font-size="8" fill="#6e7681" text-anchor="middle">Firecrawl scrape → Haiku</text>
+      <text x="587" y="152" font-size="8" fill="#6e7681" text-anchor="middle">classify → product_tags</text>
+
+      <!-- enrich-relationships -->
+      <rect x="500" y="178" width="175" height="40" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="587" y="193" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">enrich-relationships.ts</text>
+      <text x="587" y="206" font-size="8" fill="#6e7681" text-anchor="middle">Haiku → product_alternatives</text>
+
+      <!-- Arrows ingestion → enrichment -->
+      <line x1="421" y1="68" x2="498" y2="68" stroke="#238636" stroke-width="1.5" marker-end="url(#arrg)"/>
+      <line x1="421" y1="118" x2="498" y2="133" stroke="#1f6feb" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrb)"/>
+      <line x1="421" y1="198" x2="498" y2="198" stroke="#238636" stroke-width="1.5" marker-end="url(#arrg)"/>
+
+      <!-- ── DATABASE TABLES ── -->
+      <!-- products -->
+      <rect x="710" y="38" width="200" height="36" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="810" y="55" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">products (14,114 rows)</text>
+      <text x="810" y="68" font-size="8" fill="#6e7681" text-anchor="middle">44 cols · backfill running</text>
+
+      <!-- github_snapshots [NEW] -->
+      <rect x="710" y="86" width="200" height="36" rx="7" fill="#0d1b2d" stroke="#1f6feb" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="810" y="103" font-size="9" fill="#58a6ff" text-anchor="middle" font-weight="600">github_snapshots ✦NEW</text>
+      <text x="810" y="116" font-size="8" fill="#6e7681" text-anchor="middle">product_id · date · stars · forks</text>
+
+      <!-- product_tags [EMPTY→FILL] -->
+      <rect x="710" y="134" width="200" height="36" rx="7" fill="#2d0f0f" stroke="#f85149" stroke-width="1.5"/>
+      <text x="810" y="151" font-size="9" fill="#f85149" text-anchor="middle" font-weight="600">product_tags (EMPTY → 42K+)</text>
+      <text x="810" y="164" font-size="8" fill="#6e7681" text-anchor="middle">product_id · tag_id</text>
+
+      <!-- signal_scores -->
+      <rect x="710" y="182" width="200" height="36" rx="7" fill="#2d1f02" stroke="#d29922" stroke-width="1.5"/>
+      <text x="810" y="199" font-size="9" fill="#d29922" text-anchor="middle" font-weight="600">product_signal_scores ✦MOD</text>
+      <text x="810" y="212" font-size="8" fill="#6e7681" text-anchor="middle">+github_velocity_score col</text>
+
+      <!-- social_mentions -->
+      <rect x="710" y="230" width="200" height="36" rx="7" fill="#161b22" stroke="#6e7681" stroke-width="1.5"/>
+      <text x="810" y="247" font-size="9" fill="#7d8590" text-anchor="middle" font-weight="600">social_mentions (filling)</text>
+      <text x="810" y="260" font-size="8" fill="#6e7681" text-anchor="middle">HN + Reddit via crons</text>
+
+      <!-- press_mentions -->
+      <rect x="710" y="278" width="200" height="36" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="810" y="295" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">press_mentions (73 → growing)</text>
+      <text x="810" y="308" font-size="8" fill="#6e7681" text-anchor="middle">hourly ingest-news.ts</text>
+
+      <!-- product_alternatives -->
+      <rect x="710" y="326" width="200" height="36" rx="7" fill="#161b22" stroke="#6e7681" stroke-width="1.5"/>
+      <text x="810" y="343" font-size="9" fill="#7d8590" text-anchor="middle" font-weight="600">product_alternatives (0→fill)</text>
+      <text x="810" y="356" font-size="8" fill="#6e7681" text-anchor="middle">enrich-relationships run</text>
+
+      <!-- tags (seeded) -->
+      <rect x="710" y="374" width="200" height="36" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="810" y="391" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">tags (80+ seeded ✓)</text>
+      <text x="810" y="404" font-size="8" fill="#6e7681" text-anchor="middle">10 groups · controlled vocab</text>
+
+      <!-- Arrows enrichment → DB -->
+      <line x1="676" y1="68" x2="708" y2="56" stroke="#238636" stroke-width="1.5" marker-end="url(#arrg)"/>
+      <line x1="676" y1="133" x2="708" y2="152" stroke="#1f6feb" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrb)"/>
+      <line x1="676" y1="198" x2="708" y2="350" stroke="#238636" stroke-width="1.5" marker-end="url(#arrg)"/>
+
+      <!-- Ingestion → DB -->
+      <line x1="421" y1="68" x2="708" y2="50" stroke="#238636" stroke-width="1" stroke-dasharray="3,3" opacity=".4" marker-end="url(#arrg)"/>
+      <line x1="421" y1="118" x2="708" y2="100" stroke="#1f6feb" stroke-width="1" stroke-dasharray="3,3" opacity=".5" marker-end="url(#arrb)"/>
+      <line x1="421" y1="168" x2="708" y2="240" stroke="#238636" stroke-width="1" stroke-dasharray="3,3" opacity=".4" marker-end="url(#arrg)"/>
+      <line x1="421" y1="268" x2="708" y2="290" stroke="#238636" stroke-width="1" stroke-dasharray="3,3" opacity=".4" marker-end="url(#arrg)"/>
+      <line x1="421" y1="328" x2="708" y2="200" stroke="#d29922" stroke-width="1" stroke-dasharray="3,3" opacity=".5" marker-end="url(#arr)"/>
+
+      <!-- ── UI LAYER ── -->
+      <!-- Existing pages -->
+      <rect x="950" y="38" width="230" height="36" rx="7" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="1065" y="55" font-size="9" fill="#3fb950" text-anchor="middle" font-weight="600">/products · /markets · /dossier</text>
+      <text x="1065" y="68" font-size="8" fill="#6e7681" text-anchor="middle">/explore · /graveyard · /insights</text>
+
+      <!-- Modified pages -->
+      <rect x="950" y="88" width="230" height="36" rx="7" fill="#2d1f02" stroke="#d29922" stroke-width="1.5"/>
+      <text x="1065" y="105" font-size="9" fill="#d29922" text-anchor="middle" font-weight="600">/products (tag sidebar) ✦MOD</text>
+      <text x="1065" y="118" font-size="8" fill="#6e7681" text-anchor="middle">/markets (attr chart) · /compare (AI)</text>
+
+      <!-- New pages -->
+      <rect x="950" y="138" width="230" height="36" rx="7" fill="#1f0f3d" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="1065" y="155" font-size="9" fill="#bc8cff" text-anchor="middle" font-weight="600">/trending ✦NEW</text>
+      <text x="1065" y="168" font-size="8" fill="#6e7681" text-anchor="middle">/functions · /tools-to</text>
+
+      <!-- /dossier rename -->
+      <rect x="950" y="188" width="230" height="36" rx="7" fill="#2d1f02" stroke="#d29922" stroke-width="1.5"/>
+      <text x="1065" y="205" font-size="9" fill="#d29922" text-anchor="middle" font-weight="600">/dossier/[slug] ✦RENAMED</text>
+      <text x="1065" y="218" font-size="8" fill="#6e7681" text-anchor="middle">/products/[slug] → 301 redirect</text>
+
+      <!-- Arrows DB → UI -->
+      <line x1="911" y1="56" x2="948" y2="56" stroke="#238636" stroke-width="1.5" marker-end="url(#arrg)"/>
+      <line x1="911" y1="200" x2="948" y2="106" stroke="#d29922" stroke-width="1" stroke-dasharray="3,3" opacity=".6" marker-end="url(#arr)"/>
+      <line x1="911" y1="152" x2="948" y2="156" stroke="#1f6feb" stroke-width="1" stroke-dasharray="3,3" opacity=".6" marker-end="url(#arrb)"/>
+      <line x1="911" y1="344" x2="948" y2="206" stroke="#238636" stroke-width="1" stroke-dasharray="3,3" opacity=".4" marker-end="url(#arrg)"/>
+
+      <!-- Legend -->
+      <rect x="710" y="440" width="460" height="62" rx="8" fill="#0d1117" stroke="#21262d"/>
+      <text x="730" y="458" font-size="9" fill="#6e7681" font-weight="700" letter-spacing=".05em">LEGEND</text>
+      <rect x="730" y="466" width="10" height="10" rx="2" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+      <text x="745" y="475" font-size="8.5" fill="#7d8590">Built &amp; running</text>
+      <rect x="820" y="466" width="10" height="10" rx="2" fill="#0d1b2d" stroke="#1f6feb" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="835" y="475" font-size="8.5" fill="#7d8590">New (to build)</text>
+      <rect x="910" y="466" width="10" height="10" rx="2" fill="#2d1f02" stroke="#d29922" stroke-width="1.5"/>
+      <text x="925" y="475" font-size="8.5" fill="#7d8590">Modified</text>
+      <rect x="990" y="466" width="10" height="10" rx="2" fill="#2d0f0f" stroke="#f85149" stroke-width="1.5"/>
+      <text x="1005" y="475" font-size="8.5" fill="#7d8590">Empty / needs data</text>
+      <line x1="730" y1="492" x2="760" y2="492" stroke="#238636" stroke-width="1.5"/>
+      <text x="765" y="495" font-size="8.5" fill="#7d8590">Existing data flow</text>
+      <line x1="820" y1="492" x2="850" y2="492" stroke="#1f6feb" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="855" y="495" font-size="8.5" fill="#7d8590">New data flow</text>
+    </svg>
+  </div>
+
+  <div class="callout" style="margin-top:1.5rem">
+    <strong>The critical path:</strong> <code>product_tags</code> being empty is the single biggest blocker. It kills 10+ features. Everything in Wave 1–3 is designed to fill that table and make signals real. Wave 4 builds the UI that consumes the data.
+  </div>
+</div>
+</section>
+
+<!-- ═══ WAVE 1 ═══ -->
+<section id="wave1">
+<div class="container">
+  <div class="wave-header">
+    <div class="wave-num">01</div>
+    <div class="wave-info">
+      <h3>Foundation — Scripts &amp; Migrations to Build</h3>
+      <p>Everything Claude Code builds. No data runs yet — just the plumbing.</p>
+    </div>
+  </div>
+
+  <div class="two-col" style="margin-bottom:3rem">
+    <div>
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:1.2rem;color:var(--muted)">TASKS</h3>
+      <ol class="steps">
+        <li class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>DB Migration 0008 — github_snapshots table</h4>
+            <p>New table: product_id, snapshot_date, stars, forks, open_issues. Daily snapshot for velocity calculation.</p>
+            <div class="step-meta">
+              <span class="pill new">new table</span>
+              <span class="pill planned">~10 min</span>
+            </div>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>DB Migration 0009 — signal score github col</h4>
+            <p>ALTER product_signal_scores ADD github_velocity_score NUMERIC(5,2) DEFAULT 0.</p>
+            <div class="step-meta"><span class="pill modified">alter table</span><span class="pill planned">~5 min</span></div>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>DB Migration 0010 — attribute_cohort_share view</h4>
+            <p>SQL view joining product_tags × products.launched_year → share_pct per tag per cohort. Powers the attribute market share chart.</p>
+            <div class="step-meta"><span class="pill new">new view</span><span class="pill planned">~15 min</span></div>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>scripts/snapshot-github-stars.ts</h4>
+            <p>Reads products WHERE github_repo IS NOT NULL. Calls GET /repos/{owner}/{repo} via GitHub REST API. Upserts into github_snapshots. 1.2s delay between calls. GITHUB_TOKEN optional (60→5000 req/hr).</p>
+            <div class="step-meta"><span class="pill new">new script</span><span class="pill planned">~4h build</span><span class="pill built">$0 cost</span></div>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>scripts/enrich-attributes.ts (most important)</h4>
+            <p>Firecrawl scrapes homepage + /pricing + /features per product. Haiku classifies into 10 tag groups. Inserts into product_tags. Skip-if-already-tagged for safe re-runs.</p>
+            <div class="step-meta"><span class="pill new">new script</span><span class="pill planned">~1 day build</span><span class="pill missing">~$50-70 one-time run</span></div>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <h4>Modify compute-signal-scores.ts</h4>
+            <p>Add fetchGitHubVelocity() function. Add computeGitHubStarVelocityScore() (log scale, 0-15 pts). Move cron from 3am → 5am (after github snapshot at 4am).</p>
+            <div class="step-meta"><span class="pill modified">modify existing</span><span class="pill planned">~2h</span></div>
+          </div>
+        </li>
+      </ol>
+    </div>
+    <div>
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:1.2rem;color:var(--muted)">enrich-attributes.ts PIPELINE</h3>
+      <div class="wf-wrap">
+        <div class="wf-label"><span>scripts/enrich-attributes.ts — Per-Product Flow</span></div>
+        <svg class="wf-svg" viewBox="0 0 500 520" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+          <rect width="500" height="520" fill="#f8fafc"/>
+
+          <!-- Step boxes -->
+          <!-- 1: Fetch product batch -->
+          <rect x="140" y="20" width="220" height="50" rx="8" fill="#fff" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="250" y="40" font-size="10" fill="#334155" text-anchor="middle" font-weight="700">1. FETCH PRODUCT BATCH</text>
+          <text x="250" y="55" font-size="9" fill="#64748b" text-anchor="middle">WHERE website_url IS NOT NULL</text>
+          <text x="250" y="66" font-size="9" fill="#64748b" text-anchor="middle">AND id NOT IN (product_tags) — skip tagged</text>
+
+          <!-- arrow 1→2 -->
+          <line x1="250" y1="70" x2="250" y2="90" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+          <defs><marker id="arr2" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto"><polygon points="0 0, 6 2.5, 0 5" fill="#94a3b8"/></marker></defs>
+
+          <!-- 2: Firecrawl scrape -->
+          <rect x="90" y="92" width="320" height="70" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+          <text x="250" y="112" font-size="10" fill="#1d4ed8" text-anchor="middle" font-weight="700">2. FIRECRAWL SCRAPE (up to 3 pages)</text>
+          <rect x="110" y="120" width="80" height="22" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+          <text x="150" y="134" font-size="8.5" fill="#1d4ed8" text-anchor="middle">homepage</text>
+          <rect x="205" y="120" width="80" height="22" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+          <text x="245" y="134" font-size="8.5" fill="#1d4ed8" text-anchor="middle">/pricing</text>
+          <rect x="300" y="120" width="90" height="22" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+          <text x="345" y="134" font-size="8.5" fill="#1d4ed8" text-anchor="middle">/features or /security</text>
+          <text x="250" y="155" font-size="8.5" fill="#64748b" text-anchor="middle">Concatenate markdown · max 8000 chars</text>
+
+          <!-- arrow 2→check -->
+          <line x1="250" y1="162" x2="250" y2="182" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+          <!-- decision: enough content? -->
+          <polygon points="250,184 310,210 250,236 190,210" fill="#fff" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="250" y="208" font-size="8.5" fill="#334155" text-anchor="middle">content</text>
+          <text x="250" y="220" font-size="8.5" fill="#334155" text-anchor="middle">&gt; 100 chars?</text>
+
+          <!-- NO branch -->
+          <line x1="191" y1="210" x2="60" y2="210" stroke="#f87171" stroke-width="1.5" marker-end="url(#arr2)"/>
+          <text x="125" y="204" font-size="8" fill="#ef4444" text-anchor="middle">NO</text>
+          <rect x="15" y="224" width="80" height="28" rx="6" fill="#fee2e2" stroke="#fca5a5"/>
+          <text x="55" y="241" font-size="8.5" fill="#b91c1c" text-anchor="middle">SKIP product</text>
+          <text x="55" y="252" font-size="8" fill="#64748b" text-anchor="middle">log &amp; continue</text>
+
+          <!-- YES arrow -->
+          <line x1="250" y1="236" x2="250" y2="256" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+          <text x="264" y="250" font-size="8" fill="#64748b">YES</text>
+
+          <!-- 3: Haiku classify -->
+          <rect x="90" y="258" width="320" height="60" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+          <text x="250" y="278" font-size="10" fill="#15803d" text-anchor="middle" font-weight="700">3. CLAUDE HAIKU CLASSIFICATION</text>
+          <text x="250" y="294" font-size="8.5" fill="#64748b" text-anchor="middle">10 tag groups · controlled vocab only</text>
+          <text x="250" y="308" font-size="8.5" fill="#64748b" text-anchor="middle">Returns JSON: capability[], audience[], pricing_model[]…</text>
+
+          <!-- arrow 3→4 -->
+          <line x1="250" y1="318" x2="250" y2="338" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+          <!-- 4: Validate -->
+          <rect x="140" y="340" width="220" height="46" rx="8" fill="#fff" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="250" y="360" font-size="10" fill="#334155" text-anchor="middle" font-weight="700">4. VALIDATE &amp; FILTER</text>
+          <text x="250" y="376" font-size="8.5" fill="#64748b" text-anchor="middle">Drop unknown slugs · max 4 tags/group</text>
+
+          <!-- arrow 4→5 -->
+          <line x1="250" y1="386" x2="250" y2="406" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+          <!-- 5: Insert product_tags -->
+          <rect x="100" y="408" width="300" height="50" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+          <text x="250" y="428" font-size="10" fill="#15803d" text-anchor="middle" font-weight="700">5. INSERT INTO product_tags</text>
+          <text x="250" y="444" font-size="8.5" fill="#64748b" text-anchor="middle">ON CONFLICT IGNORE · log progress every 100</text>
+
+          <!-- arrow 5→next -->
+          <line x1="250" y1="458" x2="250" y2="478" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+          <!-- Next product -->
+          <rect x="150" y="480" width="200" height="30" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
+          <text x="250" y="498" font-size="9" fill="#475569" text-anchor="middle">sleep 3000ms → next product</text>
+
+          <!-- Rate info -->
+          <rect x="330" y="258" width="150" height="52" rx="6" fill="#fef9c3" stroke="#fde68a"/>
+          <text x="405" y="278" font-size="8" fill="#92400e" text-anchor="middle" font-weight="600">RATE LIMITS</text>
+          <text x="405" y="293" font-size="8" fill="#78350f" text-anchor="middle">Firecrawl: 20 req/min</text>
+          <text x="405" y="306" font-size="8" fill="#78350f" text-anchor="middle">Haiku: 60 req/min</text>
+        </svg>
+        <div class="wf-annotation">
+          <span class="pill new">new script</span>
+          <span class="pill planned">~1 day to build</span>
+          <span class="pill missing">~$50-70 one-time run cost</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Signal score formula diagram -->
+  <h3 style="font-size:1rem;font-weight:600;margin-bottom:1.2rem;color:var(--muted)">SIGNAL SCORE FORMULA — BEFORE vs AFTER</h3>
+  <div class="two-col">
+    <div class="wf-wrap">
+      <div class="wf-label"><span>Current Formula (fake)</span> <span class="pill missing">mention_score = 0 for 99%</span></div>
+      <svg class="wf-svg" viewBox="0 0 500 220" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+        <rect width="500" height="220" fill="#f8fafc"/>
+        <!-- bars -->
+        <text x="20" y="30" font-size="9.5" fill="#334155" font-weight="600">Sub-score contributions (0-100 scale)</text>
+        <!-- recency 25/125 = 20% -->
+        <text x="20" y="56" font-size="9" fill="#475569">Recency Score</text>
+        <rect x="150" y="44" width="140" height="16" rx="3" fill="#3b82f6"/>
+        <text x="296" y="56" font-size="9" fill="#334155"> 25 pts</text>
+        <!-- richness -->
+        <text x="20" y="80" font-size="9" fill="#475569">Data Richness</text>
+        <rect x="150" y="68" width="112" height="16" rx="3" fill="#3b82f6"/>
+        <text x="268" y="80" font-size="9" fill="#334155"> 20 pts</text>
+        <!-- category heat -->
+        <text x="20" y="104" font-size="9" fill="#475569">Category Heat</text>
+        <rect x="150" y="92" width="84" height="16" rx="3" fill="#3b82f6"/>
+        <text x="240" y="104" font-size="9" fill="#334155"> 15 pts</text>
+        <!-- confidence -->
+        <text x="20" y="128" font-size="9" fill="#475569">Confidence</text>
+        <rect x="150" y="116" width="56" height="16" rx="3" fill="#3b82f6"/>
+        <text x="212" y="128" font-size="9" fill="#334155"> 10 pts</text>
+        <!-- mention score (mostly 0) -->
+        <text x="20" y="152" font-size="9" fill="#ef4444">Mention Score</text>
+        <rect x="150" y="140" width="3" height="16" rx="3" fill="#ef4444" opacity=".4"/>
+        <text x="160" y="152" font-size="9" fill="#ef4444"> ≈0 (no social_mentions)</text>
+        <!-- press score -->
+        <text x="20" y="176" font-size="9" fill="#ef4444">Press Score</text>
+        <rect x="150" y="164" width="5" height="16" rx="3" fill="#ef4444" opacity=".4"/>
+        <text x="162" y="176" font-size="9" fill="#ef4444"> ≈0 (73 articles / 14K products)</text>
+        <!-- funding score -->
+        <text x="20" y="200" font-size="9" fill="#ef4444">Funding Score</text>
+        <rect x="150" y="188" width="2" height="16" rx="3" fill="#ef4444" opacity=".4"/>
+        <text x="159" y="200" font-size="9" fill="#ef4444"> ≈0 (no funding data)</text>
+      </svg>
+    </div>
+    <div class="wf-wrap">
+      <div class="wf-label"><span>After this plan (real)</span> <span class="pill built">meaningful for 30%+ products immediately</span></div>
+      <svg class="wf-svg" viewBox="0 0 500 240" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+        <rect width="500" height="240" fill="#f8fafc"/>
+        <text x="20" y="30" font-size="9.5" fill="#334155" font-weight="600">Sub-score contributions (with real data)</text>
+        <!-- recency -->
+        <text x="20" y="56" font-size="9" fill="#475569">Recency Score</text>
+        <rect x="150" y="44" width="140" height="16" rx="3" fill="#3b82f6"/>
+        <text x="296" y="56" font-size="9" fill="#334155"> 25 pts</text>
+        <!-- richness -->
+        <text x="20" y="80" font-size="9" fill="#475569">Data Richness</text>
+        <rect x="150" y="68" width="112" height="16" rx="3" fill="#3b82f6"/>
+        <text x="268" y="80" font-size="9" fill="#334155"> 20 pts</text>
+        <!-- category heat -->
+        <text x="20" y="104" font-size="9" fill="#475569">Category Heat</text>
+        <rect x="150" y="92" width="84" height="16" rx="3" fill="#3b82f6"/>
+        <text x="240" y="104" font-size="9" fill="#334155"> 15 pts</text>
+        <!-- confidence -->
+        <text x="20" y="128" font-size="9" fill="#475569">Confidence</text>
+        <rect x="150" y="116" width="56" height="16" rx="3" fill="#3b82f6"/>
+        <text x="212" y="128" font-size="9" fill="#334155"> 10 pts</text>
+        <!-- GitHub velocity (NEW) -->
+        <text x="20" y="152" font-size="9" fill="#22c55e" font-weight="600">GitHub Star Velocity ✦NEW</text>
+        <rect x="150" y="140" width="84" height="16" rx="3" fill="#22c55e"/>
+        <text x="240" y="152" font-size="9" fill="#15803d"> 0-15 pts (log scale)</text>
+        <!-- mention score (accumulating) -->
+        <text x="20" y="176" font-size="9" fill="#f59e0b">Mention Score</text>
+        <rect x="150" y="164" width="56" height="16" rx="3" fill="#f59e0b" opacity=".7"/>
+        <text x="212" y="176" font-size="9" fill="#92400e"> growing via HN+Reddit crons</text>
+        <!-- press score -->
+        <text x="20" y="200" font-size="9" fill="#f59e0b">Press Score</text>
+        <rect x="150" y="188" width="42" height="16" rx="3" fill="#f59e0b" opacity=".7"/>
+        <text x="198" y="200" font-size="9" fill="#92400e"> growing via hourly news cron</text>
+        <!-- note -->
+        <rect x="20" y="215" width="460" height="20" rx="4" fill="#dcfce7" stroke="#86efac"/>
+        <text x="250" y="228" font-size="8.5" fill="#15803d" text-anchor="middle">Scores become real immediately after github snapshot run. Social grows over 30 days.</text>
+      </svg>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ WAVE 2 ═══ -->
+<section id="wave2">
+<div class="container">
+  <div class="wave-header">
+    <div class="wave-num">02</div>
+    <div class="wave-info">
+      <h3>Data Runs — Ali executes these in order</h3>
+      <p>Run after Wave 1 is built. These fill the DB with real data.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Command</th><th>What it does</th><th>Time</th><th>Cost</th><th>Unblocks</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span style="font-family:var(--mono);color:var(--accent)">2.1</span></td>
+          <td><code class="code-block" style="display:inline;padding:.15rem .4rem">npx supabase db push</code></td>
+          <td>Apply migrations 0008, 0009, 0010</td>
+          <td>2 min</td>
+          <td>$0</td>
+          <td>Everything below</td>
+        </tr>
+        <tr>
+          <td><span style="font-family:var(--mono);color:var(--accent)">2.2</span></td>
+          <td><code class="code-block" style="display:inline;padding:.15rem .4rem">pnpm signals</code></td>
+          <td>Score all 14,114 products (fills 7,839 missing scores)</td>
+          <td>20-30 min</td>
+          <td>$0</td>
+          <td>/trending page</td>
+        </tr>
+        <tr>
+          <td><span style="font-family:var(--mono);color:var(--accent)">2.3</span></td>
+          <td><code class="code-block" style="display:inline;padding:.15rem .4rem">pnpm enrich:relationships</code></td>
+          <td>Haiku finds 3 competitors per product → product_alternatives</td>
+          <td>2-3 hrs</td>
+          <td>~$4</td>
+          <td>/tools-to, /compare, /dossier</td>
+        </tr>
+        <tr>
+          <td><span style="font-family:var(--mono);color:var(--accent)">2.4</span></td>
+          <td><code class="code-block" style="display:inline;padding:.15rem .4rem">pnpm snapshot:github</code></td>
+          <td>First GitHub stars snapshot — seeds velocity baseline</td>
+          <td>4 min (w/ token)</td>
+          <td>$0</td>
+          <td>Signal score improvement</td>
+        </tr>
+        <tr>
+          <td><span style="font-family:var(--mono);color:var(--accent)">2.5</span></td>
+          <td><code class="code-block" style="display:inline;padding:.15rem .4rem">pnpm enrich:attributes:dry</code></td>
+          <td>Dry run first — inspect what would be tagged</td>
+          <td>5 min sample</td>
+          <td>~$0.50</td>
+          <td>Sanity check before real run</td>
+        </tr>
+        <tr>
+          <td><span style="font-family:var(--mono);color:var(--accent)">2.6</span></td>
+          <td><code class="code-block" style="display:inline;padding:.15rem .4rem">pnpm enrich:attributes</code></td>
+          <td>Full attribute extraction — runs overnight. Fills product_tags for all 14K products.</td>
+          <td>6-12 hrs</td>
+          <td>~$50-70</td>
+          <td>ALL tag-dependent features</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout" style="margin-top:1.5rem">
+    <strong>Note:</strong> Step 2.6 is safe to interrupt and restart — it skips products already in product_tags. Run it overnight via: <code>nohup pnpm enrich:attributes &gt; enrich.log 2&gt;&amp;1 &amp;</code>
+  </div>
+</div>
+</section>
+
+<!-- ═══ WAVE 3 ═══ -->
+<section id="wave3">
+<div class="container">
+  <div class="wave-header">
+    <div class="wave-num">03</div>
+    <div class="wave-info">
+      <h3>New Crons — Automated ongoing pipelines</h3>
+      <p>Two new GitHub Actions workflows + one schedule change.</p>
+    </div>
+  </div>
+  <div class="three-col" style="margin-bottom:2rem">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <span style="font-weight:600;font-size:.95rem">snapshot-github-stars.yml</span>
+        <span class="pill new">new</span>
+      </div>
+      <div class="code-block"><span class="code-key">schedule:</span> <span class="code-val">0 4 * * *</span><br><span class="code-comment"># Daily 4am UTC</span><br><span class="code-key">timeout:</span> <span class="code-val">30min</span><br><span class="code-key">secrets:</span><br>  <span class="code-val">NEXT_PUBLIC_SUPABASE_URL</span><br>  <span class="code-val">SUPABASE_SERVICE_ROLE_KEY</span><br>  <span class="code-val">GITHUB_TOKEN</span> <span class="code-comment"># auto-provided</span></div>
+      <p style="color:var(--muted);font-size:.82rem;margin-top:.75rem">No new secret needed — GITHUB_TOKEN is auto-provided at 1,000 req/hr in Actions.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <span style="font-weight:600;font-size:.95rem">enrich-attributes.yml</span>
+        <span class="pill new">new</span>
+      </div>
+      <div class="code-block"><span class="code-key">schedule:</span> <span class="code-val">0 2 * * 0</span><br><span class="code-comment"># Weekly Sunday 2am UTC</span><br><span class="code-key">timeout:</span> <span class="code-val">480min</span> <span class="code-comment"># 8h</span><br><span class="code-key">secrets:</span><br>  <span class="code-val">FIRECRAWL_API_KEY</span> <span class="code-comment"># ← ADD THIS</span><br>  <span class="code-val">ANTHROPIC_API_KEY</span><br>  <span class="code-val">SUPABASE_SERVICE_ROLE_KEY</span></div>
+      <p style="color:var(--muted);font-size:.82rem;margin-top:.75rem"><strong style="color:var(--yellow)">Action required:</strong> Add FIRECRAWL_API_KEY to repo → Settings → Secrets → Actions.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <span style="font-weight:600;font-size:.95rem">compute-signal-scores.yml</span>
+        <span class="pill modified">modified</span>
+      </div>
+      <div class="code-block"><span class="code-comment"># Change cron time only:</span><br><span class="code-key">BEFORE:</span> <span class="code-val">0 3 * * *</span><br><span class="code-key">AFTER:</span>  <span class="code-val">0 5 * * *</span><br><br><span class="code-comment"># Reason: github snapshot</span><br><span class="code-comment"># runs at 4am — scores</span><br><span class="code-comment"># must run AFTER snapshot</span><br><span class="code-comment"># to include velocity data</span></div>
+      <p style="color:var(--muted);font-size:.82rem;margin-top:.75rem">One-line change to existing workflow file.</p>
+    </div>
+  </div>
+
+  <!-- Daily cron timeline -->
+  <h3 style="font-size:1rem;font-weight:600;margin-bottom:1.2rem;color:var(--muted)">DAILY CRON SCHEDULE (UTC)</h3>
+  <div class="wf-wrap">
+    <svg class="wf-svg" viewBox="0 0 900 120" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <rect width="900" height="120" fill="#f8fafc"/>
+      <!-- Timeline bar -->
+      <rect x="30" y="50" width="840" height="4" rx="2" fill="#e2e8f0"/>
+      <!-- Hour marks -->
+      <text x="30" y="45" font-size="8" fill="#94a3b8" text-anchor="middle">0h</text>
+      <text x="30" y="108" font-size="7" fill="#cbd5e1" text-anchor="middle">|</text>
+      <text x="100" y="45" font-size="8" fill="#94a3b8" text-anchor="middle">2h</text>
+      <text x="170" y="45" font-size="8" fill="#94a3b8" text-anchor="middle">4h</text>
+      <text x="240" y="45" font-size="8" fill="#94a3b8" text-anchor="middle">5h</text>
+      <text x="310" y="45" font-size="8" fill="#94a3b8" text-anchor="middle">6h</text>
+      <text x="380" y="45" font-size="8" fill="#94a3b8" text-anchor="middle">7h</text>
+      <text x="450" y="45" font-size="8" fill="#94a3b8" text-anchor="middle">12h</text>
+      <text x="730" y="45" font-size="8" fill="#94a3b8" text-anchor="middle">18h</text>
+      <text x="870" y="45" font-size="8" fill="#94a3b8" text-anchor="middle">24h</text>
+
+      <!-- Cron events -->
+      <!-- 0h ingest-news (hourly - show as bar) -->
+      <rect x="30" y="58" width="840" height="8" rx="2" fill="#dcfce7" stroke="#86efac" stroke-width=".5" opacity=".6"/>
+      <text x="435" y="67" font-size="7" fill="#15803d" text-anchor="middle">ingest-news (hourly)</text>
+
+      <!-- 0h ingest-reddit (12h) -->
+      <rect x="30" y="70" width="10" height="8" rx="2" fill="#3b82f6"/>
+      <rect x="450" y="70" width="10" height="8" rx="2" fill="#3b82f6"/>
+      <text x="30" y="90" font-size="7.5" fill="#3b82f6" text-anchor="middle">reddit</text>
+
+      <!-- 2h enrich-attrs (weekly) -->
+      <rect x="100" y="70" width="10" height="8" rx="2" fill="#8b5cf6"/>
+      <text x="100" y="90" font-size="7.5" fill="#8b5cf6" text-anchor="middle">attrs*</text>
+
+      <!-- 4h github snapshot (NEW) -->
+      <rect x="170" y="70" width="10" height="8" rx="2" fill="#1d4ed8"/>
+      <text x="170" y="90" font-size="7.5" fill="#1d4ed8" text-anchor="middle">★ github</text>
+
+      <!-- 5h signal scores (MOVED from 3am) -->
+      <rect x="240" y="70" width="10" height="8" rx="2" fill="#d29922"/>
+      <text x="240" y="90" font-size="7.5" fill="#d29922" text-anchor="middle">signals↑</text>
+
+      <!-- 6h ingest-ph -->
+      <rect x="310" y="70" width="10" height="8" rx="2" fill="#3fb950"/>
+      <text x="310" y="90" font-size="7.5" fill="#3fb950" text-anchor="middle">PH</text>
+
+      <!-- 6h ingest-hn (every 6h: 0,6,12,18) -->
+      <rect x="310" y="80" width="10" height="8" rx="2" fill="#10b981" opacity=".7"/>
+      <rect x="450" y="80" width="10" height="8" rx="2" fill="#10b981" opacity=".7"/>
+      <rect x="730" y="80" width="10" height="8" rx="2" fill="#10b981" opacity=".7"/>
+      <text x="310" y="100" font-size="7.5" fill="#10b981" text-anchor="middle">HN</text>
+
+      <!-- 7h github-trending -->
+      <rect x="380" y="70" width="10" height="8" rx="2" fill="#3fb950"/>
+      <text x="380" y="90" font-size="7.5" fill="#3fb950" text-anchor="middle">gh-trend</text>
+
+      <text x="40" y="116" font-size="7.5" fill="#94a3b8">★ = new cron  ↑ = moved from 3am to 5am  * = weekly (Sunday only)</text>
+    </svg>
+  </div>
+</div>
+</section>
+
+<!-- ═══ WAVE 4 ═══ -->
+<section id="wave4">
+<div class="container">
+  <div class="wave-header">
+    <div class="wave-num">04</div>
+    <div class="wave-info">
+      <h3>New UI — 3 new pages, 4 modified pages</h3>
+      <p>Builds on Wave 1–3 data. All pages are tag-data-dependent — run Wave 2 first.</p>
+    </div>
+  </div>
+
+  <!-- /trending -->
+  <h3 style="font-size:1rem;font-weight:600;margin-bottom:.75rem;color:var(--muted)">/trending — New Page</h3>
+  <div class="wf-wrap" style="margin-bottom:2.5rem">
+    <div class="wf-label"><span>/trending</span><span class="pill new">NEW</span></div>
+    <svg class="wf-svg" viewBox="0 0 900 380" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <rect width="900" height="380" fill="#f8fafc"/>
+      <!-- Page heading -->
+      <rect x="30" y="18" width="240" height="22" rx="4" fill="#e2e8f0"/>
+      <text x="150" y="33" font-size="10" fill="#334155" text-anchor="middle" font-weight="700">🔥 Trending This Week</text>
+      <rect x="780" y="20" width="90" height="18" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+      <text x="825" y="32" font-size="8.5" fill="#1d4ed8" text-anchor="middle">Time filter ▾</text>
+
+      <!-- Section: Breakouts -->
+      <text x="30" y="62" font-size="9" fill="#ef4444" font-weight="700">🔥 BREAKOUTS — products w/ sharpest signal score increase</text>
+      <rect x="30" y="70" width="192" height="90" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="30" y="70" width="192" height="8" rx="4" fill="#fef3c7"/>
+      <rect x="40" y="84" width="32" height="32" rx="6" fill="#dbeafe"/>
+      <text x="56" y="105" font-size="8" fill="#1d4ed8" text-anchor="middle">logo</text>
+      <rect x="82" y="86" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="82" y="100" width="80" height="8" rx="3" fill="#f1f5f9"/>
+      <text x="40" y="138" font-size="8" fill="#ef4444" font-weight="600">+42 pts ↑</text>
+      <rect x="100" y="132" width="112" height="8" rx="3" fill="#f1f5f9"/>
+
+      <rect x="236" y="70" width="192" height="90" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="236" y="70" width="192" height="8" rx="4" fill="#fef3c7"/>
+      <rect x="246" y="84" width="32" height="32" rx="6" fill="#dcfce7"/>
+      <text x="262" y="105" font-size="8" fill="#15803d" text-anchor="middle">logo</text>
+      <rect x="288" y="86" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="288" y="100" width="80" height="8" rx="3" fill="#f1f5f9"/>
+      <text x="246" y="138" font-size="8" fill="#ef4444" font-weight="600">+38 pts ↑</text>
+      <rect x="306" y="132" width="112" height="8" rx="3" fill="#f1f5f9"/>
+
+      <rect x="442" y="70" width="192" height="90" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="442" y="70" width="192" height="8" rx="4" fill="#fef3c7"/>
+      <rect x="452" y="84" width="32" height="32" rx="6" fill="#fce7f3"/>
+      <rect x="488" y="86" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="488" y="100" width="80" height="8" rx="3" fill="#f1f5f9"/>
+      <text x="452" y="138" font-size="8" fill="#ef4444" font-weight="600">+31 pts ↑</text>
+      <rect x="512" y="132" width="112" height="8" rx="3" fill="#f1f5f9"/>
+
+      <rect x="648" y="70" width="192" height="90" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="648" y="70" width="192" height="8" rx="4" fill="#fef3c7"/>
+      <rect x="658" y="84" width="32" height="32" rx="6" fill="#ede9fe"/>
+      <rect x="694" y="86" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="694" y="100" width="80" height="8" rx="3" fill="#f1f5f9"/>
+      <text x="658" y="138" font-size="8" fill="#ef4444" font-weight="600">+27 pts ↑</text>
+      <rect x="718" y="132" width="112" height="8" rx="3" fill="#f1f5f9"/>
+
+      <!-- Section: Velocity Leaders -->
+      <text x="30" y="185" font-size="9" fill="#3b82f6" font-weight="700">📈 VELOCITY LEADERS — highest GitHub ★ gain (7d)</text>
+      <rect x="30" y="194" width="840" height="36" rx="6" fill="#fff" stroke="#e2e8f0"/>
+      <text x="44" y="214" font-size="8.5" fill="#475569" font-weight="600">1.</text>
+      <rect x="60" y="202" width="24" height="24" rx="4" fill="#dbeafe"/>
+      <rect x="92" y="206" width="100" height="8" rx="3" fill="#e2e8f0"/>
+      <text x="300" y="215" font-size="8.5" fill="#22c55e" font-weight="700">+1,240 ★</text>
+      <rect x="370" y="207" width="60" height="8" rx="3" fill="#dcfce7"/>
+      <rect x="440" y="207" width="80" height="8" rx="3" fill="#f1f5f9"/>
+
+      <rect x="30" y="234" width="840" height="36" rx="6" fill="#fff" stroke="#e2e8f0"/>
+      <text x="44" y="254" font-size="8.5" fill="#475569" font-weight="600">2.</text>
+      <rect x="60" y="242" width="24" height="24" rx="4" fill="#dcfce7"/>
+      <rect x="92" y="246" width="100" height="8" rx="3" fill="#e2e8f0"/>
+      <text x="300" y="255" font-size="8.5" fill="#22c55e" font-weight="700">+892 ★</text>
+      <rect x="440" y="247" width="80" height="8" rx="3" fill="#f1f5f9"/>
+
+      <!-- Section: New This Week -->
+      <text x="30" y="294" font-size="9" fill="#8b5cf6" font-weight="700">📦 NEW THIS WEEK — launched in the last 7 days</text>
+      <rect x="30" y="302" width="192" height="60" rx="6" fill="#faf5ff" stroke="#ede9fe" stroke-width="1.5"/>
+      <rect x="40" y="312" width="24" height="24" rx="4" fill="#ede9fe"/>
+      <rect x="72" y="314" width="100" height="8" rx="3" fill="#e2e8f0"/>
+      <rect x="72" y="326" width="70" height="6" rx="3" fill="#f3f4f6"/>
+      <text x="40" y="354" font-size="8" fill="#7c3aed">2d ago</text>
+
+      <rect x="236" y="302" width="192" height="60" rx="6" fill="#faf5ff" stroke="#ede9fe" stroke-width="1.5"/>
+      <rect x="246" y="312" width="24" height="24" rx="4" fill="#ede9fe"/>
+      <rect x="278" y="314" width="100" height="8" rx="3" fill="#e2e8f0"/>
+      <rect x="278" y="326" width="70" height="6" rx="3" fill="#f3f4f6"/>
+      <text x="246" y="354" font-size="8" fill="#7c3aed">4d ago</text>
+
+      <rect x="442" y="302" width="192" height="60" rx="6" fill="#faf5ff" stroke="#ede9fe" stroke-width="1.5"/>
+      <rect x="452" y="312" width="24" height="24" rx="4" fill="#ede9fe"/>
+      <rect x="484" y="314" width="100" height="8" rx="3" fill="#e2e8f0"/>
+      <rect x="484" y="326" width="70" height="6" rx="3" fill="#f3f4f6"/>
+      <text x="452" y="354" font-size="8" fill="#7c3aed">6d ago</text>
+    </svg>
+    <div class="wf-annotation">
+      <span class="pill new">new page</span>
+      <span class="pill missing">requires product_tags + signal scores</span>
+      <span class="pill planned">~8h build</span>
+    </div>
+  </div>
+
+  <!-- /products tag sidebar -->
+  <h3 style="font-size:1rem;font-weight:600;margin-bottom:.75rem;color:var(--muted)">/products — Tag Sidebar Filter</h3>
+  <div class="wf-wrap" style="margin-bottom:2.5rem">
+    <div class="wf-label"><span>/products (modified)</span><span class="pill modified">MODIFIED</span></div>
+    <svg class="wf-svg" viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <rect width="900" height="420" fill="#f8fafc"/>
+      <!-- Left sidebar -->
+      <rect x="20" y="20" width="200" height="380" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="34" y="42" font-size="9.5" fill="#334155" font-weight="700">Filters</text>
+      <rect x="34" y="50" width="172" height="1" fill="#e2e8f0"/>
+
+      <text x="34" y="68" font-size="8.5" fill="#6b7280" font-weight="600">CAPABILITY</text>
+      <rect x="34" y="74" width="10" height="10" rx="2" fill="#dbeafe" stroke="#93c5fd"/>
+      <text x="50" y="83" font-size="8" fill="#374151">API-first</text>
+      <text x="178" y="83" font-size="7.5" fill="#6b7280" text-anchor="end">1,204</text>
+      <rect x="34" y="90" width="10" height="10" rx="2" fill="#fff" stroke="#d1d5db"/>
+      <text x="50" y="99" font-size="8" fill="#374151">Open source</text>
+      <text x="178" y="99" font-size="7.5" fill="#6b7280" text-anchor="end">892</text>
+      <rect x="34" y="106" width="10" height="10" rx="2" fill="#dbeafe" stroke="#93c5fd"/>
+      <text x="50" y="115" font-size="8" fill="#374151">Self-hosted</text>
+      <text x="178" y="115" font-size="7.5" fill="#6b7280" text-anchor="end">614</text>
+
+      <rect x="34" y="130" width="172" height="1" fill="#e2e8f0"/>
+      <text x="34" y="148" font-size="8.5" fill="#6b7280" font-weight="600">PRICING MODEL</text>
+      <rect x="34" y="154" width="10" height="10" rx="2" fill="#dcfce7" stroke="#86efac"/>
+      <text x="50" y="163" font-size="8" fill="#374151">Freemium</text>
+      <text x="178" y="163" font-size="7.5" fill="#6b7280" text-anchor="end">3,421</text>
+      <rect x="34" y="170" width="10" height="10" rx="2" fill="#fff" stroke="#d1d5db"/>
+      <text x="50" y="179" font-size="8" fill="#374151">Free tier</text>
+      <text x="178" y="179" font-size="7.5" fill="#6b7280" text-anchor="end">2,108</text>
+      <rect x="34" y="186" width="10" height="10" rx="2" fill="#fff" stroke="#d1d5db"/>
+      <text x="50" y="195" font-size="8" fill="#374151">Per seat</text>
+      <text x="178" y="195" font-size="7.5" fill="#6b7280" text-anchor="end">1,876</text>
+
+      <rect x="34" y="210" width="172" height="1" fill="#e2e8f0"/>
+      <text x="34" y="228" font-size="8.5" fill="#6b7280" font-weight="600">COMPLIANCE</text>
+      <rect x="34" y="234" width="10" height="10" rx="2" fill="#fff" stroke="#d1d5db"/>
+      <text x="50" y="243" font-size="8" fill="#374151">SOC 2</text>
+      <text x="178" y="243" font-size="7.5" fill="#6b7280" text-anchor="end">287</text>
+      <rect x="34" y="250" width="10" height="10" rx="2" fill="#fff" stroke="#d1d5db"/>
+      <text x="50" y="259" font-size="8" fill="#374151">GDPR compliant</text>
+      <text x="178" y="259" font-size="7.5" fill="#6b7280" text-anchor="end">412</text>
+
+      <rect x="34" y="274" width="172" height="1" fill="#e2e8f0"/>
+      <text x="34" y="292" font-size="8.5" fill="#6b7280" font-weight="600">AUDIENCE</text>
+      <rect x="34" y="298" width="10" height="10" rx="2" fill="#fff" stroke="#d1d5db"/>
+      <text x="50" y="307" font-size="8" fill="#374151">Developers</text>
+      <text x="178" y="307" font-size="7.5" fill="#6b7280" text-anchor="end">4,102</text>
+      <rect x="34" y="314" width="10" height="10" rx="2" fill="#fff" stroke="#d1d5db"/>
+      <text x="50" y="323" font-size="8" fill="#374151">Startups</text>
+      <text x="178" y="323" font-size="7.5" fill="#6b7280" text-anchor="end">2,890</text>
+      <rect x="34" y="330" width="10" height="10" rx="2" fill="#fff" stroke="#d1d5db"/>
+      <text x="50" y="339" font-size="8" fill="#374151">Enterprise</text>
+      <text x="178" y="339" font-size="7.5" fill="#6b7280" text-anchor="end">1,204</text>
+
+      <rect x="34" y="360" width="172" height="28" rx="6" fill="#dbeafe" stroke="#93c5fd"/>
+      <text x="120" y="378" font-size="8.5" fill="#1d4ed8" text-anchor="middle" font-weight="600">Apply Filters (3 active)</text>
+
+      <!-- Right product grid (3 cols) -->
+      <text x="250" y="40" font-size="10" fill="#334155" font-weight="700">14,114 products</text>
+      <text x="800" y="40" font-size="8.5" fill="#6b7280" text-anchor="end">Sort: Signal Score ▾</text>
+
+      <!-- Row 1 -->
+      <rect x="240" y="50" width="205" height="110" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="256" y="64" width="36" height="36" rx="6" fill="#dbeafe"/>
+      <rect x="300" y="66" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="300" y="80" width="80" height="8" rx="3" fill="#f1f5f9"/>
+      <rect x="256" y="110" width="40" height="16" rx="12" fill="#dcfce7"/>
+      <text x="276" y="122" font-size="7" fill="#15803d" text-anchor="middle">api-first</text>
+      <rect x="302" y="110" width="44" height="16" rx="12" fill="#fef3c7"/>
+      <text x="324" y="122" font-size="7" fill="#92400e" text-anchor="middle">freemium</text>
+
+      <rect x="455" y="50" width="205" height="110" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="471" y="64" width="36" height="36" rx="6" fill="#dcfce7"/>
+      <rect x="515" y="66" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="515" y="80" width="80" height="8" rx="3" fill="#f1f5f9"/>
+      <rect x="471" y="110" width="52" height="16" rx="12" fill="#ede9fe"/>
+      <text x="497" y="122" font-size="7" fill="#6d28d9" text-anchor="middle">open-source</text>
+
+      <rect x="670" y="50" width="205" height="110" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="686" y="64" width="36" height="36" rx="6" fill="#fce7f3"/>
+      <rect x="730" y="66" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="730" y="80" width="80" height="8" rx="3" fill="#f1f5f9"/>
+      <rect x="686" y="110" width="40" height="16" rx="12" fill="#dcfce7"/>
+      <text x="706" y="122" font-size="7" fill="#15803d" text-anchor="middle">soc2</text>
+
+      <!-- Row 2 -->
+      <rect x="240" y="172" width="205" height="110" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="256" y="186" width="36" height="36" rx="6" fill="#fef3c7"/>
+      <rect x="300" y="188" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="300" y="202" width="80" height="8" rx="3" fill="#f1f5f9"/>
+
+      <rect x="455" y="172" width="205" height="110" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="471" y="186" width="36" height="36" rx="6" fill="#ede9fe"/>
+      <rect x="515" y="188" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="515" y="202" width="80" height="8" rx="3" fill="#f1f5f9"/>
+
+      <rect x="670" y="172" width="205" height="110" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="686" y="186" width="36" height="36" rx="6" fill="#dbeafe"/>
+      <rect x="730" y="188" width="120" height="10" rx="3" fill="#e2e8f0"/>
+      <rect x="730" y="202" width="80" height="8" rx="3" fill="#f1f5f9"/>
+
+      <!-- Pagination -->
+      <rect x="400" y="380" width="80" height="24" rx="4" fill="#f1f5f9" stroke="#e2e8f0"/>
+      <text x="440" y="396" font-size="8.5" fill="#374151" text-anchor="middle">← prev</text>
+      <rect x="492" y="380" width="80" height="24" rx="4" fill="#1d4ed8"/>
+      <text x="532" y="396" font-size="8.5" fill="#fff" text-anchor="middle">next →</text>
+    </svg>
+    <div class="wf-annotation">
+      <span class="pill modified">modified page</span>
+      <span class="pill missing">requires product_tags (0 rows currently)</span>
+      <span class="pill planned">~6h build</span>
+    </div>
+  </div>
+
+  <!-- /dossier attributes tab -->
+  <h3 style="font-size:1rem;font-weight:600;margin-bottom:.75rem;color:var(--muted)">/dossier/[slug] — Attributes Tab</h3>
+  <div class="wf-wrap" style="margin-bottom:2.5rem">
+    <div class="wf-label"><span>/dossier/[slug] — new Attributes section</span><span class="pill modified">MODIFIED</span></div>
+    <svg class="wf-svg" viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <rect width="900" height="320" fill="#f8fafc"/>
+      <!-- Tab bar -->
+      <rect x="30" y="20" width="840" height="36" rx="6" fill="#fff" stroke="#e2e8f0"/>
+      <rect x="40" y="26" width="70" height="24" rx="4" fill="#dbeafe"/>
+      <text x="75" y="42" font-size="8.5" fill="#1d4ed8" text-anchor="middle" font-weight="600">Overview</text>
+      <text x="145" y="42" font-size="8.5" fill="#6b7280" text-anchor="middle">Signals</text>
+      <rect x="180" y="26" width="82" height="24" rx="4" fill="#dcfce7"/>
+      <text x="221" y="42" font-size="8.5" fill="#15803d" text-anchor="middle" font-weight="600">Attributes ✦</text>
+      <text x="318" y="42" font-size="8.5" fill="#6b7280" text-anchor="middle">Alternatives</text>
+
+      <!-- About section (existing) -->
+      <rect x="30" y="70" width="840" height="60" rx="6" fill="#fff" stroke="#e2e8f0"/>
+      <text x="50" y="92" font-size="9.5" fill="#334155" font-weight="700">About</text>
+      <rect x="50" y="100" width="640" height="8" rx="3" fill="#e2e8f0"/>
+      <rect x="50" y="112" width="480" height="8" rx="3" fill="#e2e8f0"/>
+
+      <!-- New: Attributes section with tag pills -->
+      <text x="30" y="154" font-size="9" fill="#15803d" font-weight="700">✦ NEW: Attributes section (below About)</text>
+      <rect x="30" y="162" width="840" height="140" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <text x="50" y="184" font-size="9.5" fill="#334155" font-weight="700">Attributes</text>
+
+      <!-- Row 1 of tags -->
+      <rect x="50" y="192" width="62" height="20" rx="10" fill="#dbeafe" stroke="#93c5fd"/>
+      <text x="81" y="206" font-size="8" fill="#1d4ed8" text-anchor="middle">api-first</text>
+      <rect x="120" y="192" width="70" height="20" rx="10" fill="#dcfce7" stroke="#86efac"/>
+      <text x="155" y="206" font-size="8" fill="#15803d" text-anchor="middle">open-source</text>
+      <rect x="198" y="192" width="64" height="20" rx="10" fill="#fef3c7" stroke="#fde68a"/>
+      <text x="230" y="206" font-size="8" fill="#92400e" text-anchor="middle">freemium</text>
+      <rect x="270" y="192" width="52" height="20" rx="10" fill="#ede9fe" stroke="#c4b5fd"/>
+      <text x="296" y="206" font-size="8" fill="#6d28d9" text-anchor="middle">soc2 ✓</text>
+      <rect x="330" y="192" width="76" height="20" rx="10" fill="#fce7f3" stroke="#fbcfe8"/>
+      <text x="368" y="206" font-size="8" fill="#9d174d" text-anchor="middle">enterprise</text>
+      <rect x="414" y="192" width="74" height="20" rx="10" fill="#f0fdf4" stroke="#86efac"/>
+      <text x="451" y="206" font-size="8" fill="#15803d" text-anchor="middle">gdpr-ready</text>
+
+      <!-- Row 2 of tags -->
+      <rect x="50" y="220" width="82" height="20" rx="10" fill="#fff7ed" stroke="#fed7aa"/>
+      <text x="91" y="234" font-size="8" fill="#c2410c" text-anchor="middle">self-hosted ✓</text>
+      <rect x="140" y="220" width="72" height="20" rx="10" fill="#f5f3ff" stroke="#ddd6fe"/>
+      <text x="176" y="234" font-size="8" fill="#5b21b6" text-anchor="middle">developers</text>
+      <rect x="220" y="220" width="56" height="20" rx="10" fill="#ecfdf5" stroke="#a7f3d0"/>
+      <text x="248" y="234" font-size="8" fill="#065f46" text-anchor="middle">free-tier</text>
+      <rect x="284" y="220" width="64" height="20" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+      <text x="316" y="234" font-size="8" fill="#1e40af" text-anchor="middle">per-seat</text>
+
+      <!-- Group labels -->
+      <text x="50" y="262" font-size="8" fill="#6b7280">capability</text>
+      <rect x="50" y="266" width="248" height="1" fill="#e2e8f0"/>
+      <text x="310" y="262" font-size="8" fill="#6b7280">pricing</text>
+      <rect x="310" y="266" width="192" height="1" fill="#e2e8f0"/>
+      <text x="514" y="262" font-size="8" fill="#6b7280">compliance</text>
+      <rect x="514" y="266" width="130" height="1" fill="#e2e8f0"/>
+
+      <text x="50" y="292" font-size="8" fill="#9ca3af" font-style="italic">Classified by Claude Haiku from homepage + pricing + features pages</text>
+    </svg>
+    <div class="wf-annotation">
+      <span class="pill modified">modified page</span>
+      <span class="pill new">new Attributes section</span>
+      <span class="pill planned">~3h build</span>
+    </div>
+  </div>
+
+  <!-- /markets attribute chart -->
+  <h3 style="font-size:1rem;font-weight:600;margin-bottom:.75rem;color:var(--muted)">/markets — Attribute Cohort Chart</h3>
+  <div class="wf-wrap" style="margin-bottom:2.5rem">
+    <div class="wf-label"><span>/markets — new stacked area chart section</span><span class="pill modified">MODIFIED</span></div>
+    <svg class="wf-svg" viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <rect width="900" height="300" fill="#f8fafc"/>
+      <text x="30" y="30" font-size="10" fill="#334155" font-weight="700">Attribute Share by Launch Year</text>
+      <text x="30" y="46" font-size="8.5" fill="#6b7280">% of products launched per year with each attribute tag</text>
+
+      <!-- Chart area -->
+      <rect x="60" y="60" width="800" height="180" rx="4" fill="#fff" stroke="#e2e8f0"/>
+
+      <!-- Y axis labels -->
+      <text x="52" y="64" font-size="7.5" fill="#9ca3af" text-anchor="end">100%</text>
+      <text x="52" y="105" font-size="7.5" fill="#9ca3af" text-anchor="end">75%</text>
+      <text x="52" y="150" font-size="7.5" fill="#9ca3af" text-anchor="end">50%</text>
+      <text x="52" y="195" font-size="7.5" fill="#9ca3af" text-anchor="end">25%</text>
+      <text x="52" y="240" font-size="7.5" fill="#9ca3af" text-anchor="end">0%</text>
+
+      <!-- Grid lines -->
+      <line x1="60" y1="105" x2="860" y2="105" stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="60" y1="150" x2="860" y2="150" stroke="#f1f5f9" stroke-width="1"/>
+      <line x1="60" y1="195" x2="860" y2="195" stroke="#f1f5f9" stroke-width="1"/>
+
+      <!-- Stacked area paths (approximate, illustrative) -->
+      <!-- api-first: grows from ~5% in 2010 to ~35% in 2024 -->
+      <path d="M60,228 L120,224 L180,218 L240,210 L300,200 L360,188 L420,175 L480,162 L540,150 L600,138 L660,125 L720,112 L780,100 L840,90 L860,87 L860,240 L60,240 Z" fill="#3b82f6" opacity=".4"/>
+      <path d="M60,228 L120,224 L180,218 L240,210 L300,200 L360,188 L420,175 L480,162 L540,150 L600,138 L660,125 L720,112 L780,100 L840,90 L860,87" stroke="#3b82f6" stroke-width="2" fill="none"/>
+
+      <!-- freemium: stable ~30-40% -->
+      <path d="M60,162 L120,158 L180,155 L240,152 L300,149 L360,146 L420,144 L480,142 L540,140 L600,138 L660,136 L720,134 L780,132 L840,130 L860,129 L860,87 L840,90 L780,100 L720,112 L660,125 L600,138 L540,150 L480,162 L420,175 L360,188 L300,200 L240,210 L180,218 L120,224 L60,228 Z" fill="#22c55e" opacity=".35"/>
+
+      <!-- self-hosted: slow growth -->
+      <path d="M60,195 L120,193 L180,190 L240,187 L300,184 L360,180 L420,176 L480,171 L540,167 L600,162 L660,157 L720,152 L780,146 L840,140 L860,138" stroke="#f59e0b" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+
+      <!-- X axis labels -->
+      <text x="60" y="256" font-size="7.5" fill="#9ca3af" text-anchor="middle">2010</text>
+      <text x="160" y="256" font-size="7.5" fill="#9ca3af" text-anchor="middle">2012</text>
+      <text x="260" y="256" font-size="7.5" fill="#9ca3af" text-anchor="middle">2014</text>
+      <text x="360" y="256" font-size="7.5" fill="#9ca3af" text-anchor="middle">2016</text>
+      <text x="460" y="256" font-size="7.5" fill="#9ca3af" text-anchor="middle">2018</text>
+      <text x="560" y="256" font-size="7.5" fill="#9ca3af" text-anchor="middle">2020</text>
+      <text x="660" y="256" font-size="7.5" fill="#9ca3af" text-anchor="middle">2022</text>
+      <text x="760" y="256" font-size="7.5" fill="#9ca3af" text-anchor="middle">2024</text>
+
+      <!-- Legend -->
+      <rect x="60" y="268" width="12" height="8" rx="2" fill="#3b82f6" opacity=".6"/>
+      <text x="78" y="276" font-size="8" fill="#374151">api-first</text>
+      <rect x="140" y="268" width="12" height="8" rx="2" fill="#22c55e" opacity=".6"/>
+      <text x="158" y="276" font-size="8" fill="#374151">freemium</text>
+      <line x1="228" y1="272" x2="252" y2="272" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,2"/>
+      <text x="258" y="276" font-size="8" fill="#374151">self-hosted</text>
+      <text x="700" y="276" font-size="8" fill="#9ca3af">Powered by attribute_cohort_share view</text>
+    </svg>
+    <div class="wf-annotation">
+      <span class="pill modified">modified page</span>
+      <span class="pill new">new chart section</span>
+      <span class="pill missing">requires product_tags + migration 0010 (view)</span>
+      <span class="pill planned">~4h build</span>
+    </div>
+  </div>
+
+  <!-- /functions -->
+  <h3 style="font-size:1rem;font-weight:600;margin-bottom:.75rem;color:var(--muted)">/functions — Capability Tag Hub</h3>
+  <div class="wf-wrap" style="margin-bottom:2.5rem">
+    <div class="wf-label"><span>/functions</span><span class="pill new">NEW</span></div>
+    <svg class="wf-svg" viewBox="0 0 900 280" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <rect width="900" height="280" fill="#f8fafc"/>
+      <rect x="30" y="18" width="220" height="22" rx="4" fill="#e2e8f0"/>
+      <text x="140" y="33" font-size="10" fill="#334155" text-anchor="middle" font-weight="700">Product Capabilities</text>
+      <text x="30" y="56" font-size="8.5" fill="#6b7280">Browse by what products can do</text>
+
+      <!-- Capability cards 4-col -->
+      <rect x="30" y="68" width="196" height="86" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="50" y="90" font-size="10" fill="#334155" font-weight="600">API-first</text>
+      <text x="50" y="106" font-size="8.5" fill="#6b7280">1,204 products</text>
+      <!-- 8 mini logos -->
+      <rect x="50" y="114" width="18" height="18" rx="3" fill="#dbeafe"/><rect x="72" y="114" width="18" height="18" rx="3" fill="#dcfce7"/>
+      <rect x="94" y="114" width="18" height="18" rx="3" fill="#fef3c7"/><rect x="116" y="114" width="18" height="18" rx="3" fill="#ede9fe"/>
+      <rect x="138" y="114" width="18" height="18" rx="3" fill="#fce7f3"/><rect x="160" y="114" width="18" height="18" rx="3" fill="#dbeafe"/>
+      <rect x="182" y="114" width="18" height="18" rx="3" fill="#dcfce7"/><rect x="204" y="114" width="18" height="18" rx="3" fill="#fef3c7"/>
+      <text x="197" y="147" font-size="8" fill="#3b82f6" text-anchor="end">View all →</text>
+
+      <rect x="238" y="68" width="196" height="86" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="258" y="90" font-size="10" fill="#334155" font-weight="600">Open Source</text>
+      <text x="258" y="106" font-size="8.5" fill="#6b7280">892 products</text>
+      <rect x="258" y="114" width="18" height="18" rx="3" fill="#dcfce7"/><rect x="280" y="114" width="18" height="18" rx="3" fill="#dbeafe"/>
+      <rect x="302" y="114" width="18" height="18" rx="3" fill="#ede9fe"/><rect x="324" y="114" width="18" height="18" rx="3" fill="#fef3c7"/>
+      <rect x="346" y="114" width="18" height="18" rx="3" fill="#fce7f3"/><rect x="368" y="114" width="18" height="18" rx="3" fill="#dcfce7"/>
+      <rect x="390" y="114" width="18" height="18" rx="3" fill="#dbeafe"/><rect x="412" y="114" width="18" height="18" rx="3" fill="#ede9fe"/>
+      <text x="405" y="147" font-size="8" fill="#3b82f6" text-anchor="end">View all →</text>
+
+      <rect x="446" y="68" width="196" height="86" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="466" y="90" font-size="10" fill="#334155" font-weight="600">Self-hosted</text>
+      <text x="466" y="106" font-size="8.5" fill="#6b7280">614 products</text>
+      <rect x="466" y="114" width="18" height="18" rx="3" fill="#fef3c7"/><rect x="488" y="114" width="18" height="18" rx="3" fill="#dbeafe"/>
+      <rect x="510" y="114" width="18" height="18" rx="3" fill="#dcfce7"/><rect x="532" y="114" width="18" height="18" rx="3" fill="#ede9fe"/>
+      <rect x="554" y="114" width="18" height="18" rx="3" fill="#fce7f3"/><rect x="576" y="114" width="18" height="18" rx="3" fill="#dbeafe"/>
+      <rect x="598" y="114" width="18" height="18" rx="3" fill="#dcfce7"/><rect x="620" y="114" width="18" height="18" rx="3" fill="#fef3c7"/>
+      <text x="613" y="147" font-size="8" fill="#3b82f6" text-anchor="end">View all →</text>
+
+      <rect x="654" y="68" width="196" height="86" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="674" y="90" font-size="10" fill="#334155" font-weight="600">SOC 2</text>
+      <text x="674" y="106" font-size="8.5" fill="#6b7280">287 products</text>
+      <rect x="674" y="114" width="18" height="18" rx="3" fill="#ede9fe"/><rect x="696" y="114" width="18" height="18" rx="3" fill="#dcfce7"/>
+      <rect x="718" y="114" width="18" height="18" rx="3" fill="#dbeafe"/><rect x="740" y="114" width="18" height="18" rx="3" fill="#fce7f3"/>
+      <rect x="762" y="114" width="18" height="18" rx="3" fill="#fef3c7"/><rect x="784" y="114" width="18" height="18" rx="3" fill="#ede9fe"/>
+      <rect x="806" y="114" width="18" height="18" rx="3" fill="#dbeafe"/><rect x="828" y="114" width="18" height="18" rx="3" fill="#dcfce7"/>
+      <text x="821" y="147" font-size="8" fill="#3b82f6" text-anchor="end">View all →</text>
+
+      <!-- Row 2 -->
+      <rect x="30" y="168" width="196" height="86" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="50" y="190" font-size="10" fill="#334155" font-weight="600">GDPR Compliant</text>
+      <text x="50" y="206" font-size="8.5" fill="#6b7280">412 products</text>
+
+      <rect x="238" y="168" width="196" height="86" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="258" y="190" font-size="10" fill="#334155" font-weight="600">Mobile App</text>
+      <text x="258" y="206" font-size="8.5" fill="#6b7280">1,891 products</text>
+
+      <rect x="446" y="168" width="196" height="86" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="466" y="190" font-size="10" fill="#334155" font-weight="600">AI-powered</text>
+      <text x="466" y="206" font-size="8.5" fill="#6b7280">3,104 products</text>
+
+      <rect x="654" y="168" width="196" height="86" rx="8" fill="#e8f5e9" stroke="#a5d6a7" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="752" y="190" font-size="9" fill="#2e7d32" text-anchor="middle">+ more tag groups…</text>
+    </svg>
+    <div class="wf-annotation">
+      <span class="pill new">new page</span>
+      <span class="pill missing">requires product_tags</span>
+      <span class="pill planned">~6h build</span>
+    </div>
+  </div>
+
+  <!-- /tools-to -->
+  <h3 style="font-size:1rem;font-weight:600;margin-bottom:.75rem;color:var(--muted)">/tools-to — Replacement Search</h3>
+  <div class="wf-wrap" style="margin-bottom:2.5rem">
+    <div class="wf-label"><span>/tools-to</span><span class="pill new">NEW</span></div>
+    <svg class="wf-svg" viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <rect width="900" height="320" fill="#f8fafc"/>
+      <!-- Hero search -->
+      <rect x="200" y="20" width="500" height="28" rx="4" fill="#e2e8f0"/>
+      <text x="450" y="38" font-size="10" fill="#334155" text-anchor="middle" font-weight="700">Tools to replace…</text>
+      <rect x="150" y="56" width="600" height="40" rx="8" fill="#fff" stroke="#93c5fd" stroke-width="2"/>
+      <text x="200" y="80" font-size="10" fill="#9ca3af">What are you trying to replace? e.g. "Notion", "Jira", "Slack"</text>
+      <rect x="718" y="62" width="22" height="22" rx="4" fill="#dbeafe"/>
+      <text x="729" y="77" font-size="11" fill="#1d4ed8" text-anchor="middle">⌕</text>
+
+      <!-- Replacement cards -->
+      <text x="30" y="120" font-size="8.5" fill="#6b7280">Popular replacements</text>
+
+      <!-- Replace Notion card -->
+      <rect x="30" y="130" width="260" height="160" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="50" y="154" font-size="9" fill="#6b7280">Replace</text>
+      <rect x="50" y="160" width="70" height="22" rx="4" fill="#fef9c3" stroke="#fde68a"/>
+      <text x="85" y="175" font-size="9.5" fill="#92400e" text-anchor="middle" font-weight="700">Notion</text>
+      <text x="135" y="171" font-size="9" fill="#374151" font-weight="600">with:</text>
+      <rect x="50" y="192" width="220" height="28" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+      <rect x="58" y="200" width="16" height="12" rx="2" fill="#bbf7d0"/>
+      <text x="82" y="211" font-size="8.5" fill="#15803d" font-weight="600">Coda</text>
+      <rect x="50" y="226" width="220" height="28" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+      <rect x="58" y="234" width="16" height="12" rx="2" fill="#bbf7d0"/>
+      <text x="82" y="245" font-size="8.5" fill="#15803d" font-weight="600">AppFlowy</text>
+      <text x="200" y="245" font-size="7.5" fill="#15803d" font-weight="600">open-source</text>
+      <rect x="50" y="260" width="220" height="28" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+      <rect x="58" y="268" width="16" height="12" rx="2" fill="#bbf7d0"/>
+      <text x="82" y="279" font-size="8.5" fill="#15803d" font-weight="600">Outline</text>
+
+      <!-- Replace Slack card -->
+      <rect x="310" y="130" width="260" height="160" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="330" y="154" font-size="9" fill="#6b7280">Replace</text>
+      <rect x="330" y="160" width="70" height="22" rx="4" fill="#fce7f3" stroke="#fbcfe8"/>
+      <text x="365" y="175" font-size="9.5" fill="#9d174d" text-anchor="middle" font-weight="700">Slack</text>
+      <text x="415" y="171" font-size="9" fill="#374151" font-weight="600">with:</text>
+      <rect x="330" y="192" width="220" height="28" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+      <rect x="338" y="200" width="16" height="12" rx="2" fill="#bbf7d0"/>
+      <text x="362" y="211" font-size="8.5" fill="#15803d" font-weight="600">Mattermost</text>
+      <rect x="330" y="226" width="220" height="28" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+      <rect x="338" y="234" width="16" height="12" rx="2" fill="#bbf7d0"/>
+      <text x="362" y="245" font-size="8.5" fill="#15803d" font-weight="600">Zulip</text>
+      <rect x="330" y="260" width="220" height="28" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+      <rect x="338" y="268" width="16" height="12" rx="2" fill="#bbf7d0"/>
+      <text x="362" y="279" font-size="8.5" fill="#15803d" font-weight="600">Discord (for teams)</text>
+
+      <!-- Replace Jira card -->
+      <rect x="590" y="130" width="280" height="160" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <text x="610" y="154" font-size="9" fill="#6b7280">Replace</text>
+      <rect x="610" y="160" width="60" height="22" rx="4" fill="#eff6ff" stroke="#bfdbfe"/>
+      <text x="640" y="175" font-size="9.5" fill="#1e40af" text-anchor="middle" font-weight="700">Jira</text>
+      <text x="686" y="171" font-size="9" fill="#374151" font-weight="600">with:</text>
+      <rect x="610" y="192" width="240" height="28" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+      <text x="630" y="211" font-size="8.5" fill="#15803d" font-weight="600">Linear</text>
+      <rect x="610" y="226" width="240" height="28" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+      <text x="630" y="245" font-size="8.5" fill="#15803d" font-weight="600">Plane (open-source)</text>
+      <rect x="610" y="260" width="240" height="28" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+      <text x="630" y="279" font-size="8.5" fill="#15803d" font-weight="600">Height</text>
+    </svg>
+    <div class="wf-annotation">
+      <span class="pill new">new page</span>
+      <span class="pill missing">requires product_alternatives table</span>
+      <span class="pill planned">~5h build</span>
+    </div>
+  </div>
+
+  <!-- /compare AI verdict -->
+  <h3 style="font-size:1rem;font-weight:600;margin-bottom:.75rem;color:var(--muted)">/compare — AI Verdict Card</h3>
+  <div class="wf-wrap" style="margin-bottom:2rem">
+    <div class="wf-label"><span>/compare/[slug-a]-vs-[slug-b] — new AI verdict section</span><span class="pill modified">MODIFIED</span></div>
+    <svg class="wf-svg" viewBox="0 0 900 260" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+      <rect width="900" height="260" fill="#f8fafc"/>
+      <!-- Existing signal charts (placeholder) -->
+      <rect x="30" y="20" width="840" height="100" rx="8" fill="#fff" stroke="#e2e8f0"/>
+      <text x="50" y="44" font-size="9.5" fill="#334155" font-weight="700">Signal Comparison Charts (existing)</text>
+      <rect x="50" y="54" width="380" height="50" rx="4" fill="#f1f5f9"/>
+      <rect x="460" y="54" width="380" height="50" rx="4" fill="#f1f5f9"/>
+      <text x="240" y="83" font-size="8" fill="#6b7280" text-anchor="middle">Product A bar charts…</text>
+      <text x="650" y="83" font-size="8" fill="#6b7280" text-anchor="middle">Product B bar charts…</text>
+
+      <!-- NEW: AI Verdict card -->
+      <text x="30" y="142" font-size="9" fill="#8b5cf6" font-weight="700">✦ NEW: AI Verdict Card (below signal charts)</text>
+      <rect x="30" y="150" width="840" height="90" rx="8" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+      <!-- Winner badge -->
+      <rect x="50" y="168" width="90" height="28" rx="6" fill="#7c3aed"/>
+      <text x="95" y="186" font-size="9" fill="#fff" text-anchor="middle" font-weight="700">🏆 Linear wins</text>
+
+      <!-- Verdict text -->
+      <rect x="152" y="168" width="598" height="44" rx="4" fill="#fff" stroke="#e9d5ff"/>
+      <text x="168" y="184" font-size="8.5" fill="#374151">Linear edges out Jira for modern dev teams: faster interface, better GitHub integration, and transparent pricing.</text>
+      <text x="168" y="200" font-size="8.5" fill="#374151">Jira wins for enterprise compliance needs and legacy workflow customization. Signal gap: +18 pts.</text>
+
+      <!-- Attribution -->
+      <rect x="762" y="168" width="92" height="22" rx="4" fill="#f3f4f6" stroke="#e5e7eb"/>
+      <text x="808" y="183" font-size="7.5" fill="#6b7280" text-anchor="middle">Claude Sonnet 4.6</text>
+    </svg>
+    <div class="wf-annotation">
+      <span class="pill modified">modified page</span>
+      <span class="pill new">AI verdict card</span>
+      <span class="pill planned">~4h build</span>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<!-- ═══ EXISTING PAGES ═══ -->
+<section id="existing">
+<div class="container">
+  <div class="section-tag">Current State</div>
+  <h2>Existing Pages</h2>
+  <p class="section-sub">All 12 current routes, their build status, and what data they depend on.</p>
+
+  <div class="card-grid cols-4">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/</code>
+        <span class="pill built">✓ live</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Homepage — hero + stats + recent products. No tag data required.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/products</code>
+        <span class="pill modified">⚠ modify</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Product browser. Works now. Adding tag sidebar in Wave 4.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/markets</code>
+        <span class="pill modified">⚠ modify</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Category market view. Works. Adding attribute cohort chart.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/dossier/[slug]</code>
+        <span class="pill modified">⚠ modify</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Product detail. Works. Adding Attributes tab + renaming to /products/[slug].</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/explore</code>
+        <span class="pill built">✓ live</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Category explorer grid. No changes planned.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/graveyard</code>
+        <span class="pill built">✓ live</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Dead/discontinued products. Fixed in last session. No changes planned.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/insights</code>
+        <span class="pill built">✓ live</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Stats dashboard. No changes planned.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/compare</code>
+        <span class="pill modified">⚠ modify</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">A vs B comparison. Works. Adding AI verdict card in Wave 4.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/trending</code>
+        <span class="pill missing">✗ missing</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">New page. Requires signal scores + star velocity data. Build in Wave 4.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/functions</code>
+        <span class="pill missing">✗ missing</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">New page. Capability tag hub. Requires product_tags. Build in Wave 4.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/tools-to</code>
+        <span class="pill missing">✗ missing</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">New page. Replacement finder. Requires product_alternatives. Build in Wave 4.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+        <code style="font-family:var(--mono);font-size:.8rem;color:var(--accent)">/search</code>
+        <span class="pill modified">⚠ partial</span>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted)">Search written (searchProducts()) but not wired to any page. Sprint 1 blocker.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ COST & TIMELINE ═══ -->
+<section id="cost">
+<div class="container">
+  <div class="section-tag">Cost &amp; Timeline</div>
+  <h2>What This Plan Costs</h2>
+  <p class="section-sub">One-time setup costs vs ongoing monthly. Everything runs on existing infra.</p>
+
+  <div class="two-col" style="margin-bottom:2rem">
+    <div>
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem;color:var(--muted)">ONE-TIME COSTS</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Item</th><th>Cost</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>enrich-attributes.ts (full run)</td>
+              <td><span style="color:var(--yellow);font-family:var(--mono)">~$50-70</span></td>
+              <td>Firecrawl: ~$30-40 · Haiku: ~$20-30</td>
+            </tr>
+            <tr>
+              <td>enrich-relationships.ts (full run)</td>
+              <td><span style="color:var(--yellow);font-family:var(--mono)">~$4</span></td>
+              <td>Haiku · 14,114 products · 3 alts each</td>
+            </tr>
+            <tr>
+              <td>enrich-attributes dry run (sample)</td>
+              <td><span style="color:var(--green);font-family:var(--mono)">~$0.50</span></td>
+              <td>100-product test batch</td>
+            </tr>
+            <tr>
+              <td>DB migrations (0008, 0009, 0010)</td>
+              <td><span style="color:var(--green);font-family:var(--mono)">$0</span></td>
+              <td>Supabase free tier</td>
+            </tr>
+            <tr>
+              <td>Initial GitHub star snapshot</td>
+              <td><span style="color:var(--green);font-family:var(--mono)">$0</span></td>
+              <td>GitHub REST API free</td>
+            </tr>
+            <tr>
+              <td><strong>Total one-time</strong></td>
+              <td><span style="color:var(--red);font-family:var(--mono);font-weight:700">~$55-75</span></td>
+              <td>Run once to fill product_tags</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem;color:var(--muted)">ONGOING MONTHLY</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Item</th><th>Cost/mo</th><th>Frequency</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>GitHub star snapshots</td>
+              <td><span style="color:var(--green);font-family:var(--mono)">$0</span></td>
+              <td>Daily · GitHub free tier</td>
+            </tr>
+            <tr>
+              <td>enrich-attributes re-run (new products)</td>
+              <td><span style="color:var(--yellow);font-family:var(--mono)">~$2-5</span></td>
+              <td>Weekly · only new/untagged products</td>
+            </tr>
+            <tr>
+              <td>Signal score recompute</td>
+              <td><span style="color:var(--green);font-family:var(--mono)">$0</span></td>
+              <td>Daily · pure SQL</td>
+            </tr>
+            <tr>
+              <td>Ingest pipelines (HN, Reddit, News, PH)</td>
+              <td><span style="color:var(--green);font-family:var(--mono)">$0</span></td>
+              <td>Free APIs</td>
+            </tr>
+            <tr>
+              <td>Supabase (Pro if needed)</td>
+              <td><span style="color:var(--yellow);font-family:var(--mono)">$25</span></td>
+              <td>Only if &gt;500MB storage or row limits hit</td>
+            </tr>
+            <tr>
+              <td><strong>Total monthly</strong></td>
+              <td><span style="color:var(--green);font-family:var(--mono);font-weight:700">~$2-30</span></td>
+              <td>Low end if free tier holds</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Timeline estimate:</strong> Wave 1 scripts take ~2-3 days to build (enrich-attributes is the most complex). Wave 2 data runs take 1 overnight session. Wave 3 crons are 1h config work. Wave 4 UI is ~4-5 days of feature work. Total: <strong>~2 weeks of part-time sessions</strong>.
+  </div>
+</div>
+</section>
+
+<!-- ═══ COMMANDS ═══ -->
+<section id="commands">
+<div class="container">
+  <div class="section-tag">Cheat Sheet</div>
+  <h2>Exact Commands to Run</h2>
+  <p class="section-sub">Copy-paste ready. Run these in order after Wave 1 is built.</p>
+
+  <div class="two-col">
+    <div>
+      <h3 style="font-size:.9rem;font-weight:600;margin-bottom:1rem;color:var(--muted)">WAVE 2 — DATA RUNS (in order)</h3>
+      <div class="code-block" style="font-size:.8rem;line-height:2">
+<span class="code-comment"># 2.1 — Apply DB migrations</span><br>
+<span class="code-key">npx supabase db push</span><br>
+<br>
+<span class="code-comment"># 2.2 — Score all products (fills 7,839 gaps)</span><br>
+<span class="code-key">pnpm signals</span><br>
+<br>
+<span class="code-comment"># 2.3 — Find alternatives (Haiku, ~$4, 2-3hrs)</span><br>
+<span class="code-key">pnpm enrich:relationships</span><br>
+<br>
+<span class="code-comment"># 2.4 — Seed GitHub star baseline</span><br>
+<span class="code-key">pnpm snapshot:github</span><br>
+<br>
+<span class="code-comment"># 2.5 — Dry run attributes (100 products, ~$0.50)</span><br>
+<span class="code-key">pnpm enrich:attributes:dry</span><br>
+<br>
+<span class="code-comment"># 2.6 — Full attribute run (overnight, ~$50-70)</span><br>
+<span class="code-key">nohup pnpm enrich:attributes > enrich.log 2>&amp;1 &amp;</span><br>
+<br>
+<span class="code-comment"># Monitor progress</span><br>
+<span class="code-key">tail -f enrich.log</span>
+      </div>
+    </div>
+    <div>
+      <h3 style="font-size:.9rem;font-weight:600;margin-bottom:1rem;color:var(--muted)">WAVE 3 — CRON SETUP + VERIFICATION</h3>
+      <div class="code-block" style="font-size:.8rem;line-height:2">
+<span class="code-comment"># Add FIRECRAWL_API_KEY to GitHub Actions secrets</span><br>
+<span class="code-comment"># Repo → Settings → Secrets → Actions → New</span><br>
+<span class="code-key">FIRECRAWL_API_KEY=<span class="code-str">your-key-here</span></span><br>
+<br>
+<span class="code-comment"># Verify cron files exist after Wave 1</span><br>
+<span class="code-key">ls .github/workflows/</span><br>
+<span class="code-comment"># Expected: snapshot-github-stars.yml</span><br>
+<span class="code-comment">#           enrich-attributes.yml</span><br>
+<br>
+<span class="code-comment"># Check signal score cron was moved to 5am</span><br>
+<span class="code-key">grep "schedule" .github/workflows/compute-signal-scores.yml</span><br>
+<span class="code-comment"># Expected: 0 5 * * *</span><br>
+<br>
+<span class="code-comment"># Verify product_tags count after 2.6</span><br>
+<span class="code-key">npx supabase db execute \</span><br>
+<span class="code-str">  "SELECT COUNT(*) FROM product_tags"</span><br>
+<span class="code-comment"># Expected: &gt;40,000 rows</span>
+      </div>
+
+      <h3 style="font-size:.9rem;font-weight:600;margin-top:1.5rem;margin-bottom:1rem;color:var(--muted)">QUICK HEALTH CHECK</h3>
+      <div class="code-block" style="font-size:.8rem;line-height:2">
+<span class="code-comment"># Check all key table counts</span><br>
+<span class="code-key">npx supabase db execute \</span><br>
+<span class="code-str">  "SELECT 'products' as t, COUNT(*) FROM products</span><br>
+<span class="code-str">   UNION ALL SELECT 'product_tags', COUNT(*) FROM product_tags</span><br>
+<span class="code-str">   UNION ALL SELECT 'github_snapshots', COUNT(*) FROM github_snapshots</span><br>
+<span class="code-str">   UNION ALL SELECT 'signal_scores', COUNT(*) FROM product_signal_scores"</span>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <div style="display:flex;align-items:center;justify-content:center;gap:.6rem;margin-bottom:.5rem">
+    <div class="logo-mark" style="width:22px;height:22px;font-size:11px">P</div>
+    <span style="font-weight:600;color:var(--text)">Prism — Product Sentinel</span>
+  </div>
+  <p>Data &amp; Feature Completion Plan · Generated 2026-04-19 · <a href="https://github.com/alimabsoute/v0-product-sentinel" style="color:var(--accent);text-decoration:none">github.com/alimabsoute/v0-product-sentinel</a></p>
+  <p style="margin-top:.4rem">Enable GitHub Pages: repo Settings → Pages → main branch → /docs folder</p>
+</footer>
+
+</body>
+</html>

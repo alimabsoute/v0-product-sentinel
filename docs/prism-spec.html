@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prism — Product Spec & Status</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --ink: #0f172a; --ink-med: #475569; --ink-light: #64748b; --ink-dim: #94a3b8;
+    --border: #e2e8f0; --border-strong: #cbd5e1;
+    --surface: #f8fafc; --surface-2: #f1f5f9;
+    --accent: #0ea5e9; --accent-soft: #e0f2fe; --accent-deep: #0369a1;
+    --green: #10b981; --green-soft: #d1fae5;
+    --yellow: #f59e0b; --yellow-soft: #fef3c7;
+    --red: #ef4444; --red-soft: #fee2e2;
+    --purple: #8b5cf6; --purple-soft: #ede9fe;
+    --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  body { font-family: var(--font); color: var(--ink); background: #fff; font-size: 13px; line-height: 1.6; }
+
+  /* ── COVER ───────────────────────────────────────────────────── */
+  .cover {
+    page-break-after: always;
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: center; padding: 80px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);
+    color: #fff; position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 70% 40%, rgba(14,165,233,0.12), transparent);
+  }
+  .cover-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 24px; }
+  .cover-title { font-size: 72px; font-weight: 700; letter-spacing: -2px; line-height: 1; margin-bottom: 16px; }
+  .cover-title span { color: var(--accent); }
+  .cover-sub { font-size: 20px; color: #94a3b8; max-width: 520px; line-height: 1.5; margin-bottom: 48px; }
+  .cover-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; max-width: 640px; }
+  .cover-stat { }
+  .cover-stat-val { font-size: 32px; font-weight: 700; color: #fff; }
+  .cover-stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  .cover-date { position: absolute; bottom: 40px; right: 80px; font-size: 11px; color: #475569; }
+
+  /* ── PAGE LAYOUT ─────────────────────────────────────────────── */
+  .page { padding: 56px 64px; page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  h1.section-title {
+    font-size: 28px; font-weight: 700; letter-spacing: -0.5px;
+    margin-bottom: 4px; color: var(--ink);
+  }
+  .section-desc { font-size: 13px; color: var(--ink-light); margin-bottom: 32px; }
+  h2.block-title {
+    font-size: 13px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--ink-med); margin-bottom: 12px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+
+  /* ── STATUS BADGE ────────────────────────────────────────────── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
+  }
+  .badge-done    { background: var(--green-soft);  color: #065f46; }
+  .badge-partial { background: var(--yellow-soft); color: #92400e; }
+  .badge-missing { background: var(--red-soft);    color: #991b1b; }
+  .badge-planned { background: var(--purple-soft); color: #5b21b6; }
+
+  /* ── PRIORITY BADGE ──────────────────────────────────────────── */
+  .pri { display: inline-flex; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .pri-p0 { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .pri-p1 { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  .pri-p2 { background: #fefce8; color: #a16207; border: 1px solid #fde68a; }
+  .pri-p3 { background: var(--surface-2); color: var(--ink-light); border: 1px solid var(--border); }
+
+  /* ── STATUS OVERVIEW GRID ────────────────────────────────────── */
+  .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 32px; }
+  .status-card {
+    border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px;
+    background: #fff; position: relative; overflow: hidden;
+  }
+  .status-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 12px 12px 0 0;
+  }
+  .status-card.done::before    { background: var(--green); }
+  .status-card.partial::before { background: var(--yellow); }
+  .status-card.missing::before { background: var(--red); }
+  .status-card-route { font-family: var(--mono); font-size: 11px; color: var(--ink-light); margin-bottom: 4px; }
+  .status-card-name  { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .status-card-note  { font-size: 11px; color: var(--ink-light); line-height: 1.5; }
+
+  /* ── WIREFRAME ───────────────────────────────────────────────── */
+  .wireframe-wrap { margin-bottom: 24px; }
+  .wireframe-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); margin-bottom: 8px; }
+  .wireframe {
+    font-family: var(--mono); font-size: 10.5px; line-height: 1.55;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 20px; overflow-x: auto;
+    white-space: pre; color: var(--ink-med);
+  }
+
+  /* ── FEATURE TABLE ───────────────────────────────────────────── */
+  .feature-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .feature-table th {
+    text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--ink-light); padding: 8px 12px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .feature-table td {
+    padding: 9px 12px; border-bottom: 1px solid var(--border);
+    font-size: 12px; vertical-align: top;
+  }
+  .feature-table tr:last-child td { border-bottom: none; }
+  .feature-table tr:hover td { background: var(--surface); }
+  .feature-name { font-weight: 500; }
+  .feature-desc { color: var(--ink-light); font-size: 11px; margin-top: 2px; }
+
+  /* ── ACTION ITEMS ────────────────────────────────────────────── */
+  .action-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+  .action-item {
+    display: grid; grid-template-columns: auto 1fr auto auto;
+    align-items: start; gap: 12px;
+    padding: 10px 14px; border: 1px solid var(--border);
+    border-radius: 8px; background: #fff;
+  }
+  .action-num { font-size: 11px; font-weight: 700; color: var(--ink-dim); padding-top: 1px; }
+  .action-text { font-size: 12px; line-height: 1.5; }
+  .action-text strong { font-weight: 600; display: block; margin-bottom: 2px; }
+  .action-text span { color: var(--ink-light); font-size: 11px; }
+  .effort { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap; align-self: start; }
+  .effort-s { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .effort-m { background: #fefce8; color: #a16207; border: 1px solid #fde68a; }
+  .effort-l { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  .effort-xl { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+  /* ── TWO-COL ─────────────────────────────────────────────────── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── LAYER BOXES ─────────────────────────────────────────────── */
+  .layer-box {
+    border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+    background: #fff;
+  }
+  .layer-box-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent-deep); margin-bottom: 10px;
+  }
+  .layer-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .layer-row:last-child { border-bottom: none; }
+  .layer-key { font-family: var(--mono); font-size: 10px; color: var(--ink-light); }
+  .layer-val { color: var(--ink-med); font-size: 11px; }
+
+  /* ── PROGRESS BAR ────────────────────────────────────────────── */
+  .progress-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .progress-label { font-size: 12px; width: 160px; flex-shrink: 0; }
+  .progress-bar { flex: 1; height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; }
+  .progress-fill.done    { background: var(--green); }
+  .progress-fill.partial { background: var(--yellow); }
+  .progress-fill.missing { background: var(--red); }
+  .progress-pct { font-size: 11px; font-weight: 600; color: var(--ink-med); width: 32px; text-align: right; }
+
+  /* ── INFRA TABLE ─────────────────────────────────────────────── */
+  .infra-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .infra-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--surface); }
+  .infra-card-title { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
+  .infra-card-val   { font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--ink); }
+  .infra-card-label { font-size: 10px; color: var(--ink-light); margin-top: 2px; }
+
+  /* ── PRINT ───────────────────────────────────────────────────── */
+  @media print {
+    .page { padding: 40px 48px; }
+    .cover { min-height: 0; padding: 60px; }
+    .cover-title { font-size: 56px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════ COVER -->
+<div class="cover">
+  <div class="cover-label">Product Specification Document · Confidential</div>
+  <div class="cover-title">P<span>rism</span></div>
+  <div class="cover-sub">Bloomberg meets Product Hunt — the full arc of tech product history. Signal scoring, attribute taxonomy, knowledge graph, market analytics.</div>
+  <div class="cover-meta">
+    <div class="cover-stat"><div class="cover-stat-val">14,114</div><div class="cover-stat-label">Products in DB</div></div>
+    <div class="cover-stat"><div class="cover-stat-val">25</div><div class="cover-stat-label">Routes Planned</div></div>
+    <div class="cover-stat"><div class="cover-stat-val">11</div><div class="cover-stat-label">Routes Built</div></div>
+    <div class="cover-stat"><div class="cover-stat-val">$47</div><div class="cover-stat-label">Monthly Infra</div></div>
+  </div>
+  <div class="cover-date">April 2026 · Codename: prism · Repo: alimabsoute/v0-product-sentinel</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ STATUS OVERVIEW -->
+<div class="page">
+  <h1 class="section-title">Status Overview</h1>
+  <p class="section-desc">All 25 planned routes — current build status at a glance.</p>
+
+  <h2 class="block-title">Progress by Category</h2>
+  <div style="margin-bottom:32px;">
+    <div class="progress-row"><span class="progress-label">Core intelligence pages</span><div class="progress-bar"><div class="progress-fill done" style="width:35%"></div></div><span class="progress-pct done" style="color:var(--green)">35%</span></div>
+    <div class="progress-row"><span class="progress-label">Analytics &amp; markets</span><div class="progress-bar"><div class="progress-fill partial" style="width:50%"></div></div><span class="progress-pct" style="color:var(--yellow)">50%</span></div>
+    <div class="progress-row"><span class="progress-label">Taxonomy browsing</span><div class="progress-bar"><div class="progress-fill missing" style="width:15%"></div></div><span class="progress-pct" style="color:var(--red)">15%</span></div>
+    <div class="progress-row"><span class="progress-label">Data pipeline &amp; signals</span><div class="progress-bar"><div class="progress-fill partial" style="width:55%"></div></div><span class="progress-pct" style="color:var(--yellow)">55%</span></div>
+    <div class="progress-row"><span class="progress-label">Auth &amp; user features</span><div class="progress-bar"><div class="progress-fill partial" style="width:30%"></div></div><span class="progress-pct" style="color:var(--yellow)">30%</span></div>
+    <div class="progress-row"><span class="progress-label">Monetization</span><div class="progress-bar"><div class="progress-fill missing" style="width:0%"></div></div><span class="progress-pct" style="color:var(--red)">0%</span></div>
+  </div>
+
+  <h2 class="block-title">All Routes</h2>
+  <div class="status-grid">
+    <div class="status-card done">
+      <div class="status-card-route">/</div>
+      <div class="status-card-name">Home Feed <span class="badge badge-partial">partial</span></div>
+      <div class="status-card-note">Layout built. Missing: breakout alerts wired, funding feed, graveyard strip, category spotlight chart.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/products</div>
+      <div class="status-card-name">Product Browse <span class="badge badge-partial">partial</span></div>
+      <div class="status-card-note">Basic category filter works. Missing: 10-attribute faceted sidebar, era filter, sub-category drill.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/dossier/[slug]</div>
+      <div class="status-card-name">Product Dossier <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">Still at /products/[slug]. Needs rename + full intelligence layout: signal charts, funding timeline, relationships graph, alts.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/markets</div>
+      <div class="status-card-name">Market Analytics <span class="badge badge-partial">partial</span></div>
+      <div class="status-card-note">Basic charts built. Missing: category heatmap, attribute market share over time, acquisition tracker, breakout history.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/functions/[slug]</div>
+      <div class="status-card-name">Function Pages <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">Leaf taxonomy pages (e.g. /functions/markdown-note-editor). $-chart, lifecycle, top 10 ranked.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/tools-to/[task]</div>
+      <div class="status-card-name">Task SEO Pages <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">TAAFT-style discovery. Powers long-tail SEO. Depends on task_search_tags being populated.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/compare</div>
+      <div class="status-card-name">Compare View <span class="badge badge-partial">partial</span></div>
+      <div class="status-card-note">Basic side-by-side built. Missing: radar overlay, attribute diff panel, AI verdict (Claude), funding comparison.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/explore</div>
+      <div class="status-card-name">Knowledge Graph <span class="badge badge-done">built</span></div>
+      <div class="status-card-note">ForceGraph2D with hover, click panel, search. Edges sparse until product_relationships populated.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/evolution</div>
+      <div class="status-card-name">Era Timeline <span class="badge badge-partial">partial</span></div>
+      <div class="status-card-note">Category growth + death timeline built. Missing: era swim-lanes, interactive timeline dots, hall of fame.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/graveyard</div>
+      <div class="status-card-name">Graveyard <span class="badge badge-partial">partial</span></div>
+      <div class="status-card-note">Timeline layout built. Status filter just fixed. Missing: death reason donut, pre-death signals teaser (paid CTA).</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/categories/[slug]</div>
+      <div class="status-card-name">Category Pages <span class="badge badge-done">built</span></div>
+      <div class="status-card-note">Filter by status, search within category. Missing: lifecycle chart, sub-category drill-down.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/insights + /[slug]</div>
+      <div class="status-card-name">Insights Hub <span class="badge badge-partial">partial</span></div>
+      <div class="status-card-note">Article reader exists. Missing: Obsidian-style graph sidebar, signal chart rail, related product cards.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/companies/[slug]</div>
+      <div class="status-card-name">Company Profile <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">All products, funding history, valuation chart, related companies. Needs companies table populated.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/trending</div>
+      <div class="status-card-name">Breakout Feed <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">Real-time is_breakout = TRUE feed with sparklines + velocity chart. Data exists, page missing.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/attributes/[grp]/[val]</div>
+      <div class="status-card-name">Attribute Slices <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">E.g. /attributes/deployment/self-hosted — all self-hosted products. Depends on product_tags populated.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/funding</div>
+      <div class="status-card-name">Funding Feed <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">Funding round chronological feed. funding_rounds table empty — needs ingestion wired.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/acquisitions</div>
+      <div class="status-card-name">M&amp;A Tracker <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">acquisitions table not created yet. Phase 3+ feature.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/profile</div>
+      <div class="status-card-name">User Profile <span class="badge badge-partial">partial</span></div>
+      <div class="status-card-note">Auth wired (Supabase). Watchlist UI needs user_saves populated. Alert system not built.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/login + /signup</div>
+      <div class="status-card-name">Auth Pages <span class="badge badge-done">built</span></div>
+      <div class="status-card-note">Supabase auth fully wired. Suspense boundaries fixed.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/submit</div>
+      <div class="status-card-name">Product Submit <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">User-submitted product form. Phase 4+ feature.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/pricing</div>
+      <div class="status-card-name">Pricing Page <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">Free / Pro / API tiers. Monetization phase.</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-card-route">/api/docs</div>
+      <div class="status-card-name">API Docs <span class="badge badge-done">built</span></div>
+      <div class="status-card-note">Static docs page exists.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/search</div>
+      <div class="status-card-name">Unified Search <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">⌘K palette exists but no dedicated /search results page. pg_trgm + pgvector hybrid ready.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/sub-categories/[slug]</div>
+      <div class="status-card-name">Sub-category Pages <span class="badge badge-missing">not built</span></div>
+      <div class="status-card-note">Mid-level taxonomy rollup. 100+ sub-categories in DB, no page yet.</div>
+    </div>
+    <div class="status-card missing">
+      <div class="status-card-route">/watchlist</div>
+      <div class="status-card-name">Watchlist + Alerts <span class="badge badge-planned">planned</span></div>
+      <div class="status-card-note">user_saves + user_alerts tables exist (RLS). UI not connected. Phase 4+.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ HOME FEED -->
+<div class="page">
+  <h1 class="section-title">/ — Home Feed</h1>
+  <p class="section-desc">First page users see. Product Hunt-style present-tense launch feed with Bloomberg signal overlays.</p>
+
+  <div class="two-col" style="margin-bottom:24px;">
+    <div>
+      <h2 class="block-title">Wireframe</h2>
+      <div class="wireframe">┌──────────────────────────────────────────────────────┐
+│ HERO: "47 new products today · 8 breakouts"          │
+│        [Submit your product →]                       │
+├───────────────────────────────┬──────────────────────┤
+│  🚀 LAUNCHED TODAY            │  📊 MARKET PULSE     │
+│  ┌──────┬──────┬──────┬──────┐│  AI Tools   ▲ +12%  │
+│  │ card │ card │ card │ card ││  Dev Tools  ▲ +8%   │
+│  ├──────┼──────┼──────┼──────┤│  Prod       ─  0%   │
+│  │ card │ card │ card │ card ││  Design     ▼ -2%   │
+│  └──────┴──────┴──────┴──────┘│  [markets →]        │
+│  [view all launches →]        ├──────────────────────┤
+│                               │  📰 FROM THE NEWS    │
+│  ⚡ BREAKOUT ALERTS            │  · TechCrunch 2h     │
+│  [logo] Product X  +340% ▲    │    "Notion raises..." │
+│  [logo] Product Y  +220% ▲    │  · The Verge  4h     │
+│  [logo] Product Z  +180% ▲    │  · HN         6h     │
+│  [view all breakouts →]       ├──────────────────────┤
+│                               │  💰 FRESH FUNDING    │
+│  📈 TRENDING THIS WEEK        │  $50M Series B → X   │
+│  1. Supabase    +67 pts ▲     │  $12M Seed    → Y    │
+│  2. Resend      +54 pts ▲     │  Acquired Z  → BigCo │
+│  3. Turso       +48 pts ▲     ├──────────────────────┤
+│                               │  🪦 GRAVEYARD        │
+│  🏛️ CATEGORY SPOTLIGHT        │  Product X   3d ago  │
+│  "Note-taking peaked 2019"    │  Product Y acquired  │
+│  [area chart 1990→2026]       │                      │
+└───────────────────────────────┴──────────────────────┘</div>
+    </div>
+    <div>
+      <h2 class="block-title">Feature Status</h2>
+      <table class="feature-table">
+        <tr><th>Widget</th><th>Status</th></tr>
+        <tr><td><span class="feature-name">Hero strip (stats)</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Launched Today grid</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Market Pulse sparklines</span></td><td><span class="badge badge-partial">partial</span></td></tr>
+        <tr><td><span class="feature-name">Breakout Alerts feed</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">From the News feed</span></td><td><span class="badge badge-partial">partial</span></td></tr>
+        <tr><td><span class="feature-name">Trending This Week</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Fresh Funding strip</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Category Spotlight chart</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Graveyard this week</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2 class="block-title">What Needs to Happen</h2>
+  <div class="action-list">
+    <div class="action-item">
+      <span class="action-num">1</span>
+      <div class="action-text"><strong>Wire Breakout Alerts to live data</strong><span>Query <code>product_signal_scores WHERE is_breakout = TRUE AND score_date = today</code>. Run <code>pnpm signals</code> first to score all 14K products. Currently 6,275 scored.</span></div>
+      <span class="pri pri-p0">P0</span><span class="effort effort-s">S · 2h</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">2</span>
+      <div class="action-text"><strong>Add Category Spotlight chart</strong><span>Rotating lifecycle area chart per category. Query <code>category_monthly_launches</code> view (already exists in migration 0006). Pick a random active category on each render.</span></div>
+      <span class="pri pri-p1">P1</span><span class="effort effort-m">M · 4h</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">3</span>
+      <div class="action-text"><strong>Add Fresh Funding strip</strong><span>Wire to <code>funding_rounds ORDER BY year,month DESC LIMIT 6</code>. Table exists but is empty — needs funding ingestion from press_mentions event_type='funding'.</span></div>
+      <span class="pri pri-p2">P2</span><span class="effort effort-l">L · 1d</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">4</span>
+      <div class="action-text"><strong>Add Graveyard this week strip</strong><span>Simple query on recently discontinued products. Already fixed the status filter bug (discontinued/inactive). Just needs a small widget component on home page.</span></div>
+      <span class="pri pri-p2">P2</span><span class="effort effort-s">S · 1h</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ DOSSIER -->
+<div class="page">
+  <h1 class="section-title">/dossier/[slug] — Full Product Intelligence File</h1>
+  <p class="section-desc">THE monetizable page. Everything known about one product. Long-scroll with sticky TOC. Free tier: 10/mo. Pro: unlimited.</p>
+
+  <div class="two-col" style="margin-bottom:24px;">
+    <div>
+      <h2 class="block-title">Wireframe</h2>
+      <div class="wireframe">┌────────────────────────────────────────────────┐
+│ ┌────┐  PRODUCT NAME          [🔖 Save][📤 Share] │
+│ │LOGO│  Tagline in one sentence                  │
+│ └────┘  [AI Tools][Note-Taking][Markdown-Editor] │
+│         🔗 website  🐙 github  🐦 twitter         │
+├────────────────────────────────────────────────┤
+│ Age:6yr │ $280M │ Signal:87▲ │ BREAKOUT │ 5/5   │
+├──────────────┬─────────────────────────────────┤
+│ STICKY TOC   │ 📝 DESCRIPTION + SCREENSHOTS     │
+│ • Overview   │ [carousel img][carousel img]     │
+│ • Attributes │                                  │
+│ • Scores     │ 🏷️ ATTRIBUTE PANEL               │
+│ • Signals    │ Capability: [collab][real-time]  │
+│ • Funding    │ Audience:   [devs][solopreneurs] │
+│ • Revenue    │ Pricing:    [freemium]           │
+│ • Press      │ Deployment: [cloud][desktop]     │
+│ • Relations  │ UX:         [cmd-palette]        │
+│ • Alts       │                                  │
+│ • Changelog  │ 📊 DIMENSIONAL RADAR             │
+│ • Tasks      │ [radar chart - 8 dimensions]     │
+│ • Insights   │ Ease:4 Depth:5 Value:3 Perf:5   │
+│ • Metadata   │                                  │
+│              │ 🔥 SIGNAL CHARTS (2×2)           │
+│              │ ┌──────────┬──────────┐          │
+│              │ │Mentions  │Sentiment │          │
+│              │ ├──────────┼──────────┤          │
+│              │ │Velocity  │Platform  │          │
+│              │ └──────────┴──────────┘          │
+│              │                                  │
+│              │ 💰 FUNDING TIMELINE              │
+│              │ 2019●Seed$2M → 2022●B$50M        │
+│              │                                  │
+│              │ 📰 PRESS MENTIONS (feed)         │
+│              │ 🕸️ RELATIONSHIPS (mini graph)    │
+│              │ 🔄 ALTERNATIVES (card grid)      │
+│              │ 📜 CHANGELOG / HISTORY           │
+│              │ 🎯 RELATED TASKS                 │
+│              │ ℹ️ DATA METADATA                 │
+└──────────────┴─────────────────────────────────┘</div>
+    </div>
+    <div>
+      <h2 class="block-title">Feature Status</h2>
+      <table class="feature-table">
+        <tr><th>Section</th><th>Status</th></tr>
+        <tr><td><span class="feature-name">Route exists at /products/[slug]</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Rename to /dossier/[slug]</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Hero + quick stats strip</span></td><td><span class="badge badge-partial">partial</span></td></tr>
+        <tr><td><span class="feature-name">Description + screenshots</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Attribute panel (Layer 2 tags)</span></td><td><span class="badge badge-partial">partial</span></td></tr>
+        <tr><td><span class="feature-name">Dimensional radar chart</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Signal charts 2×2 grid</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Funding timeline chart</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Press mentions feed</span></td><td><span class="badge badge-partial">partial</span></td></tr>
+        <tr><td><span class="feature-name">Relationships mini graph</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Alternatives card grid</span></td><td><span class="badge badge-partial">partial</span></td></tr>
+        <tr><td><span class="feature-name">Sticky TOC navigation</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Changelog / history</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Related tasks → /tools-to/</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Data freshness metadata</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2 class="block-title">What Needs to Happen</h2>
+  <div class="action-list">
+    <div class="action-item">
+      <span class="action-num">1</span>
+      <div class="action-text"><strong>Populate product_tags for all 14K products</strong><span>BLOCKER for attribute panel, alternatives, /functions pages, /tools-to pages, and /products faceted sidebar. Run attribute extraction pass via Claude Haiku (~$14 one-time cost for 14K products).</span></div>
+      <span class="pri pri-p0">P0</span><span class="effort effort-xl">XL · 1d</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">2</span>
+      <div class="action-text"><strong>Add dimensional radar chart</strong><span>Populate <code>functionality_scores</code> JSONB during extraction pass above. Render with recharts <code>RadarChart</code> (already installed). 8 dimensions: ease_of_use, feature_depth, value, support, performance, docs, mobile, integrations.</span></div>
+      <span class="pri pri-p1">P1</span><span class="effort effort-m">M · 3h</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">3</span>
+      <div class="action-text"><strong>Add signal charts 2×2 grid</strong><span>Mention volume (stacked bar by platform), sentiment trend (rolling line), velocity WoW (line), platform mix (donut). Data in <code>product_signal_scores</code>. Needs <code>social_mentions</code> table populated for platform breakdown.</span></div>
+      <span class="pri pri-p1">P1</span><span class="effort effort-m">M · 4h</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">4</span>
+      <div class="action-text"><strong>Add sticky TOC + funding timeline</strong><span>Sticky rail requires CSS <code>position: sticky</code> + IntersectionObserver for active section. Funding timeline chart needs <code>funding_rounds</code> populated via news extraction pipeline.</span></div>
+      <span class="pri pri-p2">P2</span><span class="effort effort-m">M · 4h</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">5</span>
+      <div class="action-text"><strong>Rename route /products/[slug] → /dossier/[slug]</strong><span>Update 6 files: product-card.tsx (4 variants), search-command.tsx, news-feed.tsx. Add redirect from old URL. Update "Open dossier" CTA copy.</span></div>
+      <span class="pri pri-p2">P2</span><span class="effort effort-s">S · 2h</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ MARKETS -->
+<div class="page">
+  <h1 class="section-title">/markets — Bloomberg-Style Analytics</h1>
+  <p class="section-desc">$ aggregations across categories, attributes, functions, time. This is THE moat — nobody else has it.</p>
+
+  <div class="two-col" style="margin-bottom:24px;">
+    <div>
+      <h2 class="block-title">Wireframe</h2>
+      <div class="wireframe">┌──────────────────────────────────────────────────┐
+│ MARKETS   [Category▾][Attribute▾][Time▾][CSV]    │
+├──────────────────────────────────────────────────┤
+│  🗺️ CATEGORY HEATMAP (full width)                 │
+│  ┌─────────────────────────────────────────────┐ │
+│  │      2019  2020  2021  2022  2023  2024      │ │
+│  │ AI   ░░░░  ▓▓▓▓  ████  ████  ████  ████      │ │
+│  │ Dev  ▓▓▓▓  ████  ████  ▓▓▓▓  ▓▓▓▓  ████      │ │
+│  │ Prod ▓▓▓▓  ████  ▓▓▓▓  ░░░░  ░░░░  ░░░░      │ │
+│  │ (color = VC $ invested · tooltip shows $)    │ │
+│  └─────────────────────────────────────────────┘ │
+├─────────────────────────┬────────────────────────┤
+│ 💰 FUNDING LEADERBOARD  │ 📊 LIFECYCLE CURVES    │
+│ 1. AI Tools   $4.2B ▲▲▲ │ ┌──────────────────┐  │
+│ 2. Dev Tools  $1.8B ▲▲  │ │ Notes ──╱╲───    │  │
+│ 3. Fintech    $1.5B ▲   │ │ CRM   ──__╱──   │  │
+│ 4. Security   $900M     │ │ WordP  ────╲__  │  │
+│ 5. Design     $400M ▼   │ │ 1990 2000 2010  │  │
+│                         │ └──────────────────┘  │
+├─────────────────────────┼────────────────────────┤
+│ 📈 SURVIVAL CURVES      │ 🎯 ATTR. MARKET SHARE  │
+│ "What % of 2018 cohort  │ ██ open-source         │
+│  still alive in 2026?"  │ ▓▓ proprietary         │
+│ 2015 ──╲                │ stacked area 2010→2026 │
+│ 2018 ───╲────           │ [toggle attribute ▾]   │
+│ 2022 ─────╲__           │  → api-first           │
+│                         │  → self-hosted         │
+│                         │  → ai-assist           │
+├─────────────────────────┴────────────────────────┤
+│  🛒 ACQUISITION TRACKER (table)                   │
+│  Figma · Adobe · $20B · 2024 · integrated         │
+│  Product X · BigCo · $500M · 2024 · shutdown      │
+├──────────────────────────────────────────────────┤
+│  ⚡ BREAKOUT HISTORY (time-series bar chart)       │
+│  │  │ ││  ││ │  ││││ │  ││                        │
+│  ─────────────────────── Jan Feb Mar Apr          │
+└──────────────────────────────────────────────────┘</div>
+    </div>
+    <div>
+      <h2 class="block-title">Feature Status</h2>
+      <table class="feature-table">
+        <tr><th>Widget</th><th>Status</th></tr>
+        <tr><td><span class="feature-name">Stat cards (totals)</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Category lifecycle curves</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Signal distribution chart</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Velocity leaders table</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Survival rates chart</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Category heatmap</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Funding leaderboard</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">🎯 Attribute market share</span><div class="feature-desc">The "components over time" feature you asked about</div></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Acquisition tracker table</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Breakout history bar chart</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Filter bar (cat/attr/time)</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">CSV export</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2 class="block-title">What Needs to Happen — Attribute Market Share (the feature you asked about)</h2>
+  <div class="action-list">
+    <div class="action-item">
+      <span class="action-num">1</span>
+      <div class="action-text"><strong>Populate product_tags (the root blocker)</strong><span>The attribute market share chart requires product_tags to be populated. Currently mostly empty. Run attribute extraction pass on all 14K products via Claude Haiku.</span></div>
+      <span class="pri pri-p0">P0</span><span class="effort effort-xl">XL · 1d</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">2</span>
+      <div class="action-text"><strong>Build the query + chart</strong><span>SQL: <code>SELECT launched_year, tag_group, slug, COUNT(*) FROM products JOIN product_tags JOIN tags GROUP BY launched_year, tag_group, slug</code>. Render as recharts <code>AreaChart</code> with stacked series per attribute value. Dropdown to switch between tag_groups.</span></div>
+      <span class="pri pri-p1">P1</span><span class="effort effort-m">M · 4h</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">3</span>
+      <div class="action-text"><strong>Populate funding_rounds for leaderboard + heatmap</strong><span>Requires extracting funding data from press_mentions (event_type='funding'). Already have the extraction prompt designed. ~$3/mo ongoing with Haiku.</span></div>
+      <span class="pri pri-p1">P1</span><span class="effort effort-l">L · 1d</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">4</span>
+      <div class="action-text"><strong>Build acquisition tracker</strong><span>New <code>acquisitions</code> table needed. Seed from press_mentions where event_type='acquisition'. Then wire paginated table to the page.</span></div>
+      <span class="pri pri-p2">P2</span><span class="effort effort-l">L · 1d</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ PRODUCTS BROWSE -->
+<div class="page">
+  <h1 class="section-title">/products — Faceted Browse</h1>
+  <p class="section-desc">The search entry point. 10-attribute group sidebar. The full 4-layer taxonomy exposed as filters.</p>
+
+  <div class="two-col" style="margin-bottom:24px;">
+    <div>
+      <h2 class="block-title">Wireframe</h2>
+      <div class="wireframe">┌────────────────────────────────────────────────┐
+│ PRODUCTS  [🔍 search]  Sort:Buzz▾  ▦Grid  ≡List │
+├─────────────────────┬──────────────────────────┤
+│                     │                          │
+│  🎛️ FILTERS         │ Active: [AI Tools×][frm×]│
+│                     │                          │
+│  LAYER 1            │ ┌────┬────┬────┬────┐    │
+│  Category ▾         │ │card│card│card│card│    │
+│   ☑ AI Tools        │ ├────┼────┼────┼────┤    │
+│   ☐ Dev Tools       │ │card│card│card│card│    │
+│   ☐ Productivity    │ ├────┼────┼────┼────┤    │
+│  Sub-category ▾     │ │card│card│card│card│    │
+│   ☐ Code Editors    │ └────┴────┴────┴────┘    │
+│   ☐ Note-Taking     │                          │
+│   ☐ Vector DBs      │ ←  1  2  3 … 119  →     │
+│                     │                          │
+│  LAYER 2 ATTRS      │                          │
+│  Capability ▾       │                          │
+│   ☐ collaborative   │                          │
+│   ☐ real-time       │                          │
+│   ☐ ai-assist       │                          │
+│   ☐ api-first       │                          │
+│  Audience ▾         │                          │
+│   ☐ developers      │                          │
+│   ☐ enterprise      │                          │
+│  Deployment ▾       │                          │
+│   ☐ cloud           │                          │
+│   ☐ self-hosted     │                          │
+│   ☐ browser-ext     │                          │
+│  Pricing ▾          │                          │
+│  Tech Stack ▾       │                          │
+│  UX Pattern ▾       │                          │
+│  Compliance ▾       │                          │
+│  Integrations ▾     │                          │
+│  Business Model ▾   │                          │
+│                     │                          │
+│  ERA                │                          │
+│  ☐ mainframe        │                          │
+│  ☐ pc era           │                          │
+│  ☐ web1             │                          │
+│  ☐ mobile           │                          │
+│  ☑ ai era           │                          │
+└─────────────────────┴──────────────────────────┘</div>
+    </div>
+    <div>
+      <h2 class="block-title">Feature Status</h2>
+      <table class="feature-table">
+        <tr><th>Feature</th><th>Status</th></tr>
+        <tr><td><span class="feature-name">Product grid + pagination</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Category filter pills</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Sort by buzz/trending/az</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">Text search (pg_trgm)</span></td><td><span class="badge badge-done">built</span></td></tr>
+        <tr><td><span class="feature-name">10-attribute sidebar filters</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Sub-category filter</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Era filter</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">Active filter chips (remove)</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+        <tr><td><span class="feature-name">List view toggle</span></td><td><span class="badge badge-missing">missing</span></td></tr>
+      </table>
+
+      <div style="margin-top:20px;">
+        <h2 class="block-title">What Needs to Happen</h2>
+        <div class="action-list">
+          <div class="action-item" style="grid-template-columns: auto 1fr auto auto;">
+            <span class="action-num">1</span>
+            <div class="action-text"><strong>Populate product_tags (P0 blocker)</strong><span>Nothing in the sidebar works without tags. Same extraction pass as dossier.</span></div>
+            <span class="pri pri-p0">P0</span><span class="effort effort-xl">XL</span>
+          </div>
+          <div class="action-item" style="grid-template-columns: auto 1fr auto auto;">
+            <span class="action-num">2</span>
+            <div class="action-text"><strong>Build filter sidebar component</strong><span>shadcn Accordion + Checkbox per tag_group. URL query params drive filter state (shareable URLs).</span></div>
+            <span class="pri pri-p1">P1</span><span class="effort effort-l">L · 1d</span>
+          </div>
+          <div class="action-item" style="grid-template-columns: auto 1fr auto auto;">
+            <span class="action-num">3</span>
+            <div class="action-text"><strong>Extend searchProducts() for attribute filters</strong><span>Add <code>tags?</code> param to <code>SearchParams</code> type, join through <code>product_tags</code> in the query.</span></div>
+            <span class="pri pri-p1">P1</span><span class="effort effort-m">M · 3h</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ TAXONOMY / MISSING PAGES -->
+<div class="page">
+  <h1 class="section-title">Missing Pages — Taxonomy, SEO &amp; Discovery</h1>
+  <p class="section-desc">These pages are unbuilt but were designed from day 1. Together they form the discovery + SEO engine.</p>
+
+  <div class="three-col" style="margin-bottom:28px;">
+    <div class="layer-box">
+      <div class="layer-box-title">/functions/[slug]</div>
+      <div style="font-size:11px;color:var(--ink-light);margin-bottom:12px;">E.g. /functions/markdown-note-editor — all products that do one specific thing.</div>
+      <div class="wireframe" style="font-size:9.5px;padding:10px;">┌──────────────────────────┐
+│ Markdown Note Editor     │
+│ 214 products · Prod > NT │
+├──────────────────────────┤
+│ 📈 Lifecycle chart       │
+│    peak: 2019 (312 prods)│
+├──────────────────────────┤
+│ 💰 $1.2B total VC        │
+├──────────────────────────┤
+│ 🏆 Top 10 ranked         │
+│ 1. Notion      87▲       │
+│ 2. Obsidian    82        │
+│ 3. Craft       79▲       │
+├──────────────────────────┤
+│ [4×6 product grid]       │
+└──────────────────────────┘</div>
+      <div style="margin-top:12px;"><span class="badge badge-missing">not built</span> <span class="pri pri-p1">P1</span></div>
+      <div style="font-size:11px;color:var(--ink-light);margin-top:8px;">Needs: functions table seeded (~400 values), primary_function_id FK on products, product_tags populated.</div>
+    </div>
+
+    <div class="layer-box">
+      <div class="layer-box-title">/tools-to/[task]</div>
+      <div style="font-size:11px;color:var(--ink-light);margin-bottom:12px;">E.g. /tools-to/write-cold-emails — TAAFT-style task discovery + SEO goldmine.</div>
+      <div class="wireframe" style="font-size:9.5px;padding:10px;">┌──────────────────────────┐
+│ Tools to:                │
+│ "Write cold emails"      │
+│ 18 products found        │
+├──────────────────────────┤
+│ 1. [logo] Apollo.io      │
+│    Signal: 91▲           │
+│    [AI][CRM][freemium]   │
+├──────────────────────────┤
+│ 2. [logo] Instantly.ai   │
+│ 3. [logo] Clay           │
+│ 4. [logo] Lemlist        │
+│ ...                      │
+└──────────────────────────┘</div>
+      <div style="margin-top:12px;"><span class="badge badge-missing">not built</span> <span class="pri pri-p1">P1</span></div>
+      <div style="font-size:11px;color:var(--ink-light);margin-top:8px;">Needs: task_search_tags populated on products. Already <code>TEXT[]</code> column — just needs extraction pass.</div>
+    </div>
+
+    <div class="layer-box">
+      <div class="layer-box-title">/attributes/[group]/[value]</div>
+      <div style="font-size:11px;color:var(--ink-light);margin-bottom:12px;">E.g. /attributes/deployment/self-hosted — every self-hosted product ranked.</div>
+      <div class="wireframe" style="font-size:9.5px;padding:10px;">┌──────────────────────────┐
+│ Self-Hosted Products     │
+│ deployment · 341 products│
+├──────────────────────────┤
+│ Growth trend ▲ +180%     │
+│ since 2020               │
+│ [area chart 2018→2026]   │
+├──────────────────────────┤
+│ [product grid]           │
+└──────────────────────────┘</div>
+      <div style="margin-top:12px;"><span class="badge badge-missing">not built</span> <span class="pri pri-p2">P2</span></div>
+      <div style="font-size:11px;color:var(--ink-light);margin-top:8px;">Needs: product_tags populated. Dynamic route straightforward once data is in.</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="layer-box">
+      <div class="layer-box-title">/trending — Breakout Feed</div>
+      <div class="wireframe" style="font-size:9.5px;padding:10px;margin-top:8px;">┌──────────────────────────────────────┐
+│ TRENDING NOW · 8 breakouts today     │
+│ [Global velocity chart - 30d]        │
+├────────────────────────┬─────────────┤
+│ [logo] Product X       │  +340% ▲▲▲  │
+│ velocity > 2σ avg      │  [sparkline]│
+│ Reddit + HN surge      │  Signal: 94 │
+├────────────────────────┼─────────────┤
+│ [logo] Product Y       │  +220% ▲▲   │
+│ funding + press        │  Signal: 88 │
+└────────────────────────┴─────────────┘</div>
+      <div style="margin-top:12px;"><span class="badge badge-missing">not built</span> <span class="pri pri-p0">P0</span></div>
+      <div style="font-size:11px;color:var(--ink-light);margin-top:8px;"><strong>Easy win.</strong> Data already exists in <code>product_signal_scores WHERE is_breakout = TRUE</code>. Just needs a page. ~2h build.</div>
+    </div>
+
+    <div class="layer-box">
+      <div class="layer-box-title">/companies/[slug] — Company Profile</div>
+      <div class="wireframe" style="font-size:9.5px;padding:10px;margin-top:8px;">┌──────────────────────────────────────┐
+│ [logo] Notion Labs                   │
+│ $280M raised · 500 employees         │
+├──────────────────────────────────────┤
+│ Products:                            │
+│ [Notion][Notion AI][Notion Calendar] │
+├──────────────────────────────────────┤
+│ 💰 Funding timeline                  │
+│ 2019●$10M → 2021●$275M               │
+├──────────────────────────────────────┤
+│ Related companies (co-invested)      │
+└──────────────────────────────────────┘</div>
+      <div style="margin-top:12px;"><span class="badge badge-missing">not built</span> <span class="pri pri-p2">P2</span></div>
+      <div style="font-size:11px;color:var(--ink-light);margin-top:8px;">Needs: <code>companies</code> table populated (partially empty now), funding_rounds with company_id. Phase 2+.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ DATA PIPELINE -->
+<div class="page">
+  <h1 class="section-title">Data Pipeline — What's Missing</h1>
+  <p class="section-desc">The UI is only as good as the data behind it. These are the infrastructure gaps blocking features.</p>
+
+  <h2 class="block-title">Current DB State</h2>
+  <div class="infra-grid" style="margin-bottom:28px;">
+    <div class="infra-card"><div class="infra-card-title">Products</div><div class="infra-card-val">14,114</div><div class="infra-card-label">14,103 active</div></div>
+    <div class="infra-card"><div class="infra-card-title">Signal Scores</div><div class="infra-card-val">6,275</div><div class="infra-card-label">44% coverage</div></div>
+    <div class="infra-card"><div class="infra-card-title">Press Mentions</div><div class="infra-card-val">73</div><div class="infra-card-label">RSS accumulating</div></div>
+    <div class="infra-card"><div class="infra-card-title">Product Tags</div><div class="infra-card-val">~0</div><div class="infra-card-label">Critical gap</div></div>
+    <div class="infra-card"><div class="infra-card-title">Funding Rounds</div><div class="infra-card-val">0</div><div class="infra-card-label">Not ingested</div></div>
+    <div class="infra-card"><div class="infra-card-title">Relationships</div><div class="infra-card-val">0</div><div class="infra-card-label">Script ready</div></div>
+    <div class="infra-card"><div class="infra-card-title">Alternatives</div><div class="infra-card-val">0</div><div class="infra-card-label">Script ready</div></div>
+    <div class="infra-card"><div class="infra-card-title">Social Mentions</div><div class="infra-card-val">0</div><div class="infra-card-label">Table not created</div></div>
+  </div>
+
+  <h2 class="block-title">Pipeline Priority Ladder</h2>
+  <div class="action-list">
+    <div class="action-item">
+      <span class="action-num">1</span>
+      <div class="action-text">
+        <strong>Attribute extraction pass — populate product_tags</strong>
+        <span>CRITICAL BLOCKER. Unlocks: /products faceted sidebar, /functions pages, /tools-to pages, /attributes pages, dossier attribute panel, compare attribute diff, /markets attribute market share chart.
+        Command: <code>pnpm tsx scripts/enrich-attributes.ts --all</code> (script needs to be written).
+        Cost: ~$14 one-time via Claude Haiku. 14K products × 10 tags avg × $0.0001 per tag.</span>
+      </div>
+      <span class="pri pri-p0">P0</span><span class="effort effort-xl">XL · 1d</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">2</span>
+      <div class="action-text">
+        <strong>Run signal scores for all 14K products</strong>
+        <span>Currently only 6,275 of 14,114 scored. Command: <code>pnpm signals</code>. Needed for: breakout alerts, trending page, velocity leaderboard, survival curve accuracy.</span>
+      </div>
+      <span class="pri pri-p0">P0</span><span class="effort effort-s">S · 30min</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">3</span>
+      <div class="action-text">
+        <strong>Run relationship enrichment</strong>
+        <span>Script exists: <code>pnpm enrich:relationships</code>. Populates product_alternatives via Claude Haiku competitor detection. ~$4 for existing 14K products. Unlocks: /explore graph edges, dossier alternatives, compare "attribute diff".</span>
+      </div>
+      <span class="pri pri-p1">P1</span><span class="effort effort-s">S · 30min</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">4</span>
+      <div class="action-text">
+        <strong>Bulk news ingest</strong>
+        <span>Only 73 press mentions. Run: <code>pnpm tsx --env-file=.env.local scripts/ingest-news.ts</code>. Hourly cron is accumulating going forward, but historical backfill needed. Unlocks: dossier press feed, funding extraction, home news strip.</span>
+      </div>
+      <span class="pri pri-p1">P1</span><span class="effort effort-m">M · 2h</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">5</span>
+      <div class="action-text">
+        <strong>Create social_mentions table + Reddit/HN ingesters</strong>
+        <span>Table not yet created. Needed for: dossier signal charts (platform breakdown), accurate velocity scores. Scripts designed, not built: scripts/ingest/reddit.ts, scripts/ingest/hackernews.ts.</span>
+      </div>
+      <span class="pri pri-p1">P1</span><span class="effort effort-l">L · 1d</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">6</span>
+      <div class="action-text">
+        <strong>Fund funding_rounds via news extraction</strong>
+        <span>Press mentions with event_type='funding' already being captured but not extracted to funding_rounds table. Build extraction step in news ingest pipeline: Claude detects funding → writes structured row to funding_rounds. Unlocks: dossier funding timeline, /markets leaderboard, /markets heatmap.</span>
+      </div>
+      <span class="pri pri-p2">P2</span><span class="effort effort-l">L · 1d</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">7</span>
+      <div class="action-text">
+        <strong>Continue backfill to 25K+ products</strong>
+        <span>Currently at 14,114. Target: 25K+ for meaningful lifecycle curves and category analytics. Single backfill process running. Watchdog script at scripts/watch-backfill.sh + run-backfill.sh will alert if it stalls.</span>
+      </div>
+      <span class="pri pri-p2">P2</span><span class="effort effort-m">M · ongoing</span>
+    </div>
+    <div class="action-item">
+      <span class="action-num">8</span>
+      <div class="action-text">
+        <strong>Seed functions table (~400 canonical values)</strong>
+        <span>The primary_function_id FK is in the schema but functions table is empty. Without it, /functions/[slug] pages can't exist. AI-bootstrap from PH categories + TAAFT taxonomy → human review → seed SQL. ~1hr human effort.</span>
+      </div>
+      <span class="pri pri-p2">P2</span><span class="effort effort-m">M · 2h</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ TAXONOMY SPEC -->
+<div class="page">
+  <h1 class="section-title">4-Layer Attribute Taxonomy</h1>
+  <p class="section-desc">The "prism" concept — breaking every product into its component facets. This is what makes every unbuilt feature possible.</p>
+
+  <div class="two-col" style="margin-bottom:28px;">
+    <div>
+      <div class="layer-box" style="margin-bottom:16px;">
+        <div class="layer-box-title">Layer 1 — Hierarchical (single-value per product)</div>
+        <div class="layer-row"><span class="layer-key">category</span><span class="layer-val">~15 top-level · "AI Tools", "Dev Tools"</span></div>
+        <div class="layer-row"><span class="layer-key">sub_category</span><span class="layer-val">~100 mid-level · "Code Editors", "CRM"</span></div>
+        <div class="layer-row"><span class="layer-key">primary_function</span><span class="layer-val">~400 leaf values · "ai-code-completion"</span></div>
+        <div style="font-size:10px;color:var(--ink-light);margin-top:8px;">Leaf is FK to functions table. Category + sub-category auto-derive from parent chain.</div>
+      </div>
+
+      <div class="layer-box" style="margin-bottom:16px;">
+        <div class="layer-box-title">Layer 2 — Multi-select (product_tags JOIN tags)</div>
+        <div class="layer-row"><span class="layer-key">capability</span><span class="layer-val">collaborative, real-time, ai-assist, api-first…</span></div>
+        <div class="layer-row"><span class="layer-key">audience</span><span class="layer-val">developers, enterprise, solopreneurs…</span></div>
+        <div class="layer-row"><span class="layer-key">deployment</span><span class="layer-val">cloud, self-hosted, desktop-app, cli…</span></div>
+        <div class="layer-row"><span class="layer-key">pricing_model</span><span class="layer-val">free, freemium, open-source, paid-only…</span></div>
+        <div class="layer-row"><span class="layer-key">tech_stack</span><span class="layer-val">react, rust, python, go, typescript…</span></div>
+        <div class="layer-row"><span class="layer-key">ux_pattern</span><span class="layer-val">keyboard-first, no-code, drag-drop, kanban…</span></div>
+        <div class="layer-row"><span class="layer-key">integration</span><span class="layer-val">slack, notion, zapier, github, figma…</span></div>
+        <div class="layer-row"><span class="layer-key">compliance</span><span class="layer-val">soc2, hipaa, gdpr, ccpa, iso27001…</span></div>
+        <div class="layer-row"><span class="layer-key">data_format</span><span class="layer-val">markdown, json, csv, sql, images, video…</span></div>
+        <div class="layer-row"><span class="layer-key">business_model</span><span class="layer-val">saas, marketplace, open-source-funded…</span></div>
+      </div>
+
+      <div class="layer-box" style="margin-bottom:16px;">
+        <div class="layer-box-title">Layer 3 — Task Discovery (TEXT[])</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--ink-med);line-height:1.8;margin-top:6px;">"write cold emails"<br>"summarize meeting notes"<br>"generate SQL queries"<br>"remove image backgrounds"<br>"transcribe video"</div>
+        <div style="font-size:10px;color:var(--ink-light);margin-top:8px;">Powers /tools-to/[task] SEO pages. Massive long-tail traffic driver.</div>
+      </div>
+
+      <div class="layer-box">
+        <div class="layer-box-title">Layer 4 — Dimensional Scoring (JSONB)</div>
+        <div class="layer-row"><span class="layer-key">ease_of_use</span><span>████░ 4/5</span></div>
+        <div class="layer-row"><span class="layer-key">feature_depth</span><span>█████ 5/5</span></div>
+        <div class="layer-row"><span class="layer-key">value_for_money</span><span>███░░ 3/5</span></div>
+        <div class="layer-row"><span class="layer-key">performance</span><span>█████ 5/5</span></div>
+        <div class="layer-row"><span class="layer-key">integrations</span><span>█████ 5/5</span></div>
+        <div style="font-size:10px;color:var(--ink-light);margin-top:8px;">AI-estimated at ingestion. Replace with G2/Capterra data Phase 4+.</div>
+      </div>
+    </div>
+
+    <div>
+      <h2 class="block-title">What This Unlocks</h2>
+      <table class="feature-table">
+        <tr><th>Feature</th><th>Requires</th><th>Status</th></tr>
+        <tr><td>/products faceted sidebar</td><td>L2 tags</td><td><span class="badge badge-missing">blocked</span></td></tr>
+        <tr><td>/functions/[slug] pages</td><td>L1 leaf + functions table</td><td><span class="badge badge-missing">blocked</span></td></tr>
+        <tr><td>/tools-to/[task] SEO</td><td>L3 task tags</td><td><span class="badge badge-missing">blocked</span></td></tr>
+        <tr><td>/attributes/[grp]/[val]</td><td>L2 tags</td><td><span class="badge badge-missing">blocked</span></td></tr>
+        <tr><td>Compare attribute diff</td><td>L2 tags</td><td><span class="badge badge-missing">blocked</span></td></tr>
+        <tr><td>Dossier attribute panel</td><td>L2 tags</td><td><span class="badge badge-partial">partial</span></td></tr>
+        <tr><td>Attribute market share chart</td><td>L2 tags + launched_year</td><td><span class="badge badge-missing">blocked</span></td></tr>
+        <tr><td>Alternative finder (overlap)</td><td>L1 function + L2 tags</td><td><span class="badge badge-missing">blocked</span></td></tr>
+        <tr><td>Dimensional radar chart</td><td>L4 scores</td><td><span class="badge badge-missing">blocked</span></td></tr>
+        <tr><td>⌘K "tools that do X" search</td><td>L3 task tags</td><td><span class="badge badge-missing">blocked</span></td></tr>
+      </table>
+
+      <div style="margin-top:20px;padding:16px;background:var(--accent-soft);border-radius:10px;border:1px solid #bae6fd;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Single Action That Unlocks Everything</div>
+        <div style="font-size:12px;color:var(--ink-med);line-height:1.6;">Writing and running <strong>scripts/enrich-attributes.ts</strong> — an attribute extraction pass over all 14K products using Claude Haiku — unblocks <strong>all 10 features</strong> in the table above. Estimated cost: ~$14 one-time. This is the highest-leverage task currently available.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ MASTER PRIORITY LIST -->
+<div class="page">
+  <h1 class="section-title">Master Priority List — What to Build Next</h1>
+  <p class="section-desc">Everything ordered by unlock leverage. P0 = blocks multiple features. Effort: S=&lt;2h, M=half-day, L=full-day, XL=multi-day.</p>
+
+  <table class="feature-table">
+    <tr>
+      <th style="width:32px;">#</th>
+      <th>Task</th>
+      <th>Unlocks</th>
+      <th>Pri</th>
+      <th>Effort</th>
+      <th>Status</th>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td><span class="feature-name">Run pnpm signals (score all 14K products)</span><div class="feature-desc">pnpm signals — already works, just needs to run</div></td>
+      <td>Breakout alerts, /trending, velocity charts</td>
+      <td><span class="pri pri-p0">P0</span></td>
+      <td><span class="effort effort-s">S</span></td>
+      <td><span class="badge badge-missing">todo</span></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><span class="feature-name">Build + run attribute extraction (enrich-attributes.ts)</span><div class="feature-desc">Claude Haiku pass on 14K products: tags, task_search_tags, functionality_scores</div></td>
+      <td>All 10 taxonomy features, compare diff, attribute market share</td>
+      <td><span class="pri pri-p0">P0</span></td>
+      <td><span class="effort effort-xl">XL</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><span class="feature-name">Build /trending page</span><div class="feature-desc">is_breakout = TRUE products, sparklines, velocity chart</div></td>
+      <td>/trending route (missing from nav)</td>
+      <td><span class="pri pri-p0">P0</span></td>
+      <td><span class="effort effort-s">S · 2h</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><span class="feature-name">Run pnpm enrich:relationships</span><div class="feature-desc">Script exists — Claude Haiku competitor detection. ~$4</div></td>
+      <td>Graph edges in /explore, dossier alternatives, compare</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-s">S</span></td>
+      <td><span class="badge badge-partial">script ready</span></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><span class="feature-name">Bulk news ingest</span><div class="feature-desc">pnpm tsx scripts/ingest-news.ts — historical backfill</div></td>
+      <td>Press mentions feed, funding extraction, home news strip</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-m">M</span></td>
+      <td><span class="badge badge-partial">script ready</span></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><span class="feature-name">Build /products faceted sidebar</span><div class="feature-desc">Accordion + Checkbox per tag_group, URL query params</div></td>
+      <td>Primary discovery UX</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-l">L · 1d</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><span class="feature-name">Add attribute market share chart to /markets</span><div class="feature-desc">SQL query on product_tags × launched_year → recharts AreaChart stacked</div></td>
+      <td>The "components over time" feature</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-m">M · 4h</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td><span class="feature-name">Dossier: add dimensional radar + signal 2×2</span><div class="feature-desc">recharts RadarChart for functionality_scores, 2×2 signal charts</div></td>
+      <td>Dossier completeness (monetizable unit)</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-m">M · 4h</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td><span class="feature-name">Seed functions table (~400 canonical values)</span><div class="feature-desc">AI-bootstrap from PH + TAAFT → human review → seed SQL</div></td>
+      <td>/functions/[slug] pages</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-m">M · 2h</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td><span class="feature-name">Build /functions/[slug] pages</span><div class="feature-desc">Lifecycle chart, top-10 ranked, $-chart, full grid</div></td>
+      <td>Leaf taxonomy browsing, SEO</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-l">L · 1d</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td><span class="feature-name">Build /tools-to/[task] pages</span><div class="feature-desc">TAAFT-style, powered by task_search_tags[]</div></td>
+      <td>Long-tail SEO goldmine</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-m">M · 3h</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td><span class="feature-name">Compare: add radar overlay + attribute diff + AI verdict</span><div class="feature-desc">RadarChart overlay, 3-col diff, Claude Sonnet verdict</div></td>
+      <td>Compare page completion</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-l">L · 1d</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td><span class="feature-name">Wire breakout alerts on home page</span><div class="feature-desc">Simple query, component exists in wireframe</div></td>
+      <td>Home page completeness</td>
+      <td><span class="pri pri-p1">P1</span></td>
+      <td><span class="effort effort-s">S · 1h</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td><span class="feature-name">Rename /products/[slug] → /dossier/[slug]</span><div class="feature-desc">Update 6 files + add redirect</div></td>
+      <td>Branding + sub-brand "dossier" locked</td>
+      <td><span class="pri pri-p2">P2</span></td>
+      <td><span class="effort effort-s">S · 2h</span></td>
+      <td><span class="badge badge-missing">not done</span></td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td><span class="feature-name">Build social_mentions table + Reddit/HN ingesters</span><div class="feature-desc">New table, scripts/ingest/reddit.ts + hackernews.ts</div></td>
+      <td>Platform breakdown charts, accurate velocity</td>
+      <td><span class="pri pri-p2">P2</span></td>
+      <td><span class="effort effort-xl">XL · 2d</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td><span class="feature-name">Extract funding_rounds from press mentions</span><div class="feature-desc">Add funding extraction step to news pipeline</div></td>
+      <td>Funding timeline, /markets heatmap + leaderboard</td>
+      <td><span class="pri pri-p2">P2</span></td>
+      <td><span class="effort effort-l">L · 1d</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td><span class="feature-name">Insights: add Obsidian-style graph sidebar</span><div class="feature-desc">Mini force-graph in right rail of /insights/[slug]</div></td>
+      <td>Insights page completeness</td>
+      <td><span class="pri pri-p2">P2</span></td>
+      <td><span class="effort effort-l">L · 1d</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>18</td>
+      <td><span class="feature-name">Build /attributes/[group]/[value] pages</span><div class="feature-desc">Dynamic attribute slice pages, e.g. /attributes/deployment/self-hosted</div></td>
+      <td>SEO attribute pages</td>
+      <td><span class="pri pri-p2">P2</span></td>
+      <td><span class="effort effort-m">M · 3h</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>19</td>
+      <td><span class="feature-name">Build /companies/[slug]</span><div class="feature-desc">Company profile: products, funding timeline, valuation chart</div></td>
+      <td>Company-level intelligence</td>
+      <td><span class="pri pri-p2">P2</span></td>
+      <td><span class="effort effort-l">L · 1d</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>20</td>
+      <td><span class="feature-name">Pre-death signals teaser + /graveyard death reason donut</span><div class="feature-desc">Paid feature CTA. Death reason breakdown from product_graveyard table</div></td>
+      <td>Graveyard monetization hook</td>
+      <td><span class="pri pri-p2">P2</span></td>
+      <td><span class="effort effort-m">M · 3h</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>21</td>
+      <td><span class="feature-name">Add /markets category heatmap</span><div class="feature-desc">Grid: category × year, color = VC $. Needs funding_rounds populated.</div></td>
+      <td">Markets completeness</td>
+      <td><span class="pri pri-p2">P2</span></td>
+      <td><span class="effort effort-l">L · 1d</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>22</td>
+      <td><span class="feature-name">Build /pricing page</span><div class="feature-desc">Free / Pro / API tiers. Pre-death signals = Pro feature. API = paid.</div></td>
+      <td>Monetization starts</td>
+      <td><span class="pri pri-p3">P3</span></td>
+      <td><span class="effort effort-m">M · 3h</span></td>
+      <td><span class="badge badge-missing">not built</span></td>
+    </tr>
+    <tr>
+      <td>23</td>
+      <td><span class="feature-name">Wire user watchlist + alerts</span><div class="feature-desc">user_saves + user_alerts tables exist (RLS). UI not wired.</div></td>
+      <td>Retention mechanic</td>
+      <td><span class="pri pri-p3">P3</span></td>
+      <td><span class="effort effort-l">L · 1d</span></td>
+      <td><span class="badge badge-planned">planned</span></td>
+    </tr>
+    <tr>
+      <td>24</td>
+      <td><span class="feature-name">Historical arc: seed pre-2010 products</span><div class="feature-desc">Wikipedia + Computer History Museum + Archive.org. The real moat.</div></td>
+      <td>Historical differentiator. Evolution page depth.</td>
+      <td><span class="pri pri-p3">P3</span></td>
+      <td><span class="effort effort-xl">XL · weeks</span></td>
+      <td><span class="badge badge-planned">phase 2</span></td>
+    </tr>
+  </table>
+</div>
+
+</body>
+</html>
