@@ -1,12 +1,12 @@
-name: Compute — Signal Scores
+name: Snapshot — GitHub Stars
 
 on:
   schedule:
-    - cron: '0 5 * * *'   # daily at 5am UTC, after ingest crons have run
+    - cron: '0 4 * * *'   # daily at 4am UTC
   workflow_dispatch:        # manual trigger for testing
 
 jobs:
-  score:
+  snapshot:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -24,8 +24,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Compute signal scores
-        run: pnpm tsx --env-file=/dev/null scripts/compute-signal-scores.ts --only-new
+      - name: Snapshot GitHub stars
+        run: pnpm tsx --env-file=/dev/null scripts/snapshot-github-stars.ts
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

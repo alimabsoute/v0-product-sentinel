@@ -64,6 +64,7 @@ type SignalScoreUpsert = {
   velocity_score: number
   press_score: number
   funding_score: number
+  github_velocity_score: number
   wow_velocity: number
   mom_velocity: number
   is_breakout: boolean
@@ -95,6 +96,11 @@ function computeCategoryHeat(subCategory: string | null): number {
 
 function computeConfidenceScore(confidence: number | null): number {
   return Math.min(10, Math.max(0, (confidence ?? 3) * 2))
+}
+
+function computeGitHubStarVelocityScore(delta: number): number {
+  if (delta <= 0) return 0
+  return Math.min(15, Math.log10(delta + 1) * 6)
 }
 
 // ─── Batch data helpers ───────────────────────────────────────────────────────
@@ -169,6 +175,40 @@ async function fetchScoresByDate(date: string): Promise<Map<string, number>> {
 }
 
 /**
+ * Batch-fetch the two most recent github_snapshots per product (last 48 h)
+ * and return a map of product_id → star delta (new - old, clamped to ≥0).
+ */
+async function fetchGitHubVelocityMap(productIds: string[]): Promise<Map<string, number>> {
+  const velocityMap = new Map<string, number>()
+  if (productIds.length === 0) return velocityMap
+
+  const { data, error } = await supabaseAdmin
+    .from('github_snapshots')
+    .select('product_id, stars, snapshot_date')
+    .in('product_id', productIds)
+    .gte('snapshot_date', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    .order('snapshot_date', { ascending: false })
+
+  if (error || !data) return velocityMap
+
+  // Group by product_id, keep only the 2 most recent snapshots
+  const grouped = new Map<string, { stars: number; date: string }[]>()
+  for (const row of data) {
+    const arr = grouped.get(row.product_id) ?? []
+    if (arr.length < 2) arr.push({ stars: row.stars, date: row.snapshot_date })
+    grouped.set(row.product_id, arr)
+  }
+
+  for (const [productId, snapshots] of grouped) {
+    if (snapshots.length < 2) { velocityMap.set(productId, 0); continue }
+    const delta = snapshots[0].stars - snapshots[1].stars
+    velocityMap.set(productId, Math.max(0, delta))
+  }
+
+  return velocityMap
+}
+
+/**
  * Fetch last 90 days of wow_velocity per product for breakout detection.
  * Returns a map of product_id → sorted array of wow_velocity values (oldest first).
  */
@@ -199,12 +239,13 @@ function assembleSignalScore(sub: {
   social: number
   press: number
   funding: number
+  githubVelocity: number
 }): number {
-  // Max raw = 25 + 20 + 15 + 10 + 25 + 15 + 15 = 125
+  // Max raw = 25 + 20 + 15 + 10 + 25 + 15 + 15 + 15 = 140
   const raw =
     sub.recency + sub.richness + sub.categoryHeat +
-    sub.confidence + sub.social + sub.press + sub.funding
-  return Math.min(100, Math.max(0, (raw / 125) * 100))
+    sub.confidence + sub.social + sub.press + sub.funding + sub.githubVelocity
+  return Math.min(100, Math.max(0, (raw / 140) * 100))
 }
 
 function computeVelocity(current: number, prior: number | undefined): number {
@@ -291,6 +332,11 @@ async function main() {
   const products = allProducts
   console.log(`  Computing scores for ${products.length} products...\n`)
 
+  // ── Batch-fetch GitHub star velocity for this product set ───────────────────
+  const productIds = products.map(p => p.id)
+  const velocityMap = await fetchGitHubVelocityMap(productIds)
+  console.log(`  GitHub velocity records: ${velocityMap.size} products with recent snapshots\n`)
+
   // ── Score each product ──────────────────────────────────────────────────────
   const rows: SignalScoreUpsert[] = []
   let logged = 0
@@ -319,8 +365,12 @@ async function main() {
     // Funding score (0–15) — TODO: weight by round size once schema confirmed
     const funding = hasFunding ? 10 : 0
 
+    // GitHub star velocity score (0–15)
+    const starDelta = velocityMap.get(product.id) ?? 0
+    const githubVelocityScore = computeGitHubStarVelocityScore(starDelta)
+
     // Composite
-    const signalScore = assembleSignalScore({ recency, richness, categoryHeat: catHeat, confidence, social, press, funding })
+    const signalScore = assembleSignalScore({ recency, richness, categoryHeat: catHeat, confidence, social, press, funding, githubVelocity: githubVelocityScore })
 
     // Velocity
     const wowVelocity = computeVelocity(signalScore, scores7.get(product.id))
@@ -334,17 +384,18 @@ async function main() {
     const velocityScore = Math.min(100, ((recency + catHeat) / 40) * 100)
 
     rows.push({
-      product_id:      product.id,
-      score_date:      today,
-      signal_score:    +signalScore.toFixed(2),
-      mention_score:   +social.toFixed(2),
-      sentiment_score: +sentimentSub.toFixed(2),
-      velocity_score:  +velocityScore.toFixed(2),
-      press_score:     +press.toFixed(2),
-      funding_score:   +funding.toFixed(2),
-      wow_velocity:    +wowVelocity.toFixed(4),
-      mom_velocity:    +momVelocity.toFixed(4),
-      is_breakout:     isBreakout,
+      product_id:           product.id,
+      score_date:           today,
+      signal_score:         +signalScore.toFixed(2),
+      mention_score:        +social.toFixed(2),
+      sentiment_score:      +sentimentSub.toFixed(2),
+      velocity_score:       +velocityScore.toFixed(2),
+      press_score:          +press.toFixed(2),
+      funding_score:        +funding.toFixed(2),
+      github_velocity_score: +githubVelocityScore.toFixed(2),
+      wow_velocity:         +wowVelocity.toFixed(4),
+      mom_velocity:         +momVelocity.toFixed(4),
+      is_breakout:          isBreakout,
     })
 
     // Log first 10 and every 100th after that

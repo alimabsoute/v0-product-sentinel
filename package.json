@@ -18,7 +18,10 @@
     "enrich": "tsx --env-file=.env.local scripts/enrich-firecrawl.ts",
     "signals": "tsx --env-file=.env.local scripts/compute-signal-scores.ts",
     "signals:new": "tsx --env-file=.env.local scripts/compute-signal-scores.ts --only-new",
-    "enrich:relationships": "tsx --env-file=.env.local scripts/enrich-relationships.ts"
+    "enrich:relationships": "tsx --env-file=.env.local scripts/enrich-relationships.ts",
+    "snapshot:github": "tsx --env-file=.env.local scripts/snapshot-github-stars.ts",
+    "enrich:attributes": "tsx --env-file=.env.local scripts/enrich-attributes.ts",
+    "enrich:attributes:dry": "tsx --env-file=.env.local scripts/enrich-attributes.ts --dry-run --limit=100"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",
