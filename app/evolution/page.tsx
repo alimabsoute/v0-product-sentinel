@@ -1,6 +1,12 @@
 export const dynamic = 'force-dynamic'
 
+import { brandTitle } from '@/lib/branding'
 import Link from 'next/link'
+
+export const metadata = {
+  title: brandTitle('Product Evolution'),
+  description: 'Historical timeline of tech products from 2010 to present.',
+}
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import {

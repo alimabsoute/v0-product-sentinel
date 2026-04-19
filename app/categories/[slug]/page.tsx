@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const revalidate = 300  // revalidate every 5 minutes
 
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
@@ -7,6 +7,12 @@ import { CategoryClient } from './_client'
 
 function displayName(slug: string): string {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const display = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  return { title: `${display} Products | Prism` }
 }
 
 interface CategoryPageProps {

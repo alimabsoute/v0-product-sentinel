@@ -1,7 +1,13 @@
 // TODO: add Markets link to site-header.tsx after all agents merge
-export const dynamic = 'force-dynamic'
+export const revalidate = 300  // revalidate every 5 minutes
 
+import { brandTitle } from '@/lib/branding'
 import { SiteHeader } from '@/components/site-header'
+
+export const metadata = {
+  title: brandTitle('Market Analytics'),
+  description: 'Category trends, signal distribution, velocity leaders, and survival rates across 17,000+ tracked products.',
+}
 import { SiteFooter } from '@/components/site-footer'
 import {
   getCategoryDistribution,

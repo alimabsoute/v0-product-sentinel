@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const revalidate = 300  // revalidate every 5 minutes
 
 import Link from 'next/link'
 import { ArrowRight, TrendingUp, Skull, Sparkles, BarChart3 } from 'lucide-react'

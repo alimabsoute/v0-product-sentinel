@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
   ExternalLink,
@@ -46,6 +47,21 @@ function formatRelativeTime(dateString: string): string {
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>
+}
+
+export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
+  const { slug } = await params
+  const product = await getProductBySlug(slug)
+  if (!product) return { title: 'Product Not Found | Prism' }
+  return {
+    title: `${product.name} — ${product.category} | Prism`,
+    description: product.description || product.tagline,
+    openGraph: {
+      title: product.name,
+      description: product.description || product.tagline,
+      images: product.logo ? [{ url: product.logo, width: 400, height: 400 }] : [],
+    },
+  }
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {

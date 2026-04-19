@@ -72,12 +72,12 @@ type SignalScoreUpsert = {
 
 // ─── Pure sub-score functions ─────────────────────────────────────────────────
 
-function computeRecencyScore(launchedYear: number | null, launchedMonth: number | null): number {
-  if (!launchedYear) return 5  // unknown age — neutral low score
-  const now = new Date()
+function computeRecencyScore(launchedYear: number | null, launchedMonth: number | null, asOf?: Date): number {
+  if (!launchedYear) return 5
+  const ref = asOf ?? new Date()
   const ageInMonths =
-    (now.getFullYear() - launchedYear) * 12 +
-    (now.getMonth() + 1 - (launchedMonth ?? 6))
+    (ref.getFullYear() - launchedYear) * 12 +
+    (ref.getMonth() + 1 - (launchedMonth ?? 6))
   return 25 * Math.max(0, (60 - ageInMonths) / 60)
 }
 
@@ -349,7 +349,7 @@ async function main() {
     const hasFunding = fundingIds.has(product.id)
 
     // Sub-scores
-    const recency    = computeRecencyScore(product.launched_year, product.launched_month)
+    const recency    = computeRecencyScore(product.launched_year, product.launched_month, baseDate)
     const richness   = computeRichnessScore(product as ProductRow)
     const catHeat    = computeCategoryHeat(product.sub_category)
     const confidence = computeConfidenceScore(product.confidence_score)

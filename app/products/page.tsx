@@ -1,5 +1,6 @@
-export const dynamic = 'force-dynamic'
+export const revalidate = 300
 
+import { Suspense } from 'react'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { getProductCount, getDistinctCategories } from '@/lib/db/products'
@@ -15,7 +16,9 @@ export default async function ProductsPage() {
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <ProductsClient categories={categories} totalCount={totalCount} />
+        <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" />}>
+          <ProductsClient categories={categories} totalCount={totalCount} />
+        </Suspense>
       </main>
       <SiteFooter />
     </div>

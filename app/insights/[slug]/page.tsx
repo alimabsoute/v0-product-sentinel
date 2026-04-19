@@ -1,3 +1,10 @@
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  // Try to get article title from slug
+  const title = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  return { title: `${title} | Prism Insights` }
+}
+
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ExternalLink, Clock, Share2, Bookmark } from 'lucide-react'
