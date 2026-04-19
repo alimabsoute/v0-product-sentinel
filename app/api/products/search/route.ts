@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const status = (searchParams.get('status') as 'active' | 'dead' | 'all') || 'active'
     const tagsParam = searchParams.get('tags')
     const tags = tagsParam ? tagsParam.split(',').filter(Boolean) : undefined
+    const era = searchParams.get('era') || undefined
     const minimal = searchParams.get('minimal') === 'true'
 
     // Minimal mode: lightweight response for command palette / autocomplete
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Full mode: paginated search with complete product data
-    const result = await searchProducts({ q, category, sort, page, limit, status, tags })
+    const result = await searchProducts({ q, category, sort, page, limit, status, tags, era })
 
     return NextResponse.json(result)
   } catch (err) {

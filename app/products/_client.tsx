@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import {
   Search, Filter, Grid3X3, List,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2, X,
@@ -98,6 +99,7 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
   const initialTags = new Set<string>(
     (searchParams.get('tags') || '').split(',').filter(Boolean)
   )
+  const initialEra = searchParams.get('era') || ''
 
   const [search, setSearch] = useState(initialQ)
   const [debouncedSearch, setDebouncedSearch] = useState(initialQ)
@@ -106,6 +108,7 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [page, setPage] = useState(initialPage)
   const [selectedTags, setSelectedTags] = useState<Set<string>>(initialTags)
+  const [selectedEra, setSelectedEra] = useState(initialEra)
 
   const [products, setProducts] = useState<Product[]>([])
   const [total, setTotal] = useState(0)
@@ -115,7 +118,7 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
   const [tagGroups, setTagGroups] = useState<TagGroup[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const LIMIT = 50
+  const LIMIT = 24
 
   useEffect(() => {
     fetch('/api/products/tags')
@@ -134,6 +137,7 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
 
   useEffect(() => {
     setPage(1)
+    setSelectedEra('')
   }, [selectedCategory, sort])
 
   const fetchProducts = useCallback(async () => {
@@ -151,6 +155,7 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
       if (selectedTags.size > 0) {
         params.set('tags', [...selectedTags].join(','))
       }
+      if (selectedEra) params.set('era', selectedEra)
 
       const res = await fetch(`/api/products/search?${params}`)
       const data = await res.json()
@@ -165,7 +170,7 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, selectedCategory, sort, page, selectedTags])
+  }, [debouncedSearch, selectedCategory, sort, page, selectedTags, selectedEra])
 
   useEffect(() => {
     fetchProducts()
@@ -178,12 +183,13 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
     if (sort !== 'newest') params.set('sort', sort)
     if (page > 1) params.set('page', String(page))
     if (selectedTags.size > 0) params.set('tags', [...selectedTags].join(','))
+    if (selectedEra) params.set('era', selectedEra)
     const qs = params.toString()
     const url = qs ? `/products?${qs}` : '/products'
     startTransition(() => {
       router.replace(url, { scroll: false })
     })
-  }, [debouncedSearch, selectedCategory, sort, page, selectedTags, router])
+  }, [debouncedSearch, selectedCategory, sort, page, selectedTags, selectedEra, router])
 
   function toggleTag(slug: string) {
     setSelectedTags((prev) => {
@@ -330,6 +336,31 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
         ))}
       </div>
 
+      {/* Era filter */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {[
+          { slug: '', label: 'All Time' },
+          { slug: 'pioneer', label: 'Pioneer', sub: '2010–2014' },
+          { slug: 'growth',  label: 'Growth',  sub: '2015–2019' },
+          { slug: 'boom',    label: 'Boom',    sub: '2020–2022' },
+          { slug: 'now',     label: 'Now',     sub: '2023+' },
+        ].map(era => (
+          <button
+            key={era.slug}
+            onClick={() => { setSelectedEra(era.slug); setPage(1) }}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+              selectedEra === era.slug
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+            )}
+          >
+            {era.label}
+            {era.sub && <span className="ml-1 opacity-60">{era.sub}</span>}
+          </button>
+        ))}
+      </div>
+
       {/* Mobile sidebar drawer */}
       {sidebarOpen && (
         <div className="mb-6 rounded-xl border border-border bg-card p-4 sm:hidden">
@@ -348,6 +379,13 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
 
         {/* Main content */}
         <div className="min-w-0 flex-1">
+          {/* Progressive disclosure prompt */}
+          {!debouncedSearch && selectedCategory === 'All' && selectedTags.size === 0 && !selectedEra && (
+            <div className="mb-4 rounded-xl border border-border/50 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              Browse by <Link href="/categories" className="text-primary hover:underline">category</Link> or use filters to narrow 17,000+ products.
+            </div>
+          )}
+
           {/* Active tag pills */}
           {selectedTags.size > 0 && (
             <div className="mb-3 flex flex-wrap gap-1.5">
@@ -429,6 +467,7 @@ export function ProductsClient({ categories, totalCount }: ProductsClientProps) 
                   setSearch('')
                   setSelectedCategory('All')
                   setSort('newest')
+                  setSelectedEra('')
                   clearTags()
                 }}
               >

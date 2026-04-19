@@ -418,6 +418,14 @@ export type SearchParams = {
   limit?: number
   status?: 'active' | 'dead' | 'all'
   tags?: string[]           // tag slugs — AND semantics (product must have ALL)
+  era?: string              // era slug: 'pioneer' | 'growth' | 'boom' | 'now'
+}
+
+const ERA_RANGES: Record<string, { min: number; max: number }> = {
+  'pioneer': { min: 2010, max: 2014 },
+  'growth':  { min: 2015, max: 2019 },
+  'boom':    { min: 2020, max: 2022 },
+  'now':     { min: 2023, max: 2099 },
 }
 
 export type SearchResult = {
@@ -475,6 +483,7 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
     limit = 50,
     status = 'active',
     tags,
+    era,
   } = params
 
   const tagProductIds = await getProductIdsForTags(tags ?? [])
@@ -528,6 +537,11 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
     if (tagProductIds !== null) {
       countQ = countQ.in('id', tagProductIds)
     }
+    if (era && ERA_RANGES[era]) {
+      countQ = countQ
+        .gte('launched_year', ERA_RANGES[era].min)
+        .lte('launched_year', ERA_RANGES[era].max)
+    }
 
     const { count } = await countQ
     const total = count ?? 0
@@ -551,6 +565,11 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
       }
       if (q) {
         dataQ = dataQ.textSearch('search_vector', q, { type: 'plain', config: 'english' })
+      }
+      if (era && ERA_RANGES[era]) {
+        dataQ = dataQ
+          .gte('launched_year', ERA_RANGES[era].min)
+          .lte('launched_year', ERA_RANGES[era].max)
       }
 
       dataQ = dataQ.range(offset, offset + limit - 1)
@@ -599,6 +618,12 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
 
   if (tagProductIds !== null) {
     query = query.in('id', tagProductIds)
+  }
+
+  if (era && ERA_RANGES[era]) {
+    query = query
+      .gte('launched_year', ERA_RANGES[era].min)
+      .lte('launched_year', ERA_RANGES[era].max)
   }
 
   switch (sort) {

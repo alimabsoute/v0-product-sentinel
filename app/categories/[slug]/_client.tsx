@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { ProductCard } from '@/components/product-card'
 import {
-  Skull,
   Filter,
   SortAsc,
   Grid3X3,
@@ -15,6 +15,7 @@ import {
   Calendar,
   Loader2,
 } from 'lucide-react'
+import type { CategoryStats } from './page'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -75,19 +76,145 @@ type ViewMode = 'grid' | 'list'
 
 const LIMIT = 50
 
+// ─── Era chip definitions ────────────────────────────────────────────────────
+
+type EraKey = 'all' | 'pioneer' | 'growth' | 'boom' | 'now'
+
+const ERA_CHIPS: { key: EraKey; label: string }[] = [
+  { key: 'all',     label: 'All' },
+  { key: 'pioneer', label: 'Pioneer (–2014)' },
+  { key: 'growth',  label: 'Growth (15–19)' },
+  { key: 'boom',    label: 'Boom (20–22)' },
+  { key: 'now',     label: 'Now (23+)' },
+]
+
+// ─── Stats bar ────────────────────────────────────────────────────────────────
+
+function StatsBar({ stats }: { stats: CategoryStats }) {
+  return (
+    <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="rounded-xl border bg-card p-4">
+        <div className="text-xs font-mono uppercase text-muted-foreground tracking-wide">Products</div>
+        <div className="text-2xl font-mono font-semibold mt-1">{stats.total.toLocaleString()}</div>
+      </div>
+      <div className="rounded-xl border bg-card p-4">
+        <div className="text-xs font-mono uppercase text-muted-foreground tracking-wide">Launched 2023+</div>
+        <div className="text-2xl font-mono font-semibold mt-1">{stats.recentCount.toLocaleString()}</div>
+      </div>
+      <div className="rounded-xl border bg-card p-4">
+        <div className="text-xs font-mono uppercase text-muted-foreground tracking-wide">Avg Signal</div>
+        <div className="text-2xl font-mono font-semibold mt-1">
+          {stats.avgSignal !== null ? stats.avgSignal.toFixed(1) : '—'}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Era chips (reads/writes ?era= URL param) ─────────────────────────────────
+
+function EraChips() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const currentEra = (searchParams.get('era') ?? 'all') as EraKey
+
+  function setEra(key: EraKey) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (key === 'all') {
+      params.delete('era')
+    } else {
+      params.set('era', key)
+    }
+    const qs = params.toString()
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false })
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2 mb-5">
+      {ERA_CHIPS.map(({ key, label }) => (
+        <button
+          key={key}
+          onClick={() => setEra(key)}
+          className={cn(
+            'px-3 py-1 rounded-full text-xs font-mono border transition-colors',
+            currentEra === key
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── Sub-category pills ───────────────────────────────────────────────────────
+
+function SubCategoryPills({ subCategories, active, onChange }: {
+  subCategories: string[]
+  active: string | null
+  onChange: (v: string | null) => void
+}) {
+  if (subCategories.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-2 mb-5">
+      <button
+        onClick={() => onChange(null)}
+        className={cn(
+          'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+          active === null
+            ? 'bg-secondary text-secondary-foreground border-transparent'
+            : 'bg-card text-muted-foreground border-border hover:border-primary/40',
+        )}
+      >
+        All
+      </button>
+      {subCategories.map(sub => (
+        <button
+          key={sub}
+          onClick={() => onChange(sub)}
+          className={cn(
+            'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+            active === sub
+              ? 'bg-secondary text-secondary-foreground border-transparent'
+              : 'bg-card text-muted-foreground border-border hover:border-primary/40',
+          )}
+        >
+          {sub.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── Main client ──────────────────────────────────────────────────────────────
+
 interface CategoryClientProps {
   slug: string
   displayName: string
   initialProducts: Product[]
   totalCount: number
   totalPages: number
+  stats: CategoryStats
+  subCategories: string[]
 }
 
-export function CategoryClient({ slug, displayName, initialProducts, totalCount, totalPages: initialTotalPages }: CategoryClientProps) {
+export function CategoryClient({
+  slug,
+  displayName,
+  initialProducts,
+  totalCount,
+  totalPages: initialTotalPages,
+  stats,
+  subCategories,
+}: CategoryClientProps) {
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [showHistory, setShowHistory] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'dead'>('active')
+  const [activeSubCat, setActiveSubCat] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [total, setTotal] = useState(totalCount)
@@ -106,6 +233,7 @@ export function CategoryClient({ slug, displayName, initialProducts, totalCount,
         page: String(page),
         limit: String(LIMIT),
         status: statusFilter,
+        ...(activeSubCat ? { sub_category: activeSubCat } : {}),
       })
       const res = await fetch(`/api/products/search?${params}`)
       const data = await res.json()
@@ -117,7 +245,7 @@ export function CategoryClient({ slug, displayName, initialProducts, totalCount,
     } finally {
       setLoading(false)
     }
-  }, [slug, sortBy, page, statusFilter])
+  }, [slug, sortBy, page, statusFilter, activeSubCat])
 
   // Re-fetch on filter/sort/page change (but not on initial mount)
   const [initialized, setInitialized] = useState(false)
@@ -129,10 +257,10 @@ export function CategoryClient({ slug, displayName, initialProducts, totalCount,
     fetchProducts()
   }, [fetchProducts, initialized])
 
-  // Reset page on filter/sort change
+  // Reset page on filter/sort/subcat change
   useEffect(() => {
     setPage(1)
-  }, [statusFilter, sortBy])
+  }, [statusFilter, sortBy, activeSubCat])
 
   const activeCount = statusFilter === 'active' ? total : null
   const deadCount = statusFilter === 'dead' ? total : null
@@ -149,15 +277,22 @@ export function CategoryClient({ slug, displayName, initialProducts, totalCount,
       </div>
 
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="font-serif text-4xl font-medium">{displayName}</h1>
-        <div className="flex flex-wrap gap-4 mt-6">
-          <div className="px-4 py-2 bg-card border rounded-lg">
-            <span className="text-2xl font-serif">{total.toLocaleString()}</span>
-            <span className="text-sm text-muted-foreground ml-2">products tracked</span>
-          </div>
-        </div>
       </div>
+
+      {/* Stats bar */}
+      <StatsBar stats={stats} />
+
+      {/* Era chips */}
+      <EraChips />
+
+      {/* Sub-category pills */}
+      <SubCategoryPills
+        subCategories={subCategories}
+        active={activeSubCat}
+        onChange={setActiveSubCat}
+      />
 
       {/* Historical Section */}
       {history && showHistory && (
