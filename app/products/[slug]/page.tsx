@@ -22,6 +22,8 @@ import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { ProductCard } from '@/components/product-card'
 import { SignalHistoryChart } from '@/components/signal-history-chart'
+import { CommentSection } from '@/components/comment-section'
+import { UpvoteButton } from '@/components/upvote-button'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -34,6 +36,7 @@ import type { Product } from '@/lib/mock-data'
 import { getProductBySlug, getRelatedProducts } from '@/lib/db/products'
 import { getPressMentionsForProduct } from '@/lib/db/news'
 import { getProductRelationships } from '@/lib/db/relationships'
+import { getProductComments, getProductCommentCount } from '@/lib/db/comments'
 import { supabaseAdmin } from '@/lib/supabase-server'
 import { cn } from '@/lib/utils'
 
@@ -84,6 +87,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   // Product relationships (product_relationships + product_alternatives)
   const relationships = await getProductRelationships(product.id)
+
+  // Comments
+  const [comments, commentCount] = await Promise.all([
+    getProductComments(product.id),
+    getProductCommentCount(product.id),
+  ])
 
   const { data: productTagRows } = await supabaseAdmin
     .from('product_tags')
@@ -160,6 +169,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            <UpvoteButton productId={product.id} />
             <Button variant="outline" size="icon">
               <Bookmark className="h-4 w-4" />
             </Button>
@@ -312,6 +322,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 </div>
               </section>
             )}
+            {/* Comments */}
+            <CommentSection
+              productId={product.id}
+              initialComments={comments}
+              initialCount={commentCount}
+            />
           </div>
 
           {/* Sidebar */}

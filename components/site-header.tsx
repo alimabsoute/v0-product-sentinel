@@ -18,13 +18,15 @@ import { createBrowserSupabaseClient } from '@/lib/auth-client'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 const NAV_LINKS = [
-  { href: '/products',  label: 'Products'  },
-  { href: '/markets',   label: 'Markets'   },
-  { href: '/trending',  label: 'Trending'  },
-  { href: '/explore',   label: 'Explore'   },
-  { href: '/insights',  label: 'Insights'  },
-  { href: '/evolution', label: 'Evolution' },
-  { href: '/graveyard', label: 'Graveyard' },
+  { href: '/products',   label: 'Products'   },
+  { href: '/categories', label: 'Categories' },
+  { href: '/markets',    label: 'Markets'    },
+  { href: '/trending',   label: 'Trending'   },
+  { href: '/new',        label: 'New'        },
+  { href: '/explore',    label: 'Explore'    },
+  { href: '/insights',   label: 'Insights'   },
+  { href: '/evolution',  label: 'Evolution'  },
+  { href: '/graveyard',  label: 'Graveyard'  },
 ]
 
 export function SiteHeader() {
