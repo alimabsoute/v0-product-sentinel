@@ -160,17 +160,27 @@ async function fetchFundingIds(): Promise<Set<string>> {
  * Fetch signal_score values for a specific date, keyed by product_id.
  */
 async function fetchScoresByDate(date: string): Promise<Map<string, number>> {
-  const { data } = await supabaseAdmin
-    .from('product_signal_scores')
-    .select('product_id, signal_score')
-    .eq('score_date', date)
-
   const map = new Map<string, number>()
-  for (const row of data ?? []) {
-    if (row.signal_score !== null) {
-      map.set(row.product_id, row.signal_score)
+  const PAGE = 1000
+  let offset = 0
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('product_signal_scores')
+      .select('product_id, signal_score')
+      .eq('score_date', date)
+      .range(offset, offset + PAGE - 1)
+
+    if (error || !data || data.length === 0) break
+
+    for (const row of data) {
+      if (row.signal_score !== null) map.set(row.product_id, row.signal_score)
     }
+
+    if (data.length < PAGE) break
+    offset += PAGE
   }
+
   return map
 }
 
@@ -213,19 +223,32 @@ async function fetchGitHubVelocityMap(productIds: string[]): Promise<Map<string,
  * Returns a map of product_id → sorted array of wow_velocity values (oldest first).
  */
 async function fetchWowHistory(ninetyDaysAgo: string, today: string): Promise<Map<string, number[]>> {
-  const { data } = await supabaseAdmin
-    .from('product_signal_scores')
-    .select('product_id, wow_velocity, score_date')
-    .gte('score_date', ninetyDaysAgo)
-    .lt('score_date', today)
-    .not('wow_velocity', 'is', null)
-
   const map = new Map<string, number[]>()
-  for (const row of data ?? []) {
-    const arr = map.get(row.product_id) ?? []
-    arr.push(row.wow_velocity)
-    map.set(row.product_id, arr)
+  const PAGE = 1000
+  let offset = 0
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('product_signal_scores')
+      .select('product_id, wow_velocity, score_date')
+      .gte('score_date', ninetyDaysAgo)
+      .lt('score_date', today)
+      .not('wow_velocity', 'is', null)
+      .order('score_date', { ascending: true })
+      .range(offset, offset + PAGE - 1)
+
+    if (error || !data || data.length === 0) break
+
+    for (const row of data) {
+      const arr = map.get(row.product_id) ?? []
+      arr.push(row.wow_velocity)
+      map.set(row.product_id, arr)
+    }
+
+    if (data.length < PAGE) break
+    offset += PAGE
   }
+
   return map
 }
 
@@ -255,6 +278,7 @@ function computeVelocity(current: number, prior: number | undefined): number {
 
 function computeIsBreakout(wowVelocity: number, history: number[]): boolean {
   if (history.length < 7) return false  // not enough history
+  if (wowVelocity < 5) return false     // require at least 5% wow to filter noise
   const mean = history.reduce((a, b) => a + b, 0) / history.length
   const variance = history.reduce((a, b) => a + (b - mean) ** 2, 0) / history.length
   const stddev = Math.sqrt(variance)
