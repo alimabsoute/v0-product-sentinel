@@ -69,6 +69,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
   // Product relationships (product_relationships + product_alternatives)
   const relationships = await getProductRelationships(product.id)
 
+  const { data: productTagRows } = await supabaseAdmin
+    .from('product_tags')
+    .select('tags!inner(slug, tag_group)')
+    .eq('product_id', product.id)
+
   // Signal history for the chart
   const { data: signalHistory } = await supabaseAdmin
     .from('product_signal_scores')
@@ -175,6 +180,52 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <h2 className="font-serif text-xl font-semibold mb-4">Product Details</h2>
               <ProductCharacteristics product={product} />
             </section>
+
+            {/* Attributes — tag pills from product_tags */}
+            {(productTagRows?.length ?? 0) > 0 && (() => {
+              type TagRow = { tags: { slug: string; tag_group: string } }
+              const grouped: Record<string, string[]> = {}
+              for (const row of (productTagRows as TagRow[])) {
+                const { slug, tag_group } = row.tags
+                if (!grouped[tag_group]) grouped[tag_group] = []
+                grouped[tag_group].push(slug)
+              }
+              const GL: Record<string, string> = {
+                audience: 'Audience',
+                capability: 'Capabilities',
+                business_model: 'Business Models',
+                pricing_model: 'Pricing',
+                deployment: 'Deployment',
+                data_format: 'Data Formats',
+                compliance: 'Compliance',
+                integration: 'Integrations',
+              }
+              const gl = (g: string) =>
+                GL[g] ?? g.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+              return (
+                <section>
+                  <h2 className="font-serif text-xl font-semibold mb-4">Attributes</h2>
+                  <div className="space-y-3">
+                    {Object.entries(grouped).map(([group, tags]) => (
+                      <div key={group} className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground w-28 shrink-0">
+                          {gl(group)}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {tags.map(tag => (
+                            <Link key={tag} href={`/products?tags=${tag}`}>
+                              <Badge variant="secondary" className="cursor-pointer hover:bg-primary/10 transition-colors text-xs">
+                                {tag.replace(/-/g, ' ')}
+                              </Badge>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )
+            })()}
 
             {/* Competitors from DB */}
             {competitors.length > 0 && (

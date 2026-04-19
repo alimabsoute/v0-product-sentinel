@@ -15,6 +15,8 @@ import {
   BarChart,
   Bar,
   Legend,
+  AreaChart,
+  Area,
 } from 'recharts'
 import type {
   CategoryDistributionItem,
@@ -24,6 +26,7 @@ import type {
   CategoryGrowthItem,
   SurvivalRateItem,
   MarketStats,
+  CohortShareItem,
 } from '@/lib/db/analytics'
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
@@ -71,6 +74,21 @@ type Props = {
   newProductRate: NewProductRateItem[]
   categoryGrowth: CategoryGrowthItem[]
   survivalRates: SurvivalRateItem[]
+  cohortShare: CohortShareItem[]
+}
+
+function pivotCohortData(data: CohortShareItem[]) {
+  const byYear = new Map<number, Record<string, number>>()
+  const tags = new Set<string>()
+  for (const row of data) {
+    if (!byYear.has(row.launched_year)) byYear.set(row.launched_year, { year: row.launched_year })
+    byYear.get(row.launched_year)![row.tag_slug] = row.share_pct
+    tags.add(row.tag_slug)
+  }
+  return {
+    chartData: Array.from(byYear.values()).sort((a, b) => a.year - b.year),
+    tags: Array.from(tags),
+  }
 }
 
 // ─── Category Growth Line Chart Data ─────────────────────────────────────────
@@ -104,6 +122,7 @@ export function MarketsClient({
   newProductRate,
   categoryGrowth,
   survivalRates,
+  cohortShare,
 }: Props) {
   const activePercent =
     stats.totalProducts > 0
@@ -116,6 +135,14 @@ export function MarketsClient({
 
   // Pie chart data — top 10 categories
   const pieData = categoryDistribution.slice(0, 10)
+
+  // Cohort chart — top 6 tags by total share
+  const { chartData: cohortChartData, tags: allCohortTags } = pivotCohortData(cohortShare)
+  const tagTotals = allCohortTags.map(tag => ({
+    tag,
+    total: cohortShare.filter(r => r.tag_slug === tag).reduce((s, r) => s + r.share_pct, 0),
+  }))
+  const top6Tags = tagTotals.sort((a, b) => b.total - a.total).slice(0, 6).map(t => t.tag)
 
   return (
     <div className="space-y-6">
@@ -444,6 +471,74 @@ export function MarketsClient({
         ) : (
           <p className="text-sm text-muted-foreground">
             No cohort data available — products need launched_year set.
+          </p>
+        )}
+      </div>
+
+      {/* Row 6: Capability Adoption by Launch Year */}
+      <div className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-sm font-mono uppercase tracking-widest text-muted-foreground mb-1">
+          Capability Adoption by Launch Year
+        </h2>
+        <p className="text-xs text-muted-foreground mb-4">
+          Share of products launched each year featuring each capability tag (100% stacked).
+        </p>
+        {cohortChartData.length > 0 && top6Tags.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart
+              data={cohortChartData}
+              stackOffset="expand"
+              margin={{ top: 4, right: 8, bottom: 0, left: -8 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="year"
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  fontSize: 12,
+                }}
+                formatter={(value: number, name: string) => [
+                  `${(value * 100).toFixed(1)}%`,
+                  name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                ]}
+              />
+              <Legend
+                iconSize={8}
+                wrapperStyle={{ fontSize: 11 }}
+                formatter={(value: string) =>
+                  value.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                }
+              />
+              {top6Tags.map((tag, i) => (
+                <Area
+                  key={tag}
+                  type="monotone"
+                  dataKey={tag}
+                  stackId="1"
+                  stroke={LINE_COLORS[i % LINE_COLORS.length]}
+                  fill={LINE_COLORS[i % LINE_COLORS.length]}
+                  fillOpacity={0.75}
+                  strokeWidth={1}
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No capability cohort data — create the attribute_cohort_share view in Supabase.
           </p>
         )}
       </div>

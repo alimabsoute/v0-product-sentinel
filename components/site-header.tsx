@@ -20,6 +20,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js'
 const NAV_LINKS = [
   { href: '/products',  label: 'Products'  },
   { href: '/markets',   label: 'Markets'   },
+  { href: '/trending',  label: 'Trending'  },
   { href: '/explore',   label: 'Explore'   },
   { href: '/insights',  label: 'Insights'  },
   { href: '/evolution', label: 'Evolution' },

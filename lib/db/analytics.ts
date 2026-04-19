@@ -318,6 +318,38 @@ export async function getSurvivalRates(): Promise<SurvivalRateItem[]> {
   }
 }
 
+export type CohortShareItem = {
+  tag_slug: string
+  tag_group: string
+  launched_year: number
+  share_pct: number
+}
+
+export async function getCohortShare(tagGroup = 'capability'): Promise<CohortShareItem[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('attribute_cohort_share')
+      .select('tag_slug, tag_group, launched_year, share_pct')
+      .eq('tag_group', tagGroup)
+      .gte('launched_year', 2015)
+      .order('launched_year', { ascending: true })
+    if (error || !data) return []
+    return (data as unknown as Array<{
+      tag_slug: string
+      tag_group: string
+      launched_year: number
+      share_pct: string | number
+    }>).map(r => ({
+      tag_slug: r.tag_slug,
+      tag_group: r.tag_group,
+      launched_year: r.launched_year,
+      share_pct: parseFloat(String(r.share_pct)),
+    }))
+  } catch {
+    return []
+  }
+}
+
 /**
  * High-level market aggregate stats.
  */

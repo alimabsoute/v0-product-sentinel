@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Search, X } from 'lucide-react'
+import { Search, X, Zap } from 'lucide-react'
 import {
   AreaChart,
   Area,
@@ -15,6 +15,7 @@ import {
   Legend,
 } from 'recharts'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -204,6 +205,42 @@ export function CompareClient({ initialProductA, initialProductB }: CompareClien
   const router = useRouter()
   const [productA, setProductA] = useState<CompareProduct | null>(initialProductA)
   const [productB, setProductB] = useState<CompareProduct | null>(initialProductB)
+  const [verdictText, setVerdictText] = useState<string | null>(null)
+  const [loadingVerdict, setLoadingVerdict] = useState(false)
+
+  async function fetchVerdict() {
+    if (!productA || !productB) return
+    setLoadingVerdict(true)
+    setVerdictText(null)
+    try {
+      const res = await fetch('/api/compare/verdict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productA: {
+            name: productA.name,
+            tagline: productA.tagline,
+            category: productA.category,
+            tags: productA.tags,
+            signal_score: productA.buzz.score,
+          },
+          productB: {
+            name: productB.name,
+            tagline: productB.tagline,
+            category: productB.category,
+            tags: productB.tags,
+            signal_score: productB.buzz.score,
+          },
+        }),
+      })
+      const data = await res.json()
+      setVerdictText(data.verdict ?? 'Unable to generate verdict.')
+    } catch {
+      setVerdictText('Unable to generate verdict.')
+    } finally {
+      setLoadingVerdict(false)
+    }
+  }
 
   const COLOR_A = '#6366f1' // indigo
   const COLOR_B = '#f59e0b' // amber
@@ -463,6 +500,29 @@ export function CompareClient({ initialProductA, initialProductB }: CompareClien
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Row 5: AI Verdict */}
+          <div className="flex flex-col gap-4">
+            <Button
+              onClick={fetchVerdict}
+              disabled={loadingVerdict}
+              className={cn('self-start')}
+            >
+              {loadingVerdict ? 'Generating verdict...' : 'Get AI Verdict'}
+            </Button>
+            {verdictText && (
+              <div className="rounded-xl border border-border bg-card p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Zap className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold">AI Verdict</h3>
+                  <Badge variant="outline" className="text-xs">Claude Sonnet 4.6</Badge>
+                </div>
+                <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">
+                  {verdictText}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

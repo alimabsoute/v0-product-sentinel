@@ -417,6 +417,7 @@ export type SearchParams = {
   page?: number
   limit?: number
   status?: 'active' | 'dead' | 'all'
+  tags?: string[]           // tag slugs — AND semantics (product must have ALL)
 }
 
 export type SearchResult = {
@@ -424,6 +425,40 @@ export type SearchResult = {
   total: number
   page: number
   totalPages: number
+}
+
+/**
+ * Returns the intersection of product IDs that have ALL of the given tag slugs.
+ * Returns null when tags is empty/undefined (no filter needed).
+ * Returns an empty array when the intersection is empty (no products match).
+ */
+async function getProductIdsForTags(tags: string[]): Promise<string[] | null> {
+  if (!tags || tags.length === 0) return null
+
+  const { data: tagRows } = await supabaseAdmin
+    .from('tags')
+    .select('id')
+    .in('slug', tags)
+
+  const tagIds = (tagRows ?? []).map((r: { id: string }) => r.id)
+  if (tagIds.length === 0) return []
+
+  const sets: Set<string>[] = []
+  for (const tagId of tagIds) {
+    const { data: ptRows } = await supabaseAdmin
+      .from('product_tags')
+      .select('product_id')
+      .eq('tag_id', tagId)
+
+    sets.push(new Set((ptRows ?? []).map((r: { product_id: string }) => r.product_id)))
+  }
+
+  let intersection = sets[0]
+  for (let i = 1; i < sets.length; i++) {
+    intersection = new Set([...intersection].filter((id) => sets[i].has(id)))
+  }
+
+  return [...intersection]
 }
 
 /**
@@ -439,7 +474,13 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
     page = 1,
     limit = 50,
     status = 'active',
+    tags,
   } = params
+
+  const tagProductIds = await getProductIdsForTags(tags ?? [])
+  if (tagProductIds !== null && tagProductIds.length === 0) {
+    return { products: [], total: 0, page: 1, totalPages: 0 }
+  }
 
   const offset = (page - 1) * limit
 
@@ -457,7 +498,12 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
       .limit(1000)
 
     const { data: scoreRows } = await scoreQ
-    const rankedIds = (scoreRows ?? []).map(r => r.product_id)
+    let rankedIds = (scoreRows ?? []).map(r => r.product_id)
+
+    if (tagProductIds !== null) {
+      const tagSet = new Set(tagProductIds)
+      rankedIds = rankedIds.filter((id) => tagSet.has(id))
+    }
 
     // Step 2: count matching products
     let countQ = supabaseAdmin
@@ -478,6 +524,9 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
     }
     if (q) {
       countQ = countQ.textSearch('search_vector', q, { type: 'plain', config: 'english' })
+    }
+    if (tagProductIds !== null) {
+      countQ = countQ.in('id', tagProductIds)
     }
 
     const { count } = await countQ
@@ -546,6 +595,10 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
   } else if (q && q.trim().length > 0) {
     // Trigram / ilike fallback for short queries
     query = query.ilike('name', `%${q.trim()}%`)
+  }
+
+  if (tagProductIds !== null) {
+    query = query.in('id', tagProductIds)
   }
 
   switch (sort) {
