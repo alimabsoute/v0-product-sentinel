@@ -120,6 +120,65 @@ export async function getRecentlyLaunched(limit = 20): Promise<TrendingProduct[]
   }
 }
 
+async function getLatestScoreDate(): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from('product_signal_scores')
+    .select('score_date')
+    .order('score_date', { ascending: false })
+    .limit(1)
+    .single()
+  return data?.score_date ?? null
+}
+
+export type BreakoutProduct = TrendingProduct & {
+  wow_velocity: number
+  mom_velocity: number
+}
+
+export async function getBreakouts(limit = 20): Promise<BreakoutProduct[]> {
+  try {
+    const latestDate = await getLatestScoreDate()
+    if (!latestDate) return []
+
+    const { data, error } = await supabaseAdmin
+      .from('product_signal_scores')
+      .select(`
+        product_id,
+        signal_score,
+        wow_velocity,
+        mom_velocity,
+        products!inner(id, slug, name, logo_url, category, launched_year, created_at, status)
+      `)
+      .eq('score_date', latestDate)
+      .eq('products.status', 'active')
+      .order('wow_velocity', { ascending: false })
+      .limit(limit)
+
+    if (error || !data) return []
+
+    return (data as unknown as Array<{
+      product_id: string
+      signal_score: number
+      wow_velocity: number
+      mom_velocity: number
+      products: { id: string; slug: string; name: string; logo_url: string | null; category: string; launched_year: number | null; created_at: string }
+    }>).map(row => ({
+      id: row.products.id,
+      slug: row.products.slug,
+      name: row.products.name,
+      logo_url: row.products.logo_url,
+      category: row.products.category,
+      signal_score: row.signal_score,
+      launched_year: row.products.launched_year,
+      created_at: row.products.created_at,
+      wow_velocity: row.wow_velocity,
+      mom_velocity: row.mom_velocity,
+    }))
+  } catch {
+    return []
+  }
+}
+
 export async function getTopByCategory(limit = 5): Promise<{ category: string; display: string; product: TrendingProduct }[]> {
   try {
     const { data, error } = await supabaseAdmin

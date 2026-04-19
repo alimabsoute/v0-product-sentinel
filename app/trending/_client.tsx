@@ -6,7 +6,8 @@ import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { TrendingProduct } from '@/lib/db/trending'
+import type { TrendingProduct, BreakoutProduct } from '@/lib/db/trending'
+import { TrendingUp } from 'lucide-react'
 
 const FALLBACK_LOGO = 'https://placehold.co/40x40/e2e8f0/64748b?text=P'
 
@@ -20,6 +21,7 @@ type Props = {
   signalLeaders: TrendingProduct[]
   recentlyLaunched: TrendingProduct[]
   topByCategory: TopByCategoryItem[]
+  breakouts: BreakoutProduct[]
 }
 
 function ProductLogo({ src, name }: { src: string | null; name: string }) {
@@ -81,7 +83,7 @@ function YearBadge({ year }: { year: number | null }) {
   )
 }
 
-export function TrendingClient({ signalLeaders, recentlyLaunched, topByCategory }: Props) {
+export function TrendingClient({ signalLeaders, recentlyLaunched, topByCategory, breakouts }: Props) {
   return (
     <div className="space-y-8">
       <div>
@@ -93,12 +95,41 @@ export function TrendingClient({ signalLeaders, recentlyLaunched, topByCategory 
         </p>
       </div>
 
-      <Tabs defaultValue="signal-leaders">
+      <Tabs defaultValue="breakouts">
         <TabsList className="mb-6">
+          <TabsTrigger value="breakouts">Breakouts</TabsTrigger>
           <TabsTrigger value="signal-leaders">Signal Leaders</TabsTrigger>
           <TabsTrigger value="recently-launched">Recently Launched</TabsTrigger>
           <TabsTrigger value="by-category">By Category</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="breakouts">
+          <div className="space-y-2">
+            {breakouts.length === 0 || breakouts.every(b => b.wow_velocity === 0) ? (
+              <div className="rounded-xl border border-border bg-card p-8 text-center">
+                <TrendingUp className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-sm font-medium">No breakouts detected yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Breakouts appear after signal history accumulates. Run{' '}
+                  <code className="bg-muted px-1 rounded text-xs">pnpm seed:scores</code> to bootstrap.
+                </p>
+              </div>
+            ) : (
+              breakouts.map((product, i) => (
+                <ProductRow
+                  key={product.id}
+                  product={product}
+                  rank={i + 1}
+                  trailing={
+                    <span className="flex-shrink-0 rounded-lg border border-green-200 bg-green-50 px-2.5 py-1 font-mono text-xs font-semibold text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400">
+                      +{product.wow_velocity.toFixed(1)}% WoW
+                    </span>
+                  }
+                />
+              ))
+            )}
+          </div>
+        </TabsContent>
 
         <TabsContent value="signal-leaders">
           <div className="space-y-2">

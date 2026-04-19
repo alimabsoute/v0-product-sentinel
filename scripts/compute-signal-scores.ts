@@ -267,17 +267,19 @@ async function main() {
   const onlyNew = process.argv.includes('--only-new')
 
   const now = new Date()
-  const today = now.toISOString().split('T')[0]
+  const dateArg = process.argv.find(a => a.startsWith('--date='))
+  const today = dateArg ? dateArg.split('=')[1] : now.toISOString().split('T')[0]
 
-  const sevenDaysAgo  = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7)
-  const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30)
-  const ninetyDaysAgo = new Date(now); ninetyDaysAgo.setDate(now.getDate() - 90)
+  const baseDate = new Date(today + 'T12:00:00Z')
+  const sevenDaysAgo  = new Date(baseDate); sevenDaysAgo.setDate(baseDate.getDate() - 7)
+  const thirtyDaysAgo = new Date(baseDate); thirtyDaysAgo.setDate(baseDate.getDate() - 30)
+  const ninetyDaysAgo = new Date(baseDate); ninetyDaysAgo.setDate(baseDate.getDate() - 90)
 
   const d7  = sevenDaysAgo.toISOString().split('T')[0]
   const d30 = thirtyDaysAgo.toISOString().split('T')[0]
   const d90 = ninetyDaysAgo.toISOString().split('T')[0]
 
-  console.log(`\n📊 Signal Score Computation — ${today}`)
+  console.log(`\n📊 Signal Score Computation — ${today}${dateArg ? ' (retroactive)' : ''}`)
   console.log(`   Mode: ${onlyNew ? 'only-new (skip already scored)' : 'all active products'}\n`)
 
   // ── Batch fetch all reference data upfront ──────────────────────────────────
