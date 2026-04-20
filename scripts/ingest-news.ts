@@ -40,11 +40,13 @@ type EventType = 'launch' | 'acquisition' | 'shutdown' | 'funding' | 'update' | 
 
 type NewsAnalysis = {
   is_product_relevant: boolean
-  product_name: string | null     // best guess at which product this is about
+  product_name: string | null
   event_type: EventType
   sentiment: -1 | 0 | 1
   importance_score: number        // 1-5
   summary: string | null          // 1-sentence summary
+  condensed_title: string | null  // punchy rewrite <80 chars
+  blurb: string | null            // 1-2 sentence standalone summary
 }
 
 type FundingExtraction = {
@@ -90,20 +92,22 @@ function passesKeywordFilter(title: string, snippet: string): boolean {
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 async function classifyArticle(title: string, snippet: string, source: string): Promise<NewsAnalysis | null> {
-  const prompt = `Classify this tech news article for a product intelligence platform. Return ONLY a valid JSON object.
+  const prompt = `Classify this tech news article for a product intelligence platform. Return ONLY a valid JSON object — no markdown, no prose.
 
 Source: ${source}
 Title: ${title}
 Snippet: ${snippet.slice(0, 500)}
 
-Return:
+Return exactly this JSON shape:
 {
   "is_product_relevant": <true if this covers a specific product/startup/tool, false for op-eds/politics/general trend pieces>,
   "product_name": "<best guess at product or company name, or null>",
   "event_type": "launch|acquisition|shutdown|funding|update|controversy|other",
   "sentiment": <-1 negative | 0 neutral | 1 positive>,
-  "importance_score": <1 minor | 2 low | 3 medium | 4 high | 5 major>,
-  "summary": "<one sentence, or null>"
+  "importance_score": <1 minor | 2 low | 3 medium | 4 high | 5 major event>,
+  "summary": "<one crisp sentence for snippet field, or null>",
+  "condensed_title": "<punchy rewrite of headline under 80 chars, present tense, no clickbait — or null if not product-relevant>",
+  "blurb": "<1-2 sentence reader-friendly summary: what happened + why it matters. Null if not relevant>"
 }`
 
   const msg = await anthropic.messages.create({
@@ -214,6 +218,9 @@ async function upsertPressMention(
       importance_score: analysis.importance_score,
       category: source.category,
       reliability: source.reliability,
+      condensed_title: analysis.condensed_title ?? null,
+      blurb: analysis.blurb ?? null,
+      published_at: item.pubDate ? new Date(item.pubDate).toISOString() : null,
     },
   })
 

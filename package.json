@@ -23,7 +23,8 @@
     "enrich:attributes": "tsx --env-file=.env.local scripts/enrich-attributes.ts",
     "enrich:attributes:dry": "tsx --env-file=.env.local scripts/enrich-attributes.ts --dry-run --limit=100",
     "signals:date": "tsx --env-file=.env.local scripts/compute-signal-scores.ts",
-    "seed:scores": "tsx --env-file=.env.local scripts/seed-score-history.ts"
+    "seed:scores": "tsx --env-file=.env.local scripts/seed-score-history.ts",
+    "backfill:news-blurbs": "tsx --env-file=.env.local scripts/backfill-news-blurbs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",

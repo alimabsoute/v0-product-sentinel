@@ -145,6 +145,112 @@ export async function getPressMentionsFeed({
   }
 }
 
+// ─── News Archive ─────────────────────────────────────────────────────────────
+
+export type NewsArchiveItem = {
+  id: string
+  headline: string | null
+  url: string | null
+  publication: string | null
+  mention_date: string | null
+  sentiment: number | null
+  product_id: string | null
+  product_name: string
+  product_slug: string
+  snippet: string | null
+  metadata: {
+    condensed_title?: string | null
+    blurb?: string | null
+    published_at?: string | null
+    importance_score?: number | null
+    event_type?: string | null
+  } | null
+}
+
+export type NewsArchiveResult = {
+  items: NewsArchiveItem[]
+  total: number
+  page: number
+  totalPages: number
+}
+
+export type NewsArchiveFilters = {
+  page?: number
+  limit?: number
+  source?: string
+  sentiment?: -1 | 0 | 1
+  dateFrom?: string
+  dateTo?: string
+  sort?: 'newest' | 'importance'
+}
+
+export async function getNewsArchive({
+  page = 1,
+  limit = 50,
+  source,
+  sentiment,
+  dateFrom,
+  dateTo,
+  sort = 'newest',
+}: NewsArchiveFilters = {}): Promise<NewsArchiveResult> {
+  const offset = (page - 1) * limit
+
+  let query = supabaseAdmin
+    .from('press_mentions')
+    .select('id, headline, snippet, url, publication, mention_date, sentiment, product_id, metadata, products ( name, slug )', { count: 'exact' })
+    .order('mention_date', { ascending: false })
+
+  if (source) query = query.eq('publication', source)
+  if (sentiment !== undefined) query = query.eq('sentiment', sentiment)
+  if (dateFrom) query = query.gte('mention_date', dateFrom)
+  if (dateTo) query = query.lte('mention_date', dateTo)
+
+  query = query.range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
+
+  if (error) {
+    console.error('[news] getNewsArchive:', error.message)
+    return { items: [], total: 0, page, totalPages: 0 }
+  }
+
+  let items: NewsArchiveItem[] = (data ?? []).map((row) => {
+    const p = row.products as { name: string; slug: string } | null
+    return {
+      id: row.id as string,
+      headline: row.headline as string | null,
+      snippet: row.snippet as string | null,
+      url: row.url as string | null,
+      publication: row.publication as string | null,
+      mention_date: row.mention_date as string | null,
+      sentiment: row.sentiment as number | null,
+      product_id: row.product_id as string | null,
+      product_name: p?.name ?? '',
+      product_slug: p?.slug ?? '',
+      metadata: row.metadata as NewsArchiveItem['metadata'],
+    }
+  })
+
+  if (sort === 'importance') {
+    items = items.sort(
+      (a, b) => (b.metadata?.importance_score ?? 0) - (a.metadata?.importance_score ?? 0)
+    )
+  }
+
+  const total = count ?? 0
+  return { items, total, page, totalPages: Math.ceil(total / limit) }
+}
+
+export async function getNewsPublications(): Promise<string[]> {
+  const { data } = await supabaseAdmin
+    .from('press_mentions')
+    .select('publication')
+    .not('publication', 'is', null)
+
+  const unique = [...new Set((data ?? []).map((r) => r.publication as string))]
+  return unique.sort()
+}
+
 export async function getPressMentionStats(): Promise<PressMentionStats> {
   const { count: totalMentions } = await supabaseAdmin
     .from('press_mentions')
