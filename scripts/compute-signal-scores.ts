@@ -336,16 +336,14 @@ async function main() {
   const allProducts: ProductRow[] = []
   let offset = 0
 
+  const existingSet = new Set(existingIds)
+
   while (true) {
-    let q = supabaseAdmin
+    const q = supabaseAdmin
       .from('products')
       .select('id, slug, sub_category, launched_year, launched_month, status, website_url, twitter_handle, github_repo, description, confidence_score')
       .eq('status', 'active')
       .range(offset, offset + FETCH_LIMIT - 1)
-
-    if (onlyNew && existingIds.length > 0) {
-      q = q.not('id', 'in', `(${existingIds.join(',')})`)
-    }
 
     const { data: batch, error } = await q
     if (error) throw error
@@ -355,7 +353,10 @@ async function main() {
     if (batch.length < FETCH_LIMIT) break
   }
 
-  const products = allProducts
+  // filter in memory — avoids Supabase URL length limit with large NOT IN lists
+  const products = onlyNew && existingSet.size > 0
+    ? allProducts.filter(p => !existingSet.has(p.id))
+    : allProducts
   console.log(`  Computing scores for ${products.length} products...\n`)
 
   // ── Batch-fetch GitHub star velocity for this product set ───────────────────

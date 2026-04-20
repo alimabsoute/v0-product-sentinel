@@ -376,22 +376,26 @@ export async function runIngestion(source: string, items: RawItem[]): Promise<vo
   console.log(`\nProcessing ${items.length} items from ${source}...\n`)
 
   let inserted = 0, skippedDup = 0, skippedInvalid = 0, failed = 0
+  const BATCH = 8
 
-  for (const item of items) {
-    const dup = await isDuplicate(item)
-    if (dup.dup) { console.log(`  SKIP ${item.slug} (dup:${dup.layer})`); skippedDup++; continue }
+  for (let i = 0; i < items.length; i += BATCH) {
+    const batch = items.slice(i, i + BATCH)
+    await Promise.all(batch.map(async (item) => {
+      const dup = await isDuplicate(item)
+      if (dup.dup) { console.log(`  SKIP ${item.slug} (dup:${dup.layer})`); skippedDup++; return }
 
-    const extracted = await extractProduct(item, vocab)
-    if (!extracted) { failed++; continue }
+      const extracted = await extractProduct(item, vocab)
+      if (!extracted) { failed++; return }
 
-    const validation = validateAndFilter(extracted, vocab)
-    if (!validation.valid) { console.log(`  SKIP ${item.slug} (${validation.reason})`); skippedInvalid++; continue }
+      const validation = validateAndFilter(extracted, vocab)
+      if (!validation.valid) { console.log(`  SKIP ${item.slug} (${validation.reason})`); skippedInvalid++; return }
 
-    const id = await insertProduct(item, validation.cleaned!, vocab)
-    if (id) { console.log(`  INSERT ${item.slug} → ${id}`); inserted++ }
-    else failed++
-
-    await sleep(300) // rate limit Claude
+      const id = await insertProduct(item, validation.cleaned!, vocab)
+      if (id) { console.log(`  INSERT ${item.slug} → ${id}`); inserted++ }
+      else failed++
+    }))
+    // small pause between batches to stay within Claude rate limits
+    if (i + BATCH < items.length) await sleep(200)
   }
 
   console.log(`\n✅ ${source}: inserted=${inserted} dup=${skippedDup} invalid=${skippedInvalid} failed=${failed}`)
