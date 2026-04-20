@@ -8,7 +8,7 @@ import { SiteHeader } from '@/components/site-header'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import type { GraphData, GraphNode, GraphLink } from '@/lib/db/graph'
+import type { GraphData, GraphNode, GraphLink, GraphViewMode } from '@/lib/db/graph'
 
 // ─── Dynamic import: react-force-graph is canvas/WebGL → client-only ─────────
 // The package ships ESM + DOM APIs; importing at module level during SSR throws
@@ -91,6 +91,9 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [selectedNode, setSelectedNode] = useState<RGNode | null>(null)
   const [hoveredNode, setHoveredNode] = useState<RGNode | null>(null)
+  const [viewMode, setViewMode] = useState<GraphViewMode>('category')
+  const [graphData, setGraphData] = useState(initialGraph)
+  const [loadingMode, setLoadingMode] = useState(false)
 
   const debouncedSearch = useDebounced(search, 200)
 
@@ -131,9 +134,22 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
     return () => window.removeEventListener('resize', measure)
   }, [])
 
+  // ── View mode switcher ───────────────────────────────────────────────────
+  const switchViewMode = useCallback(async (mode: GraphViewMode) => {
+    setViewMode(mode)
+    setLoadingMode(true)
+    setCategoryFilter(null)
+    try {
+      const res = await fetch(`/api/graph?viewMode=${mode}&limit=2000`)
+      const data = await res.json()
+      setGraphData(data)
+    } catch { /* keep existing */ }
+    setLoadingMode(false)
+  }, [])
+
   // ── Filtered graph data ───────────────────────────────────────────────────
   const filteredData = useMemo(() => {
-    const { nodes, links } = initialGraph
+    const { nodes, links } = graphData
 
     // Apply category filter
     let visibleProducts = nodes.filter(n => n.type === 'product')
@@ -257,8 +273,7 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
       }
 
       // ── Product node ──
-      // Logo if available, score > 60, and node is big enough
-      const tryLogo = node.logo_url && node.signal_score > 60 && globalScale > 0.6
+      const tryLogo = node.logo_url && globalScale > 0.4
       let drewLogo = false
       if (tryLogo) {
         const img = getLogoImage(node.logo_url!)
@@ -410,7 +425,21 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
                 </button>
               )}
             </div>
+            {/* View mode tabs */}
+            <div className="mb-2 flex rounded-md border border-white/10 overflow-hidden">
+              {(['category', 'era', 'similarity'] as GraphViewMode[]).map(m => (
+                <button
+                  key={m}
+                  onClick={() => { if (m !== viewMode) switchViewMode(m) }}
+                  className={`flex-1 py-1 text-[10px] font-medium capitalize transition-colors ${viewMode === m ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white/80'}`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+
             <div className="flex items-center justify-between gap-2">
+              {viewMode === 'category' && (
               <select
                 value={categoryFilter ?? ''}
                 onChange={(e) => setCategoryFilter(e.target.value || null)}
@@ -421,6 +450,7 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
                   <option key={c.slug} value={c.slug}>{c.name}</option>
                 ))}
               </select>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

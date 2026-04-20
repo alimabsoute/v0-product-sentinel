@@ -12,7 +12,7 @@ export const metadata = {
 
 export default async function ExploreServerPage() {
   const [graphData, categories] = await Promise.all([
-    getGraphData({ limit: 500 }),
+    getGraphData({ limit: 2000, viewMode: 'category' }),
     getGraphCategories(),
   ])
   return <ExplorePage initialGraph={graphData} categories={categories} />

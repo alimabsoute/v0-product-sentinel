@@ -22,6 +22,8 @@ import { supabaseAdmin } from '@/lib/supabase-server'
 
 export type GraphNodeType = 'product' | 'category'
 
+export type GraphViewMode = 'category' | 'era' | 'similarity'
+
 export interface GraphNode {
   id: string
   name: string
@@ -31,7 +33,8 @@ export interface GraphNode {
   signal_score: number      // 0-100
   logo_url: string | null
   type: GraphNodeType
-  product_count?: number    // category hubs only
+  launched_year: number | null
+  product_count?: number    // hub nodes only
 }
 
 export interface GraphLink {
@@ -77,6 +80,7 @@ type ProductRow = {
   name: string
   logo_url: string | null
   category: string
+  launched_year: number | null
   product_signal_scores: { signal_score: number | null; score_date: string | null }[]
 }
 
@@ -85,20 +89,16 @@ type ProductRow = {
 export interface GetGraphDataParams {
   category?: string         // accepts display name OR slug
   limit?: number
+  viewMode?: GraphViewMode
 }
 
 export async function getGraphData(params: GetGraphDataParams = {}): Promise<GraphData> {
-  const { category, limit = 500 } = params
-
-  // ── 1. Fetch top products by latest signal_score ───────────────────────────
-  // Strategy: pull active products with their latest score joined, sort in-memory
-  // by latest signal_score. This keeps us to a single round-trip even without
-  // a materialised "latest_score" view.
+  const { category, limit = 2000, viewMode = 'category' } = params
 
   let query = supabaseAdmin
     .from('products')
     .select(`
-      id, slug, name, logo_url, category,
+      id, slug, name, logo_url, category, launched_year,
       product_signal_scores ( signal_score, score_date )
     `)
     .eq('status', 'active')
@@ -108,9 +108,7 @@ export async function getGraphData(params: GetGraphDataParams = {}): Promise<Gra
     query = query.eq('category', slug)
   }
 
-  // Over-fetch a bit so that after sorting we still have `limit` products with scores.
-  // The DB has ~7.8k active products / ~6.3k scores — plenty of headroom.
-  query = query.limit(Math.max(limit * 3, 1500))
+  query = query.limit(Math.max(limit * 2, 4000))
 
   const { data, error } = await query
   if (error) throw error
@@ -146,36 +144,49 @@ export async function getGraphData(params: GetGraphDataParams = {}): Promise<Gra
       slug: row.slug,
       category: categoryDisplay(row.category),
       categorySlug: row.category,
-      signal_score: Math.round(score * 10) / 10, // keep 1 decimal, 0-100 range
+      signal_score: Math.round(score * 10) / 10,
       logo_url: row.logo_url,
+      launched_year: row.launched_year,
       type: 'product',
     })
   }
 
-  for (const [slug, count] of categoryCounts.entries()) {
-    nodes.push({
-      id: `cat-${slug}`,
-      name: categoryDisplay(slug),
-      slug,
-      category: categoryDisplay(slug),
-      categorySlug: slug,
-      signal_score: 0,
-      logo_url: null,
-      type: 'category',
-      product_count: count,
-    })
-  }
-
-  // ── 3. Category links (every product → its hub) ────────────────────────────
   const links: GraphLink[] = []
-  for (const node of nodes) {
-    if (node.type !== 'product') continue
-    links.push({
-      source: node.id,
-      target: `cat-${node.categorySlug}`,
-      type: 'category',
-    })
+
+  if (viewMode === 'category') {
+    for (const [slug, count] of categoryCounts.entries()) {
+      nodes.push({
+        id: `cat-${slug}`, name: categoryDisplay(slug), slug,
+        category: categoryDisplay(slug), categorySlug: slug,
+        signal_score: 0, logo_url: null, launched_year: null,
+        type: 'category', product_count: count,
+      })
+    }
+    for (const node of nodes) {
+      if (node.type !== 'product') continue
+      links.push({ source: node.id, target: `cat-${node.categorySlug}`, type: 'category' })
+    }
+  } else if (viewMode === 'era') {
+    const eraCounts = new Map<string, number>()
+    for (const { row } of top) {
+      const era = row.launched_year ? String(row.launched_year) : 'Unknown'
+      eraCounts.set(era, (eraCounts.get(era) ?? 0) + 1)
+    }
+    for (const [era, count] of eraCounts.entries()) {
+      nodes.push({
+        id: `era-${era}`, name: era, slug: era,
+        category: era, categorySlug: era,
+        signal_score: 0, logo_url: null, launched_year: null,
+        type: 'category', product_count: count,
+      })
+    }
+    for (const node of nodes) {
+      if (node.type !== 'product') continue
+      const era = node.launched_year ? String(node.launched_year) : 'Unknown'
+      links.push({ source: node.id, target: `era-${era}`, type: 'category' })
+    }
   }
+  // similarity mode: no hubs, tag-based edges added below
 
   // ── 4. Alternative links (only if both endpoints are in the result set) ────
   const productIds = Array.from(productIdSet)
@@ -198,7 +209,42 @@ export async function getGraphData(params: GetGraphDataParams = {}): Promise<Gra
     }
   }
 
-  // ── 5. Relationship links (may be empty table — swallow errors) ────────────
+  // ── 5. Tag-based similarity edges (similarity mode only) ─────────────────
+  if (viewMode === 'similarity' && productIds.length > 0) {
+    try {
+      const { data: tagRows } = await supabaseAdmin
+        .from('product_tags')
+        .select('product_id, tag_id')
+        .in('product_id', productIds)
+
+      if (tagRows) {
+        // Build tag→products map
+        const tagToProducts = new Map<string, string[]>()
+        for (const r of tagRows as { product_id: string; tag_id: string }[]) {
+          if (!tagToProducts.has(r.tag_id)) tagToProducts.set(r.tag_id, [])
+          tagToProducts.get(r.tag_id)!.push(r.product_id)
+        }
+        // Count shared tags per product pair
+        const pairScore = new Map<string, number>()
+        for (const prods of tagToProducts.values()) {
+          if (prods.length < 2 || prods.length > 200) continue // skip ubiquitous tags
+          for (let i = 0; i < prods.length; i++) {
+            for (let j = i + 1; j < prods.length; j++) {
+              const key = prods[i] < prods[j] ? `${prods[i]}|${prods[j]}` : `${prods[j]}|${prods[i]}`
+              pairScore.set(key, (pairScore.get(key) ?? 0) + 1)
+            }
+          }
+        }
+        for (const [key, score] of pairScore.entries()) {
+          if (score < 2) continue // require ≥2 shared tags
+          const [src, tgt] = key.split('|')
+          links.push({ source: src, target: tgt, type: 'relationship' })
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ── 7. Relationship links (may be empty table — swallow errors) ────────────
   if (productIds.length > 0) {
     try {
       const { data: relRows } = await supabaseAdmin
