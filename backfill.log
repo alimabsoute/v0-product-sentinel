@@ -16081,3 +16081,569 @@ Product insert failed for DubWiz: {
   INSERT postman-api-first-journey → fb70a3b1-84c3-4ee5-8b21-b689111352f3
   INSERT riju → 752c3250-0685-468c-ba7c-7b65d614115c
   SKIP gethyper (dup:name-exact)
+  INSERT squadstack → 58dd53ae-0565-412a-af3a-c07eabbf3e2c
+  INSERT heystak → a513fd47-43db-46a6-8995-42e840772ac5
+  INSERT smart-notes-by-mindpal → abecc052-de79-4189-82ab-a2258be14daf
+  INSERT instagraph → 4f2aa0a7-2833-4521-84cc-4b82fb143e74
+  INSERT veklar-2 → 5c3039bf-b53e-4ad3-8457-bb021b801c79
+  INSERT orderly-3 → cce52f99-1faf-4d77-bf7a-ef2c7532f097
+  INSERT postli → 2d460e2b-f387-46a6-8dac-74b7becc8446
+  INSERT conntent → 1c8930ff-0695-41f7-b087-7dbae004f13d
+  INSERT email-emu → 4cf1f125-7230-47b9-b013-f621ef0d9400
+  INSERT how-much-to-make-2 → 193b7369-8d1f-4be4-8315-683abb8ffdb6
+  INSERT codebasechat → 82bb39ad-1a74-49f4-ba9e-802c520c2398
+  INSERT framernauts → ac103983-0110-4269-8f88-178ab9318639
+  INSERT ai-ml-jobs-2 → b45a6c54-916a-4386-a5a9-ee0010c93ccd
+  INSERT farts-1 → 8b3f0814-3d48-4120-8ed8-3ccdd73bed04
+  SKIP vitaloop-2 (dup:name-exact)
+  INSERT track-ai-answers → d1cce2c7-1d2e-4b23-8cfd-23755052b058
+  INSERT pataland → c337ccf0-7b2b-4d6b-a52e-68c6c4adce06
+  INSERT livingcharts-com → cb257c66-59d6-4e16-a40e-103ec326a9f4
+  INSERT modularmind-no-code-ai-builder → 10be257e-4ab0-421d-8513-10db9dd125f4
+Product insert failed for Calendrier de l'Avent NoCode 2023: {
+  code: '23505',
+  details: 'Key (slug)=(calendrier-de-l-avent-nocode-2023) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Gangr DTF gang Sheet Builder: {
+  code: '23505',
+  details: 'Key (slug)=(gangr-dtf-gang-sheet-builder) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Peel-Works: {
+  code: '23505',
+  details: 'Key (slug)=(peel-works) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Claude 2.1: {
+  code: '23505',
+  details: 'Key (slug)=(claude-2-1) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for GPT service for business automation: {
+  code: '23505',
+  details: 'Key (slug)=(gpt-service-for-business-automation) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Infinyte.club: {
+  code: '23505',
+  details: 'Key (slug)=(infinyte-club) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT codeassist-2 → f674a8b7-c3d7-447c-a3de-fede8791d7c7
+  INSERT gitea-cloud → c2ec7600-3876-4b3f-8692-9ccd73677f75
+  INSERT technology-profiler-and-lookup-by-ful-io → 1796afdd-1760-4d0b-ba2a-694641089f1f
+  INSERT rankweek-com → 8f55dc44-d426-4c5b-93a3-d24c45fb118f
+  INSERT histogram-maker-2 → 0b53d025-5ef1-4b20-87b8-5e3344a47fae
+  INSERT new-ai-helper → 04b4f63f-b655-4c0d-a02c-068bb447f8d9
+
+✅ product_hunt: inserted=254 dup=21 invalid=0 failed=225
+   ✓ inserted=254 skipped=21 fetched=500
+📅 2023-12
+   500 posts fetched (25 pages)
+
+Loading vocabulary...
+  18 categories, 419 leaves
+
+Processing 500 items from product_hunt...
+
+  INSERT fileconv-online-remove-bg → dcbae42a-ceb3-41ad-8343-3eb63e0bbe14
+Product insert failed for MUSICDATAK: {
+  code: '23505',
+  details: 'Key (slug)=(musicdatak) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Animalia AI: {
+  code: '23505',
+  details: 'Key (slug)=(animalia-ai) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for GameX: {
+  code: '23505',
+  details: 'Key (slug)=(gamex) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT knitetech-io → eb80c398-30de-4587-9666-da52a7459639
+  INSERT koala-ui-pre-orders-save-50 → 71690af1-7d55-431c-8cee-d1e60da3fa69
+  INSERT newscadia → 64e283dc-1fb9-4b7b-812f-2d5b8156a8ea
+  INSERT best-proposals → 056e3fd2-f560-4a4a-9dde-1667cbaab870
+  INSERT ultrasonic-skin-scrubber-dazzle-beauty → ca69dc67-2d0a-468d-bf99-42a09177a57d
+  INSERT emerald-3 → 71ee05ca-573d-4851-b5b9-5ad7447de353
+  INSERT teslalocksoundshub → 36871312-372a-4496-be71-32dd2ced3ba8
+  INSERT magicrecap → 13cf7f75-8e8a-4f88-8487-b6cced39ef9e
+  INSERT synctify → ac68c3cd-b53d-4ae3-b2b5-cc6ca88ffe3c
+  INSERT indian-coderz → 4d636255-f4d4-45be-b732-cd0f5abf38eb
+Product insert failed for Open Fantasy Maps: {
+  code: '23505',
+  details: 'Key (slug)=(open-fantasy-maps) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT infolink-dev → 011db25f-d703-4dc7-a589-ec44c2b16323
+Product insert failed for Forgr: {
+  code: '23505',
+  details: 'Key (slug)=(forgr-2) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Clear Sky Alerts: {
+  code: '23505',
+  details: 'Key (slug)=(clear-sky-alerts) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Seonly: {
+  code: '23505',
+  details: 'Key (slug)=(seonly) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for WishMerge: {
+  code: '23505',
+  details: 'Key (slug)=(wishmerge) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for FullScreenDisplay: {
+  code: '23505',
+  details: 'Key (slug)=(fullscreendisplay) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT saaslidator → dd382fe5-0cb3-4481-97d7-bee9af17458b
+  INSERT remote-profile → 8e330ddf-aabe-4839-9ded-595f50f28fd9
+Product insert failed for WebpToJpgOnline.com: {
+  code: '23505',
+  details: 'Key (slug)=(webptojpgonline-com) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for UserWise: {
+  code: '23505',
+  details: 'Key (slug)=(userwise-2) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT scheduled-for-ios-messages-whatsapp → 10304fac-1d41-4f88-9c6d-684227a6d427
+  INSERT founder-s-icebreaker → aa78bd6e-8b19-4aed-a1d3-a43dc42ffad0
+  INSERT focalring → 73a2d9e8-986e-44f0-bfbd-a0142e8b16ba
+  INSERT indie-hackers-of-the-year → 47a676ea-3162-40e1-8a32-5b20296b10fe
+  INSERT mailgen-email-marketing-platform → 53690aac-146e-4041-9612-3b58404288b6
+  INSERT 30-days-of-pm → a1185597-d7a5-4f24-9b66-002229456eae
+  INSERT wordscope-translate → 8d577471-d290-4a43-a106-ba8d1c084ca4
+Product insert failed for GetBotAI: {
+  code: '23505',
+  details: 'Key (slug)=(getbotai) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Sport Highlights Aggregation API: {
+  code: '23505',
+  details: 'Key (slug)=(sport-highlights-aggregation-api) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for The Merry Manticore: {
+  code: '23505',
+  details: 'Key (slug)=(the-merry-manticore) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Tell Me Before 24: {
+  code: '23505',
+  details: 'Key (slug)=(tell-me-before-24) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Palletmapper: {
+  code: '23505',
+  details: 'Key (slug)=(palletmapper) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  SKIP csvsense (dup:slug)
+Product insert failed for Bot or Not: {
+  code: '23505',
+  details: 'Key (slug)=(bot-or-not-4) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for 1000000.tools: {
+  code: '23505',
+  details: 'Key (slug)=(1000000-tools) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Worldwide Twitter Trends 50: {
+  code: '23505',
+  details: 'Key (slug)=(worldwide-twitter-trends-50) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT scrabblecam → 22667bc8-0371-4799-91f8-83bebbe24e6e
+  INSERT findpic-io-free-beautiful-stock-photos → 9a9f1d88-c51d-47c3-99cd-36459ec8f1a1
+  INSERT habit-circle → fa76e99b-083d-4de8-92d5-67ed1866d2fa
+Product insert failed for Magic Translate: {
+  code: '23505',
+  details: 'Key (slug)=(magic-translate) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for MuslimBot: {
+  code: '23505',
+  details: 'Key (slug)=(muslimbot) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  SKIP nestjs-file-generator-for-vscode (dup:slug)
+Product insert failed for Resident Evil 4: {
+  code: '23505',
+  details: 'Key (slug)=(resident-evil-4) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Flash Copilot - Super Browser Assistant: {
+  code: '23505',
+  details: 'Key (slug)=(flash-copilot-super-browser-assistant) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Surveillance Scope: {
+  code: '23505',
+  details: 'Key (slug)=(surveillance-scope) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  SKIP byline-3 (dup:name-exact)
+Product insert failed for Second Brain Notion Templates: {
+  code: '23505',
+  details: 'Key (slug)=(second-brain-notion-templates) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Sarms Revolution Lab: {
+  code: '23505',
+  details: 'Key (slug)=(sarms-revolution-lab) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Findrr : {
+  code: '23505',
+  details: 'Key (slug)=(findrr-1) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Golden Path: {
+  code: '23505',
+  details: 'Key (slug)=(golden-path) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Since I Quit - Save Yourself: {
+  code: '23505',
+  details: 'Key (slug)=(since-i-quit-save-yourself) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Saiteki Gate Solutions (SGS): {
+  code: '23505',
+  details: 'Key (slug)=(saiteki-gate-solutions-sgs) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Notion Resume: {
+  code: '23505',
+  details: 'Key (slug)=(notion-resume-2) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Delegue: {
+  code: '23505',
+  details: 'Key (slug)=(delegue) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for VOXELWERKZ: {
+  code: '23505',
+  details: 'Key (slug)=(voxelwerkz) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  SKIP authifynow (dup:slug)
+  INSERT next-move-strategy-consulting → 7f8005de-78d3-49ab-aca5-181d204ca1e0
+  SKIP percentage-calculator-4 (dup:name-exact)
+  INSERT submitting → 95518580-9c17-4274-b9a9-55bafae6f96f
+  INSERT coreldraw-x7-2024 → cc84faf6-65a0-4315-9621-5a617f687fd7
+  INSERT brain-cloud-flashcards → b9f91f95-4cff-4b56-acc9-60eb7ed9bb59
+  SKIP my-chat-lesson-2 (dup:name-exact)
+  INSERT house-cleaning-service-dubai-as-you-want-4 → 180c8f30-60dc-4863-8248-5f1f78701f28
+  SKIP house-cleaning-service-dubai-as-you-want-3 (dup:name-exact)
+  SKIP house-cleaning-service-dubai-as-you-want-2 (dup:name-exact)
+  SKIP house-cleaning-service-dubai-as-you-want (dup:name-exact)
+  INSERT cashflow → c29ca8bb-86a7-4d4a-ad0e-809ecee89de2
+  INSERT any-kind-of-home-cleaning-services-dubai → 4a2806b2-b0f6-45c2-b588-4d36d01d08df
+  INSERT professional-maid-service-for-home-dubai → 427f842b-b138-4396-b3d9-2a26c486a852
+  INSERT social-media-fetch → 83ef37b6-45dc-4543-8035-be539aeeedc8
+  INSERT astra-health-ai → 024b29dd-2aa2-40af-911a-63161bf3a099
+  INSERT impakt-ai-coach → 05fb67e8-e997-40f2-af8e-877e4c597e9e
+  INSERT swiftale → 89eb99d8-ea3c-47ed-b252-7fc7cccf7e98
+  INSERT oneschool-portal → 73858d2a-ecf2-429c-88b5-bf4e3ee831c7
+Product insert failed for Torquing Service: {
+  code: '23505',
+  details: 'Key (slug)=(torquing-service) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Laterbase: {
+  code: '23505',
+  details: 'Key (slug)=(laterbase) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  SKIP powertelegram (dup:slug)
+  SKIP sikey-io (dup:slug)
+Product insert failed for Tech Web Planet : {
+  code: '23505',
+  details: 'Key (slug)=(tech-web-planet) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for MemeZoo: {
+  code: '23505',
+  details: 'Key (slug)=(memezoo) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT nextprep → f36842e2-d972-4581-8e00-52534c8b1148
+  INSERT cliptutor → cfaa8efc-bda6-470f-9233-e4b2fb15939b
+Product insert failed for Best IT Company in Pakistan | IT Empire: {
+  code: '23505',
+  details: 'Key (slug)=(best-it-company-in-pakistan-it-empire) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for PR Buzz Success Kit: {
+  code: '23505',
+  details: 'Key (slug)=(pr-buzz-success-kit) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for The Undefeated Underdogs Podcast: {
+  code: '23505',
+  details: 'Key (slug)=(the-undefeated-underdogs-podcast) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Versa: {
+  code: '23505',
+  details: 'Key (slug)=(versa-2) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for ideaNote Share: {
+  code: '23505',
+  details: 'Key (slug)=(ideanote-share) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Xiaomi SU7: {
+  code: '23505',
+  details: 'Key (slug)=(xiaomi-su7) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for TrustAuthX: {
+  code: '23505',
+  details: 'Key (slug)=(trustauthx) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Coloring Pages Every Day: {
+  code: '23505',
+  details: 'Key (slug)=(coloring-pages-every-day) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Gratitude Journal: {
+  code: '23505',
+  details: 'Key (slug)=(gratitude-journal-3) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Phonetiks.ai: {
+  code: '23505',
+  details: 'Key (slug)=(phonetiks-ai) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Nopwd: {
+  code: '23505',
+  details: 'Key (slug)=(nopwd) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Startup Kit 3.0: {
+  code: '23505',
+  details: 'Key (slug)=(startup-kit-3-0) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Customer Feedback & Product Roadmap: {
+  code: '23505',
+  details: 'Key (slug)=(customer-feedback-product-roadmap) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for FilmX: {
+  code: '23505',
+  details: 'Key (slug)=(filmx-2) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for FillPouch: {
+  code: '23505',
+  details: 'Key (slug)=(fillpouch) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Midjourney Prime & Style: {
+  code: '23505',
+  details: 'Key (slug)=(midjourney-prime-style-2) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Pamadoro: {
+  code: '23505',
+  details: 'Key (slug)=(pamadoro) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Snapinsta: {
+  code: '23505',
+  details: 'Key (slug)=(snapinsta) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for oatmeal: {
+  code: '23505',
+  details: 'Key (slug)=(oatmeal-2) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Pace Guru: {
+  code: '23505',
+  details: 'Key (slug)=(pace-guru) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Cream: {
+  code: '23505',
+  details: 'Key (slug)=(cream-2) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Designing with Figma / 2nd Ed.: {
+  code: '23505',
+  details: 'Key (slug)=(designing-with-figma-2nd-ed) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for InvoiceFast: {
+  code: '23505',
+  details: 'Key (slug)=(invoicefast) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Pageturners: {
+  code: '23505',
+  details: 'Key (slug)=(pageturners) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT remote-controller → 7c9158bf-9e45-4cb9-af8b-60355074e51b
+Product insert failed for Notion Task Management: {
+  code: '23505',
+  details: 'Key (slug)=(notion-task-management) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for AutoAct: {
+  code: '23505',
+  details: 'Key (slug)=(autoact) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Free 3D Social Media Profiles Maker: {
+  code: '23505',
+  details: 'Key (slug)=(free-3d-social-media-profiles-maker) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for refern: {
+  code: '23505',
+  details: 'Key (slug)=(refern) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for meed open beta: {
+  code: '23505',
+  details: 'Key (slug)=(meed-open-beta) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  SKIP gemini-ai-chat (dup:slug)
+Product insert failed for Keychain: {
+  code: '23505',
+  details: 'Key (slug)=(keychain) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT the-prompt-index → c3c9e6e1-5db6-413d-b3ff-443b69aaf7d5
+  INSERT stockmusicgpt-ai-stock-music-generator → 2befb883-81d6-4513-b9e8-8afe412dd673
+Product insert failed for Strix - Console Game Tracker: {
+  code: '23505',
+  details: 'Key (slug)=(strix-console-game-tracker) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+  INSERT marathon-3-0 → 60cdc10d-f91d-424c-9080-f17bab2bd023
+  INSERT homelens-x → 5d743b16-514f-4d58-9031-4a3c6db8662b
+  INSERT gitdump → 334ed81a-b784-4912-8e10-86be1d7fd0f0
+  INSERT random-tools-2 → 1002a657-2f5c-40be-a9c5-b43892607b98
+  INSERT love-type-test-ai-counseling → c41cb42d-56a0-48fc-988a-a5e7e4a3a49e
+  INSERT yandexgpt → 95733a61-57e3-44b3-be3c-cf938a54ecd3
+  INSERT powerchat-2 → 684ac1d9-2b7c-4029-bfb5-f60f47b99131
+  INSERT cloudmate → 382fe4ae-93e7-40aa-923f-86995cded368
+  INSERT luna-91565d5e-7cdd-4f71-ab2a-a074c19a34d7 → db35422c-ceb1-42ee-8bb9-97216e8e0853
+  INSERT instalease → ab69e9e7-1d30-464f-9917-38008bd45b2e
+  INSERT fileoptimize-com → 1102cd8b-fd6b-4442-9037-76eeff2cb95a
+  INSERT poke-math → fe627108-f0d2-44e2-8dcd-f5284be13793
+Product insert failed for Problem Bin: {
+  code: '23505',
+  details: 'Key (slug)=(problem-bin) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for MightyGrep: {
+  code: '23505',
+  details: 'Key (slug)=(mightygrep) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+Product insert failed for Shopping List for the whole family: {
+  code: '23505',
+  details: 'Key (slug)=(shopping-list-for-the-whole-family) already exists.',
+  hint: null,
+  message: 'duplicate key value violates unique constraint "products_slug_key"'
+}
+
+  ✅  Backfill completed successfully — 03:41:48
