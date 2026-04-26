@@ -60,7 +60,7 @@ type DbProduct = {
 
 type SignalScore = {
   product_id: string
-  total_score: number
+  signal_score: number
   score_date: string
 }
 
@@ -102,7 +102,7 @@ async function fetchProductBatch(offset: number): Promise<DbProduct[]> {
 async function fetchLatestScore(productId: string): Promise<SignalScore | null> {
   const { data, error } = await db
     .from('product_signal_scores')
-    .select('product_id, total_score, score_date')
+    .select('product_id, signal_score, score_date')
     .eq('product_id', productId)
     .order('score_date', { ascending: false })
     .limit(1)
@@ -119,16 +119,16 @@ async function fetchVelocity(productId: string): Promise<number> {
 
   const { data, error } = await db
     .from('product_signal_scores')
-    .select('total_score, score_date')
+    .select('signal_score, score_date')
     .eq('product_id', productId)
     .gte('score_date', ninetyDaysAgo.toISOString())
     .order('score_date', { ascending: true })
 
   if (error || !data || data.length < 2) return 0
 
-  const scores = data as { total_score: number; score_date: string }[]
+  const scores = data as { signal_score: number; score_date: string }[]
   const xs = scores.map((s, i) => i)
-  const ys = scores.map((s) => s.total_score)
+  const ys = scores.map((s) => s.signal_score)
 
   // Linear regression slope: Σ((x - x_mean) * (y - y_mean)) / Σ((x - x_mean)²)
   const xMean = xs.reduce((a, b) => a + b, 0) / xs.length
@@ -140,21 +140,22 @@ async function fetchVelocity(productId: string): Promise<number> {
 }
 
 async function checkPhSilence(productId: string): Promise<boolean> {
-  // Check if product has 0 PH score in last 180 days
+  // Check if product has 0 mention_score in last 180 days
   const now = new Date()
   const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000)
 
   const { data, error } = await db
     .from('product_signal_scores')
-    .select('ph_score')
+    .select('mention_score')
     .eq('product_id', productId)
     .gte('score_date', sixMonthsAgo.toISOString())
     .order('score_date', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  if (error || !data) return true // Assume silent if no data
-  return (data as { ph_score?: number }).ph_score === 0 || (data as { ph_score?: number }).ph_score === null
+  if (error || !data) return false // No data = can't confirm silence
+  const row = data as { mention_score?: number }
+  return row.mention_score === 0 || row.mention_score === null
 }
 
 async function checkGithubArchived(ghUrl: string | null): Promise<boolean> {
@@ -273,23 +274,24 @@ async function scoreProduct(product: DbProduct): Promise<DeathResult> {
   if (signals.github_archived) {
     status = 'discontinued'
     signals.reason = 'github_archived'
-    // Extract year from product created_at as fallback
     const date = new Date(product.created_at)
     discontinued_year = date.getFullYear()
     discontinued_month = date.getMonth() + 1
-  } else if (signals.url_dead && signals.recency_days > 365) {
+  } else if (signals.url_dead && signals.ph_silence) {
+    // Dead URL + zero mentions = very likely dead product
     status = 'dead'
-    signals.reason = 'url_dead_365d'
-    // Use current year/month as the death date
+    signals.reason = 'url_dead_and_silent'
     const now = new Date()
     discontinued_year = now.getFullYear()
     discontinued_month = now.getMonth() + 1
-  } else if (signals.recency_days > 730 && signals.ph_silence) {
+  } else if (signals.ph_silence && signals.velocity_slope < -0.5) {
+    // No mentions + steep signal decline
     status = 'inactive'
-    signals.reason = 'no_signal_2y'
-  } else if (signals.composite_score > 0.7 && signals.velocity_slope < -0.05) {
+    signals.reason = 'silent_declining'
+  } else if (signals.velocity_slope < -1.0) {
+    // Very steep signal score decline
     status = 'sunset'
-    signals.reason = 'negative_velocity_trajectory'
+    signals.reason = 'steep_decline'
   }
 
   return {
