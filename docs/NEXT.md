@@ -1,71 +1,99 @@
-# NEXT — Prism resume point
+# NEXT — Launch Sentinel resume point
 
-> **Last updated**: 2026-04-18 — Session 5 complete
+> **Last updated**: 2026-04-26 — Rebrand session complete
 > **Read this file first** when returning to the project.
 
 ---
 
-## Status: ALL 10 SPRINTS COMPLETE ✅ | Live at https://v0-product-sentinel.vercel.app
+## Status: ALL 10 SPRINTS COMPLETE | Rebrand to Launch Sentinel in progress
 
-### DB State (2026-04-18 evening)
-- **14,114 products** (backfill still running)
-- **73 press mentions** — hourly cron accumulating, 8 RSS sources
-- **6,275 signal scores** — daily 3am cron
-- **0 relationships / 0 alternatives** — enrichment script ready
-- **Migrations applied**: 0001–0007 all applied
-
----
-
-## What Was Built This Session (Sprints 2–10)
-
-| Sprint | What | Route |
-|--------|------|-------|
-| S2 | Signal history chart, press mentions, related products | /products/[slug] |
-| S3 | Bloomberg analytics dashboard, SQL views | /markets |
-| S4 | Evolution timeline wired to real DB | /evolution |
-| S5 | Obsidian-style force graph, 500 nodes, hover/click | /explore |
-| S6 | News feed wired to press_mentions | /insights |
-| S7 | Side-by-side product comparison | /compare |
-| S8 | Relationships display, deep graveyard, enrichment script | /graveyard |
-| S9 | Supabase auth, login/signup/profile, watchlist | /login, /profile |
-| S10 | CSV/JSON export, rate limiting, API docs | /api/export, /api/docs |
+### DB State (2026-04-26)
+- **23,420 products** in Supabase
+- **337,137 signal score rows**
+- **73+ press mentions** — hourly cron accumulating
+- **0 product_tags** — CRITICAL GAP (blocks /functions, faceted sidebar, attribute charts)
+- **0 relationships** — enrichment script ready, not yet run
+- **10 GitHub Actions crons live**
 
 ---
 
-## Known Issues / Next Work
+## What Was Just Done (2026-04-26 session)
 
-### 1. Analytics sparse
-- Only 6,275 of 14,114 products have signal scores
-- Run: pnpm signals (to score new backfill products)
-
-### 2. News feed sparse (73 articles)
-- Hourly cron accumulates naturally
-- Manual bulk fill: pnpm tsx --env-file=.env.local scripts/ingest-news.ts
-
-### 3. 0 product relationships/alternatives
-- Run when ready: pnpm enrich:relationships (~$4 for 14K products via Claude Haiku)
-
-### 4. Backfill still running
-- Monitor: pnpm backfill:watch
-- Single process: PIDs 3492/16548/5340 (running since 10:27 AM)
-- Target: 25K+ products (2016+ coverage)
+1. **Rebrand**: All docs updated from "Prism"/"v0-product-sentinel" to "Launch Sentinel"
+2. **Domain**: launchsentinel.com purchased and being connected to Vercel
+3. **Death model shipped**: `mark-dead-products.ts` script + weekly cron (`mark-dead-products.yml`, Sun 03:00 UTC) — flags products with stalled signals, no press velocity, and founder exits
+4. **Docs rewritten**: CLAUDE.md, README.md, NEXT.md, ARCHITECTURE.md all updated to reflect current state
 
 ---
 
-## Critical: auth import split
-- lib/auth.ts = SERVER ONLY (has server-only marker, imports next/headers)
-- lib/auth-client.ts = BROWSER ONLY (createBrowserSupabaseClient)
-- Client components MUST import from auth-client NOT auth
+## Current Branch
 
-## press_mentions schema (actual columns)
-- headline (not title), mention_date (not published_at), publication (source name)
-- lib/db/news.ts is now correct — do not revert to old column names
+`rebrand/launchsentinel` — being merged to `main`
 
 ---
 
-## Vercel
-- Live: https://v0-product-sentinel.vercel.app
-- Deploy: vercel --prod --yes
-- Last commit: e52d01c
+## Immediate Next: Sprint 1 Cleanup + Data Gaps
 
-## Supabase ref: fnlmqkfmjfzzkkqcmahe
+### Priority 1 — product_tags (CRITICAL)
+The `product_tags` table has 0 rows. This blocks:
+- `/functions` page (renders empty)
+- Faceted sidebar filtering
+- Attribute cohort charts on /markets
+- Tag-based search
+
+**Action**: Run `npm run enrich` against full 23,420 product dataset. Monitor costs — ~$X via Claude Haiku.
+
+### Priority 2 — Check mark-dead-products results
+The weekly cron just went live. Check Actions tab for first run results:
+- Go to: https://github.com/alimabsoute/v0-product-sentinel/actions
+- Look for `mark-dead-products` workflow
+- Verify dry-run output before enabling live mode
+
+### Priority 3 — relationships table
+`enrich-relationships.ts` is written and ready. Run when budget allows:
+```bash
+# Estimated ~$4 for 23K products via Claude Haiku
+npm run enrich:relationships
+```
+
+### Priority 4 — RLS enforcement
+Supabase RLS policies are NOT enforced. Cannot launch launchsentinel.com publicly without:
+- Enabling RLS on all tables
+- Writing policies for: public read, authenticated write, user-scoped data
+- Testing with anon key (should only see public rows)
+
+---
+
+## Domain / Deployment
+
+- **launchsentinel.com** — purchased, DNS being connected to Vercel
+- **Current live URL**: https://v0-product-sentinel.vercel.app
+- **Vercel project**: v0-product-sentinel (rename to launch-sentinel in Vercel dashboard)
+- **GitHub repo**: alimabsoute/v0-product-sentinel (rename to launch-sentinel on GitHub)
+
+**Deploy command**:
+```bash
+vercel --prod --yes
+```
+
+---
+
+## Critical Auth Notes
+
+- `lib/auth.ts` = SERVER ONLY (has `server-only` marker, imports `next/headers`)
+- `lib/auth-client.ts` = BROWSER ONLY (`createBrowserSupabaseClient`)
+- Client components MUST import from `auth-client`, never from `auth`
+
+## press_mentions Schema (Actual Column Names)
+
+- `headline` (not `title`)
+- `mention_date` (not `published_at`)
+- `publication` (source name)
+- `lib/db/news.ts` is correct — do not revert
+
+---
+
+## Supabase
+
+- **Project ID**: `fnlmqkfmjfzzkkqcmahe`
+- **Dashboard**: https://supabase.com/dashboard/project/fnlmqkfmjfzzkkqcmahe
