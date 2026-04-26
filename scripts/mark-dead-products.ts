@@ -52,8 +52,8 @@ type DbProduct = {
   slug: string
   name: string
   category: string
-  website: string | null
-  gh_url: string | null
+  website_url: string | null
+  github_repo: string | null
   status: string
   created_at: string
 }
@@ -90,7 +90,7 @@ type DeathResult = {
 async function fetchProductBatch(offset: number): Promise<DbProduct[]> {
   const { data, error } = await db
     .from('products')
-    .select('id, slug, name, category, website, gh_url, status, created_at')
+    .select('id, slug, name, category, website_url, github_repo, status, created_at')
     .eq('status', 'active')
     .order('created_at', { ascending: false })
     .range(offset, offset + BATCH_SIZE - 1)
@@ -166,8 +166,10 @@ async function checkGithubArchived(ghUrl: string | null): Promise<boolean> {
   }
 
   try {
-    // Extract owner/repo from GitHub URL
-    const match = ghUrl.match(/github\.com\/([^/]+)\/([^/]+)/)
+    // Extract owner/repo from GitHub URL or org/repo format
+    const urlMatch = ghUrl.match(/github\.com\/([^/]+)\/([^/]+)/)
+    const orgRepoMatch = !urlMatch && ghUrl.match(/^([^/]+)\/([^/\s]+)$/)
+    const match = urlMatch || orgRepoMatch
     if (!match) return false
 
     const [, owner, repo] = match
@@ -255,10 +257,10 @@ async function scoreProduct(product: DbProduct): Promise<DeathResult> {
   signals.ph_silence = await checkPhSilence(product.id)
 
   // Signal 4: GitHub Archived
-  signals.github_archived = await checkGithubArchived(product.gh_url)
+  signals.github_archived = await checkGithubArchived(product.github_repo)
 
   // Signal 5: URL Health
-  signals.url_dead = await checkUrlHealth(product.website)
+  signals.url_dead = await checkUrlHealth(product.website_url)
 
   // Composite score: weighted average of recency + velocity
   signals.composite_score = signals.recency_score * 0.6 + signals.velocity_score * 0.4
