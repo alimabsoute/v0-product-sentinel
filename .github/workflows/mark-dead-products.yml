@@ -1,0 +1,62 @@
+name: Mark Dead Products
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'   # weekly, Sunday at 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (CSV output only, no DB writes)'
+        default: 'true'
+        required: false
+      batch_start:
+        description: 'Start offset'
+        default: '0'
+        required: false
+      batch_end:
+        description: 'End offset (0 = all)'
+        default: '0'
+        required: false
+
+jobs:
+  mark-dead:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build batch args
+        id: args
+        run: |
+          DRY_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_FLAG="--dry-run"
+          fi
+          BATCH_ARGS=""
+          if [ "${{ github.event.inputs.batch_end }}" != "0" ] && [ -n "${{ github.event.inputs.batch_end }}" ]; then
+            BATCH_ARGS="--batch ${{ github.event.inputs.batch_start }} ${{ github.event.inputs.batch_end }}"
+          fi
+          echo "flags=$DRY_FLAG $BATCH_ARGS" >> $GITHUB_OUTPUT
+
+      - name: Run death model scorer
+        run: pnpm tsx --env-file=/dev/null scripts/mark-dead-products.ts ${{ steps.args.outputs.flags }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PRODUCT_HUNT_DEVELOPER_TOKEN: ${{ secrets.PRODUCT_HUNT_DEVELOPER_TOKEN }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAX_PRODUCTS: '25000'

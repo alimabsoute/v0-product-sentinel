@@ -355,8 +355,9 @@ async function main() {
         console.log('active')
       }
 
-      // Rate-limit: GitHub checks can be heavy
-      await new Promise((r) => setTimeout(r, 300))
+      // Delay only when external API calls were needed
+      const needsDelay = !!(product.github_repo || product.website_url)
+      if (needsDelay) await new Promise((r) => setTimeout(r, product.github_repo ? 200 : 100))
     }
 
     offset += BATCH_SIZE
