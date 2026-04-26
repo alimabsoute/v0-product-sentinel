@@ -14,16 +14,16 @@ export const metadata: Metadata = {
   generator: 'v0.app',
   openGraph: {
     type: 'website',
-    url: 'https://v0-product-sentinel.vercel.app',
-    title: 'Prism — Product intelligence',
-    description: 'Track tech products across their entire lifecycle. Signal scoring, historical timelines, attribute taxonomy, and market analytics in one place.',
-    siteName: 'Prism',
+    url: 'https://launchsentinel.com',
+    title: 'Launch Sentinel — Tech Product Intelligence',
+    description: 'Tech product intelligence platform. Track signal scores, press velocity, and market trends across 23,000+ products.',
+    siteName: 'Launch Sentinel',
     images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Prism — Product intelligence',
-    description: 'Track tech products across their entire lifecycle.',
+    title: 'Launch Sentinel — Tech Product Intelligence',
+    description: 'Tech product intelligence platform. Track signal scores, press velocity, and market trends across 23,000+ products.',
     images: ['/opengraph-image'],
   },
   icons: {
