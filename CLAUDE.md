@@ -3,7 +3,7 @@
 ## Project
 
 **Name**: Launch Sentinel
-**Domain**: launchsentinel.com (purchased, being connected)
+**Domain**: launchsentinel.com (live ✓)
 **Purpose**: "Bloomberg meets Product Hunt" — tech product intelligence platform with signal scoring, press tracking, death modeling, and deep product analytics.
 **Status**: 10/10 sprints complete. 23,420 products. 10 GitHub Actions crons live.
 
@@ -25,10 +25,10 @@
 
 ## Git / Repo
 
-- **Repo**: alimabsoute/v0-product-sentinel (being renamed → launch-sentinel)
+- **Repo**: alimabsoute/v0-product-sentinel
 - **Git root**: `C:\Users\alima\v0-product-sentinel\`
-- **Vercel project**: v0-product-sentinel (being renamed → launch-sentinel)
-- **Current branch**: rebrand/launchsentinel → main
+- **Vercel project**: v0-product-sentinel
+- **Current branch**: main
 
 ---
 
