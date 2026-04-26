@@ -1,4 +1,3 @@
-// TODO: add Markets link to site-header.tsx after all agents merge
 export const revalidate = 300  // revalidate every 5 minutes
 
 import { brandTitle } from '@/lib/branding'
