@@ -74,13 +74,19 @@ export function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)) }
 
 // ─── Load vocabulary ──────────────────────────────────────────────────────────
 
+type FunctionRow = { id: string; slug: string; depth: number; parent_id: string | null }
+type TagRow = { id: string; slug: string; tag_group: string }
+
 export async function loadVocabulary(): Promise<Vocab> {
-  const { data: functions, error: fErr } = await supabaseAdmin.from('functions').select('id, slug, depth, parent_id')
+  const { data: rawFunctions, error: fErr } = await supabaseAdmin.from('functions').select('id, slug, depth, parent_id')
   if (fErr) throw fErr
-  const { data: tags, error: tErr } = await supabaseAdmin.from('tags').select('id, slug, tag_group')
+  const { data: rawTags, error: tErr } = await supabaseAdmin.from('tags').select('id, slug, tag_group')
   if (tErr) throw tErr
 
-  const byId = new Map(functions!.map(f => [f.id, f]))
+  const functions = (rawFunctions ?? []) as unknown as FunctionRow[]
+  const tags = (rawTags ?? []) as unknown as TagRow[]
+
+  const byId = new Map(functions.map(f => [f.id, f]))
   const categories: string[] = []
   const subcategories = new Map<string, string[]>()
   const leaves = new Map<string, string[]>()
@@ -88,10 +94,10 @@ export async function loadVocabulary(): Promise<Vocab> {
   const leafToParent = new Map<string, string>()   // depth-2 → depth-1
   const subToCategory = new Map<string, string>()  // depth-1 → depth-0
 
-  for (const f of functions!) {
+  for (const f of functions) {
     if (f.depth === 0) { categories.push(f.slug); subcategories.set(f.slug, []) }
   }
-  for (const f of functions!) {
+  for (const f of functions) {
     if (f.depth === 1 && f.parent_id) {
       const parent = byId.get(f.parent_id)
       if (parent) {
@@ -101,7 +107,7 @@ export async function loadVocabulary(): Promise<Vocab> {
       leaves.set(f.slug, [])
     }
   }
-  for (const f of functions!) {
+  for (const f of functions) {
     if (f.depth === 2 && f.parent_id) {
       const parent = byId.get(f.parent_id)
       if (parent) {
@@ -114,7 +120,7 @@ export async function loadVocabulary(): Promise<Vocab> {
 
   const tagGroups = new Map<string, Set<string>>()
   const tagSlugToId = new Map<string, string>()
-  for (const t of tags!) {
+  for (const t of tags) {
     if (!tagGroups.has(t.tag_group)) tagGroups.set(t.tag_group, new Set())
     tagGroups.get(t.tag_group)!.add(t.slug)
     tagSlugToId.set(t.slug, t.id)
@@ -235,7 +241,8 @@ Return JSON:
       await sleep(waitMs)
     }
   }
-  const text = msg!.content[0].type === 'text' ? msg!.content[0].text : ''
+  const msgTyped = msg! as Anthropic.Message
+  const text = msgTyped.content[0].type === 'text' ? (msgTyped.content[0] as Anthropic.TextBlock).text : ''
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
   try {
     return JSON.parse(cleaned) as ExtractedProduct
@@ -319,15 +326,19 @@ export function validateAndFilter(extracted: ExtractedProduct, vocab: Vocab): { 
 export async function insertProduct(item: RawItem, extracted: ExtractedProduct, vocab: Vocab): Promise<string | null> {
   const companyName = extracted.company_name ?? extracted.name
   const companySlug = normalizeName(companyName)
-  const { data: company, error: cErr } = await supabaseAdmin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: rawCompany, error: cErr } = await supabaseAdmin
     .from('companies')
-    .upsert({ name: companyName, slug: companySlug }, { onConflict: 'slug', ignoreDuplicates: false })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .upsert({ name: companyName, slug: companySlug } as any, { onConflict: 'slug', ignoreDuplicates: false })
     .select('id').single()
+  const company = rawCompany as unknown as { id: string } | null
   if (cErr) { console.error(`Company upsert failed:`, cErr); return null }
 
   const primaryFunctionId = vocab.leafToId.get(extracted.primary_function)!
-  const { data: product, error: pErr } = await supabaseAdmin.from('products').insert({
-    company_id: company.id,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const productPayload: any = {
+    company_id: company!.id,
     name: extracted.name,
     slug: item.slug,
     launched_year: extracted.launched_year,
@@ -350,7 +361,9 @@ export async function insertProduct(item: RawItem, extracted: ExtractedProduct, 
     logo_url: item.logoUrl ?? null,
     logo_source: item.logoUrl ? 'source' : 'none',
     logo_confidence: item.logoUrl ? 4 : 1,
-  }).select('id').single()
+  }
+  const { data: rawProduct, error: pErr } = await supabaseAdmin.from('products').insert(productPayload).select('id').single()
+  const product = rawProduct as unknown as { id: string } | null
 
   if (pErr) { console.error(`Product insert failed for ${item.name}:`, pErr); return null }
 
@@ -358,13 +371,14 @@ export async function insertProduct(item: RawItem, extracted: ExtractedProduct, 
     .flat()
     .map(slug => vocab.tagSlugToId.get(slug))
     .filter((id): id is string => Boolean(id))
-    .map(tag_id => ({ product_id: product.id, tag_id }))
+    .map(tag_id => ({ product_id: product!.id, tag_id }))
 
   if (tagRows.length > 0) {
-    const { error: tErr } = await supabaseAdmin.from('product_tags').insert(tagRows)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: tErr } = await supabaseAdmin.from('product_tags').insert(tagRows as any)
     if (tErr) console.error(`product_tags insert failed:`, tErr)
   }
-  return product.id
+  return product!.id
 }
 
 // ─── Generic run loop ─────────────────────────────────────────────────────────

@@ -211,11 +211,9 @@ async function checkUrlHealth(website: string | null): Promise<boolean> {
 
   try {
     // HTTP HEAD request to check if URL responds
-    const response = await fetch(website, {
-      method: 'HEAD',
-      redirect: 'follow',
-      timeout: 5000,
-    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fetchOpts: any = { method: 'HEAD', redirect: 'follow', timeout: 5000 }
+    const response = await fetch(website, fetchOpts)
 
     // 4xx/5xx = dead; 403 = Cloudflare, skip; 2xx/3xx = alive
     const dead = response.status >= 400 && response.status !== 403

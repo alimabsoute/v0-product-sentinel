@@ -117,8 +117,9 @@ async function fetchSocialData(
     .select('product_id, mention_count, sentiment_avg')
     .gte('snapshot_date', thirtyDaysAgo)
 
+  type SocialRow = { product_id: string; mention_count: number | null; sentiment_avg: number | null }
   const map = new Map<string, { mentions: number; sentimentAvg: number }>()
-  for (const row of data ?? []) {
+  for (const row of (data ?? []) as unknown as SocialRow[]) {
     const existing = map.get(row.product_id) ?? { mentions: 0, sentimentAvg: 0 }
     map.set(row.product_id, {
       mentions: existing.mentions + (row.mention_count ?? 0),
@@ -138,8 +139,9 @@ async function fetchPressData(thirtyDaysAgo: string): Promise<Map<string, number
     .select('product_id')
     .gte('mention_date', thirtyDaysAgo)
 
+  type PressRow = { product_id: string }
   const map = new Map<string, number>()
-  for (const row of data ?? []) {
+  for (const row of (data ?? []) as unknown as PressRow[]) {
     map.set(row.product_id, (map.get(row.product_id) ?? 0) + 1)
   }
   return map
@@ -153,7 +155,8 @@ async function fetchFundingIds(): Promise<Set<string>> {
     .from('funding_rounds')
     .select('product_id')
 
-  return new Set((data ?? []).map(r => r.product_id))
+  type FundingRow = { product_id: string }
+  return new Set((data ?? []).map(r => (r as unknown as FundingRow).product_id))
 }
 
 /**
@@ -173,7 +176,8 @@ async function fetchScoresByDate(date: string): Promise<Map<string, number>> {
 
     if (error || !data || data.length === 0) break
 
-    for (const row of data) {
+    type ScoreRow = { product_id: string; signal_score: number | null }
+    for (const row of data as unknown as ScoreRow[]) {
       if (row.signal_score !== null) map.set(row.product_id, row.signal_score)
     }
 
@@ -202,8 +206,9 @@ async function fetchGitHubVelocityMap(productIds: string[]): Promise<Map<string,
   if (error || !data) return velocityMap
 
   // Group by product_id, keep only the 2 most recent snapshots
+  type GHRow = { product_id: string; stars: number; snapshot_date: string }
   const grouped = new Map<string, { stars: number; date: string }[]>()
-  for (const row of data) {
+  for (const row of data as unknown as GHRow[]) {
     const arr = grouped.get(row.product_id) ?? []
     if (arr.length < 2) arr.push({ stars: row.stars, date: row.snapshot_date })
     grouped.set(row.product_id, arr)
@@ -239,7 +244,8 @@ async function fetchWowHistory(ninetyDaysAgo: string, today: string): Promise<Ma
 
     if (error || !data || data.length === 0) break
 
-    for (const row of data) {
+    type WowRow = { product_id: string; wow_velocity: number; score_date: string }
+    for (const row of data as unknown as WowRow[]) {
       const arr = map.get(row.product_id) ?? []
       arr.push(row.wow_velocity)
       map.set(row.product_id, arr)
@@ -327,7 +333,7 @@ async function main() {
       .from('product_signal_scores')
       .select('product_id')
       .eq('score_date', today)
-    existingIds = (existing ?? []).map(r => r.product_id)
+    existingIds = (existing ?? []).map(r => (r as unknown as { product_id: string }).product_id)
     console.log(`  Skipping ${existingIds.length} already-scored products`)
   }
 
@@ -441,7 +447,8 @@ async function main() {
     const chunk = rows.slice(i, i + CHUNK)
     const { error: upsertErr } = await supabaseAdmin
       .from('product_signal_scores')
-      .upsert(chunk, { onConflict: 'product_id,score_date' })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .upsert(chunk as any, { onConflict: 'product_id,score_date' })
 
     if (upsertErr) {
       console.error(`  Chunk ${i}–${i + chunk.length} failed:`, upsertErr.message)

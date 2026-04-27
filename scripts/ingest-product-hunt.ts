@@ -86,37 +86,43 @@ type Vocab = {
   tagSlugToId: Map<string, string>  // tag slug → tags.id
 }
 
+type FunctionRow = { id: string; slug: string; depth: number; parent_id: string | null }
+type TagRow = { id: string; slug: string; tag_group: string }
+
 async function loadVocabulary(): Promise<Vocab> {
-  const { data: functions, error: fErr } = await supabaseAdmin
+  const { data: rawFunctions, error: fErr } = await supabaseAdmin
     .from('functions')
     .select('id, slug, depth, parent_id')
   if (fErr) throw fErr
 
-  const { data: tags, error: tErr } = await supabaseAdmin
+  const { data: rawTags, error: tErr } = await supabaseAdmin
     .from('tags')
     .select('id, slug, tag_group')
   if (tErr) throw tErr
 
-  const byId = new Map(functions!.map((f) => [f.id, f]))
+  const functions = (rawFunctions ?? []) as unknown as FunctionRow[]
+  const tags = (rawTags ?? []) as unknown as TagRow[]
+
+  const byId = new Map(functions.map((f) => [f.id, f]))
   const categories: string[] = []
   const subcategories = new Map<string, string[]>()
   const leaves = new Map<string, string[]>()
   const leafToId = new Map<string, string>()
 
-  for (const f of functions!) {
+  for (const f of functions) {
     if (f.depth === 0) {
       categories.push(f.slug)
       subcategories.set(f.slug, [])
     }
   }
-  for (const f of functions!) {
+  for (const f of functions) {
     if (f.depth === 1 && f.parent_id) {
       const parent = byId.get(f.parent_id)
       if (parent) subcategories.get(parent.slug)?.push(f.slug)
       leaves.set(f.slug, [])
     }
   }
-  for (const f of functions!) {
+  for (const f of functions) {
     if (f.depth === 2 && f.parent_id) {
       const parent = byId.get(f.parent_id)
       if (parent) leaves.get(parent.slug)?.push(f.slug)
@@ -126,7 +132,7 @@ async function loadVocabulary(): Promise<Vocab> {
 
   const tagGroups = new Map<string, Set<string>>()
   const tagSlugToId = new Map<string, string>()
-  for (const t of tags!) {
+  for (const t of tags) {
     if (!tagGroups.has(t.tag_group)) tagGroups.set(t.tag_group, new Set())
     tagGroups.get(t.tag_group)!.add(t.slug)
     tagSlugToId.set(t.slug, t.id)
@@ -220,7 +226,7 @@ async function isDuplicate(post: PHPost): Promise<{ dup: boolean; layer?: string
     .select('id')
     .eq('slug', slug)
     .maybeSingle()
-  if (bySlug) return { dup: true, layer: 'slug', existingId: bySlug.id }
+  if (bySlug) return { dup: true, layer: 'slug', existingId: (bySlug as unknown as { id: string }).id }
 
   // Layer 2 — root domain match (skip producthunt.com — that's a redirect host, not a real product domain)
   const domain = extractRootDomain(post.website)
@@ -231,12 +237,13 @@ async function isDuplicate(post: PHPost): Promise<{ dup: boolean; layer?: string
       .ilike('website_url', `%${domain}%`)
       .limit(1)
     if (byDomain && byDomain.length > 0) {
-      return { dup: true, layer: 'domain', existingId: byDomain[0].id }
+      return { dup: true, layer: 'domain', existingId: (byDomain[0] as unknown as { id: string }).id }
     }
   }
 
   // Layer 3 — pg_trgm fuzzy name match (> 0.8)
   const normalizedName = normalizeName(post.name)
+  // @ts-ignore — no generated DB types; RPC args are correct at runtime
   const { data: byName } = await supabaseAdmin.rpc('trgm_match_product', {
     normalized_name: normalizedName,
     threshold: 0.8,
@@ -249,7 +256,7 @@ async function isDuplicate(post: PHPost): Promise<{ dup: boolean; layer?: string
       .select('id')
       .ilike('name', post.name)
       .maybeSingle()
-    if (byExactName) return { dup: true, layer: 'name-exact', existingId: byExactName.id }
+    if (byExactName) return { dup: true, layer: 'name-exact', existingId: (byExactName as unknown as { id: string }).id }
   }
 
   // Layer 4 — twitter handle match
@@ -260,7 +267,7 @@ async function isDuplicate(post: PHPost): Promise<{ dup: boolean; layer?: string
       .select('id')
       .eq('twitter_handle', twitter)
       .maybeSingle()
-    if (byTwitter) return { dup: true, layer: 'twitter', existingId: byTwitter.id }
+    if (byTwitter) return { dup: true, layer: 'twitter', existingId: (byTwitter as unknown as { id: string }).id }
   }
 
   // Layer 5 — github repo match: PH rarely returns this. Extracted by Sonnet
@@ -441,11 +448,13 @@ async function insertProduct(post: PHPost, extracted: ExtractedProduct, vocab: V
   // Upsert company first
   const companyName = extracted.company_name ?? extracted.name
   const companySlug = normalizeName(companyName)
-  const { data: company, error: cErr } = await supabaseAdmin
+  const { data: rawCompany, error: cErr } = await supabaseAdmin
     .from('companies')
-    .upsert({ name: companyName, slug: companySlug }, { onConflict: 'slug', ignoreDuplicates: false })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .upsert({ name: companyName, slug: companySlug } as any, { onConflict: 'slug', ignoreDuplicates: false })
     .select('id')
     .single()
+  const company = rawCompany as unknown as { id: string } | null
   if (cErr) {
     console.error(`Company upsert failed for ${extracted.name}:`, cErr)
     return null
@@ -454,35 +463,38 @@ async function insertProduct(post: PHPost, extracted: ExtractedProduct, vocab: V
   const logo = await resolveLogoUrl(post, extractRootDomain(extracted.website_url))
   const primaryFunctionId = vocab.leafToId.get(extracted.primary_function)!
 
-  const { data: product, error: pErr } = await supabaseAdmin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const productPayload: any = {
+    company_id: company!.id,
+    name: extracted.name,
+    slug: post.slug,
+    launched_year: extracted.launched_year,
+    launched_month: extracted.launched_month,
+    primary_function_id: primaryFunctionId,
+    sub_category: extracted.sub_category,
+    category: extracted.category,
+    platform: extracted.platform,
+    business_model: extracted.business_model,
+    status: extracted.status,
+    source: extracted.source,
+    source_url: extracted.source_url,
+    confidence_score: extracted.confidence_score,
+    website_url: extracted.website_url,
+    twitter_handle: extracted.twitter_handle,
+    github_repo: extracted.github_repo,
+    description: extracted.description,
+    task_search_tags: extracted.task_search_tags,
+    functionality_scores: extracted.functionality_scores,
+    logo_url: logo.url,
+    logo_source: logo.source,
+    logo_confidence: logo.confidence,
+  }
+  const { data: rawProduct, error: pErr } = await supabaseAdmin
     .from('products')
-    .insert({
-      company_id: company.id,
-      name: extracted.name,
-      slug: post.slug,
-      launched_year: extracted.launched_year,
-      launched_month: extracted.launched_month,
-      primary_function_id: primaryFunctionId,
-      sub_category: extracted.sub_category,
-      category: extracted.category,
-      platform: extracted.platform,
-      business_model: extracted.business_model,
-      status: extracted.status,
-      source: extracted.source,
-      source_url: extracted.source_url,
-      confidence_score: extracted.confidence_score,
-      website_url: extracted.website_url,
-      twitter_handle: extracted.twitter_handle,
-      github_repo: extracted.github_repo,
-      description: extracted.description,
-      task_search_tags: extracted.task_search_tags,
-      functionality_scores: extracted.functionality_scores,
-      logo_url: logo.url,
-      logo_source: logo.source,
-      logo_confidence: logo.confidence,
-    })
+    .insert(productPayload)
     .select('id')
     .single()
+  const product = rawProduct as unknown as { id: string } | null
 
   if (pErr) {
     console.error(`Product insert failed for ${extracted.name}:`, pErr)
@@ -494,15 +506,16 @@ async function insertProduct(post: PHPost, extracted: ExtractedProduct, vocab: V
   for (const values of Object.values(extracted.attributes)) {
     for (const slug of values) {
       const tagId = vocab.tagSlugToId.get(slug)
-      if (tagId) tagRows.push({ product_id: product.id, tag_id: tagId })
+      if (tagId) tagRows.push({ product_id: product!.id, tag_id: tagId })
     }
   }
   if (tagRows.length > 0) {
-    const { error: tErr } = await supabaseAdmin.from('product_tags').insert(tagRows)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: tErr } = await supabaseAdmin.from('product_tags').insert(tagRows as any)
     if (tErr) console.error(`product_tags insert failed for ${extracted.name}:`, tErr)
   }
 
-  return product.id
+  return product!.id
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -119,15 +119,26 @@ async function main() {
 
   const fc = new FirecrawlClient({ apiKey: fcKey })
 
+  type ProductRow = {
+    id: string
+    name: string
+    slug: string
+    website_url: string | null
+    twitter_handle: string | null
+    github_repo: string | null
+    description: string | null
+    source_url: string | null
+  }
   // Fetch all products that need enrichment
-  const { data: products, error } = await supabaseAdmin
+  const { data: rawProducts, error } = await supabaseAdmin
     .from('products')
     .select('id, name, slug, website_url, twitter_handle, github_repo, description, source_url')
     .or('website_url.is.null,twitter_handle.is.null,github_repo.is.null')
     .order('created_at', { ascending: true })
+  const products = (rawProducts ?? []) as unknown as ProductRow[]
 
   if (error) throw error
-  if (!products?.length) {
+  if (!products.length) {
     console.log('No products need enrichment.')
     return
   }
@@ -219,8 +230,9 @@ async function main() {
 
     // ── Step 3: Write updates to DB ───────────────────────────
     if (Object.keys(updates).length > 0) {
-      const { error: updateError } = await supabaseAdmin
-        .from('products')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const builder = supabaseAdmin.from('products') as any
+      const { error: updateError } = await builder
         .update(updates)
         .eq('id', product.id)
 

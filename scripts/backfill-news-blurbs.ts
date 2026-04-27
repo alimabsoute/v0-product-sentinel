@@ -48,8 +48,16 @@ async function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+type PressMentionRow = {
+  id: string
+  headline: string | null
+  snippet: string | null
+  publication: string | null
+  metadata: Record<string, unknown> | null
+}
+
 async function main() {
-  const { data: rows, error } = await supabaseAdmin
+  const { data: rawRows, error } = await supabaseAdmin
     .from('press_mentions')
     .select('id, headline, snippet, publication, metadata')
     .is('metadata->condensed_title' as never, null)
@@ -61,7 +69,9 @@ async function main() {
     process.exit(1)
   }
 
-  const todo = (rows ?? []).filter(
+  const rows = (rawRows ?? []) as unknown as PressMentionRow[]
+
+  const todo = rows.filter(
     (r) => !(r.metadata as Record<string, unknown> | null)?.condensed_title
   )
 
@@ -80,6 +90,7 @@ async function main() {
         const existingMeta = (row.metadata as Record<string, unknown> | null) ?? {}
         await supabaseAdmin
           .from('press_mentions')
+          // @ts-ignore — no generated DB types; update payload is correct at runtime
           .update({
             metadata: { ...existingMeta, condensed_title, blurb },
           })

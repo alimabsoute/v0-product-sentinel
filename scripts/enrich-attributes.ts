@@ -101,6 +101,13 @@ async function loadTagVocabulary(): Promise<TagVocab> {
 // ─── Product fetcher (paginated) ──────────────────────────────────────────────
 
 async function fetchUntaggedProducts(vocab: TagVocab): Promise<Product[]> {
+  // Fetch already-tagged product IDs in a separate query (Supabase JS doesn't
+  // accept raw SQL subqueries in filter args — must pass an array).
+  const { data: taggedRows } = await supabaseAdmin.from('product_tags').select('product_id')
+  const taggedIds = [...new Set(
+    (taggedRows as unknown as { product_id: string }[] ?? []).map(r => r.product_id)
+  )]
+
   const results: Product[] = []
   let page = 0
 
@@ -108,13 +115,17 @@ async function fetchUntaggedProducts(vocab: TagVocab): Promise<Product[]> {
     const from = page * PAGE_SIZE
     const to = from + PAGE_SIZE - 1
 
-    const { data, error } = await supabaseAdmin
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabaseAdmin
       .from('products')
       .select('id, slug, name, website_url')
       .not('website_url', 'is', null)
-      .not('id', 'in', `(select distinct product_id from product_tags)`)
-      .range(from, to)
-      .order('created_at', { ascending: true })
+
+    if (taggedIds.length > 0) {
+      q = q.not('id', 'in', `(${taggedIds.join(',')})`)
+    }
+
+    const { data, error } = await q.range(from, to).order('created_at', { ascending: true })
 
     if (error) throw new Error(`Failed to fetch products (page ${page}): ${error.message}`)
     if (!data?.length) break
@@ -261,12 +272,12 @@ async function insertProductTags(productId: string, tagIds: string[]): Promise<v
 
   const { error } = await supabaseAdmin
     .from('product_tags')
-    .insert(rows)
-    .throwOnError()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .insert(rows as any)
 
   // ON CONFLICT DO NOTHING equivalent — insert returns error for dupes, suppress them
-  if (error && !error.message.includes('duplicate') && !error.message.includes('unique')) {
-    throw new Error(`product_tags insert failed for ${productId}: ${error.message}`)
+  if (error && !(error as { message: string }).message.includes('duplicate') && !(error as { message: string }).message.includes('unique')) {
+    throw new Error(`product_tags insert failed for ${productId}: ${(error as { message: string }).message}`)
   }
 }
 

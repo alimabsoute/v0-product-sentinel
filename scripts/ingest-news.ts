@@ -169,7 +169,7 @@ async function findProductId(productName: string | null): Promise<string | null>
     .select('id')
     .ilike('name', productName)
     .maybeSingle()
-  if (exact) return exact.id
+  if (exact) return (exact as unknown as { id: string }).id
 
   // Partial name match (contains)
   const { data: partial } = await supabaseAdmin
@@ -177,7 +177,7 @@ async function findProductId(productName: string | null): Promise<string | null>
     .select('id, name')
     .ilike('name', `%${productName.split(' ')[0]}%`)
     .limit(1)
-  if (partial?.length) return partial[0].id
+  if (partial?.length) return (partial[0] as unknown as { id: string }).id
 
   return null
 }
@@ -203,6 +203,7 @@ async function upsertPressMention(
 
   const mentionDate = item.pubDate ? new Date(item.pubDate) : new Date()
 
+  // @ts-ignore — no generated DB types; insert payload is correct at runtime
   const { error } = await supabaseAdmin.from('press_mentions').insert({
     product_id: productId,
     publication: source.name,
@@ -245,10 +246,11 @@ async function insertFundingRound(
     .select('company_id')
     .eq('id', productId)
     .maybeSingle()
-  if (!product?.company_id) return
+  if (!(product as unknown as { company_id: string | null })?.company_id) return
 
+  // @ts-ignore — no generated DB types; insert payload is correct at runtime
   const { error } = await supabaseAdmin.from('funding_rounds').insert({
-    company_id: product.company_id,
+    company_id: (product as unknown as { company_id: string }).company_id,
     round_type: funding.round_type,
     amount_usd: funding.amount_usd,
     investors: funding.investors,       // JSONB — array stored as JSON

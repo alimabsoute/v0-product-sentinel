@@ -197,7 +197,8 @@ async function main() {
 
       const { error: upsertErr } = await supabaseAdmin
         .from('github_snapshots')
-        .upsert(snapshot, { onConflict: 'product_id,snapshot_date' })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .upsert(snapshot as any, { onConflict: 'product_id,snapshot_date' })
 
       if (upsertErr) {
         console.log(`  ERROR ${product.slug} — upsert failed: ${upsertErr.message}`)

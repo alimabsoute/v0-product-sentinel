@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 import { supabaseAdmin } from '@/lib/supabase-server'
 
-const BASE_URL = 'https://v0-product-sentinel.vercel.app'
+const BASE_URL = 'https://launchsentinel.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
