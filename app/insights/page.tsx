@@ -180,7 +180,7 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
                 {feed.items.map((item) => (
                   <a
                     key={item.id}
-                    href={item.url}
+                    href={item.url ?? '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group block rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md"
@@ -196,11 +196,11 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
                       )}
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium leading-snug group-hover:text-primary transition-colors line-clamp-2">
-                          {item.title}
+                          {item.headline}
                         </h3>
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          {item.source && (
-                            <span className="font-medium text-foreground">{item.source}</span>
+                          {item.publication && (
+                            <span className="font-medium text-foreground">{item.publication}</span>
                           )}
                           {item.product_name && (
                             <>
@@ -214,12 +214,12 @@ export default async function InsightsPage({ searchParams }: InsightsPageProps) 
                               </Link>
                             </>
                           )}
-                          {item.published_at && (
+                          {item.mention_date && (
                             <>
                               <span>·</span>
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {formatRelativeTime(item.published_at)}
+                                {formatRelativeTime(item.mention_date)}
                               </span>
                             </>
                           )}

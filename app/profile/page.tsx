@@ -23,7 +23,7 @@ export default async function ProfilePage() {
   const [savedProducts, userCollections, submissionsData] = await Promise.all([
     getUserSaves(user.id).catch(() => []),
     getUserCollections(user.id).catch(() => []),
-    supabaseAdmin
+    Promise.resolve(supabaseAdmin
       .from("products")
       .select("id, slug, name, logo_url, category, status, created_at")
       .eq("source", "user-submission")
@@ -31,7 +31,7 @@ export default async function ProfilePage() {
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(20)
-      .then((r) => r.data ?? [])
+    ).then((r) => (r.data as Array<{ id: string; slug: string; name: string; logo_url: string | null; category: string; status: string; created_at: string }> ?? []))
       .catch(() => []),
   ])
 

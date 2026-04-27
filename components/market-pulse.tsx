@@ -17,7 +17,7 @@ async function getCategoryStats(): Promise<CategoryStat[]> {
   if (error || !data) return []
 
   const counts: Record<string, number> = {}
-  for (const row of data) {
+  for (const row of data as unknown as { category: string }[]) {
     counts[row.category] = (counts[row.category] ?? 0) + 1
   }
 

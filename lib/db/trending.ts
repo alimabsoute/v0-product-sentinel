@@ -127,7 +127,7 @@ async function getLatestScoreDate(): Promise<string | null> {
     .order('score_date', { ascending: false })
     .limit(1)
     .single()
-  return data?.score_date ?? null
+  return (data as unknown as { score_date: string | null } | null)?.score_date ?? null
 }
 
 export type BreakoutProduct = TrendingProduct & {

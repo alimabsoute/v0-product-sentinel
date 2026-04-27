@@ -64,7 +64,8 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id)
   } else {
     // Upvote
-    await supabaseAdmin
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabaseAdmin as any)
       .from('product_upvotes')
       .insert({ product_id, user_id: user.id })
   }

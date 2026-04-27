@@ -26,7 +26,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .order('created_at', { ascending: false })
       .limit(5000)
 
-    const productRoutes: MetadataRoute.Sitemap = (data ?? []).map(p => ({
+    type SitemapRow = { slug: string; updated_at: string | null }
+    const productRoutes: MetadataRoute.Sitemap = (data as unknown as SitemapRow[] ?? []).map(p => ({
       url: `${BASE_URL}/products/${p.slug}`,
       lastModified: new Date(p.updated_at ?? new Date()),
       changeFrequency: 'weekly' as const,

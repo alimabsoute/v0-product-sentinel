@@ -63,7 +63,8 @@ export async function createCollection(
   description?: string,
   isPublic = true,
 ): Promise<Collection> {
-  const { data, error } = await supabaseAdmin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabaseAdmin as any)
     .from('user_collections')
     .insert({ user_id: userId, name, description: description ?? null, is_public: isPublic })
     .select()

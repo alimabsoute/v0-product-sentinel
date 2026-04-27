@@ -32,7 +32,7 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<ProductResult[]>([])
   const [loading, setLoading] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Keyboard shortcut
   useEffect(() => {

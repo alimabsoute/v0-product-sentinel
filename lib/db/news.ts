@@ -214,7 +214,7 @@ export async function getNewsArchive({
     return { items: [], total: 0, page, totalPages: 0 }
   }
 
-  let items: NewsArchiveItem[] = (data ?? []).map((row) => {
+  let items: NewsArchiveItem[] = (data as unknown as any[] ?? []).map((row: Record<string, unknown>) => {
     const p = row.products as { name: string; slug: string } | null
     return {
       id: row.id as string,
@@ -247,7 +247,7 @@ export async function getNewsPublications(): Promise<string[]> {
     .select('publication')
     .not('publication', 'is', null)
 
-  const unique = [...new Set((data ?? []).map((r) => r.publication as string))]
+  const unique = [...new Set((data as unknown as { publication: string }[] ?? []).map(r => r.publication))]
   return unique.sort()
 }
 
@@ -261,8 +261,8 @@ export async function getPressMentionStats(): Promise<PressMentionStats> {
     .select('publication')
 
   const sourceMap: Record<string, number> = {}
-  for (const row of sourceData ?? []) {
-    const src = (row.publication as string | null) ?? 'Unknown'
+  for (const row of sourceData as unknown as { publication: string | null }[] ?? []) {
+    const src = row.publication ?? 'Unknown'
     sourceMap[src] = (sourceMap[src] ?? 0) + 1
   }
 

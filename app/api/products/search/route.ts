@@ -38,7 +38,8 @@ export async function GET(request: NextRequest) {
       const { data, error } = await query
       if (error) throw error
 
-      const products = (data ?? []).map((row) => ({
+      type MinimalRow = { id: string; slug: string; name: string; description: string | null; logo_url: string | null; category: string }
+      const products = (data as unknown as MinimalRow[] ?? []).map((row) => ({
         id: row.id,
         slug: row.slug,
         name: row.name,

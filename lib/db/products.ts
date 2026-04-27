@@ -243,7 +243,7 @@ export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
     .order('signal_score', { ascending: false })
     .limit(limit)
 
-  const ids = (scores ?? []).map(s => s.product_id)
+  const ids = (scores as unknown as { product_id: string }[] ?? []).map(s => s.product_id)
 
   if (ids.length > 0) {
     const { data, error } = await supabaseAdmin
@@ -270,7 +270,7 @@ export async function getTrendingProducts(limit = 6): Promise<Product[]> {
     .order('velocity_score', { ascending: false })
     .limit(limit * 2)  // fetch extra so featured ≠ trending
 
-  const ids = (scores ?? []).map(s => s.product_id)
+  const ids = (scores as unknown as { product_id: string }[] ?? []).map(s => s.product_id)
 
   if (ids.length > 0) {
     const { data, error } = await supabaseAdmin
@@ -402,7 +402,7 @@ export async function getDistinctCategories(): Promise<string[]> {
     .select('category')
     .eq('status', 'active')
   if (error) throw error
-  const slugs = [...new Set((data ?? []).map(r => r.category as string))].sort()
+  const slugs = [...new Set((data as unknown as { category: string }[] ?? []).map(r => r.category))].sort()
   return slugs.map(categoryDisplay)
 }
 
@@ -507,7 +507,7 @@ export async function searchProducts(params: SearchParams = {}): Promise<SearchR
       .limit(1000)
 
     const { data: scoreRows } = await scoreQ
-    let rankedIds = (scoreRows ?? []).map(r => r.product_id)
+    let rankedIds = (scoreRows as unknown as { product_id: string }[] ?? []).map(r => r.product_id)
 
     if (tagProductIds !== null) {
       const tagSet = new Set(tagProductIds)

@@ -122,7 +122,7 @@ interface NewsItemCardProps {
 
 function NewsItemCard({ item }: NewsItemCardProps) {
   // Map source to a rough category color
-  const src = (item.source ?? 'insights').toLowerCase()
+  const src = (item.publication ?? 'insights').toLowerCase()
   const category = src.includes('tech') ? 'engineering'
     : src.includes('ai') || src.includes('openai') ? 'ai'
     : src.includes('fund') || src.includes('venture') ? 'funding'
@@ -131,7 +131,7 @@ function NewsItemCard({ item }: NewsItemCardProps) {
 
   return (
     <a
-      href={item.url}
+      href={item.url ?? '#'}
       target="_blank"
       rel="noopener noreferrer"
       className="group block py-4 transition-colors hover:bg-secondary/30 -mx-5 px-5"
@@ -141,15 +141,15 @@ function NewsItemCard({ item }: NewsItemCardProps) {
           "px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide text-white",
           categoryColors[category] ?? 'bg-slate-800'
         )}>
-          {item.source ?? 'news'}
+          {item.publication ?? 'news'}
         </span>
         <span className="text-muted-foreground">
-          {item.published_at ? formatRelativeTime(item.published_at) : ''}
+          {item.mention_date ? formatRelativeTime(item.mention_date) : ''}
         </span>
       </div>
 
       <h3 className="font-medium leading-snug text-foreground group-hover:text-primary transition-colors">
-        {item.title}
+        {item.headline}
       </h3>
 
       {item.product_name && (

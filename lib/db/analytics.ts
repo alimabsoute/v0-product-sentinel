@@ -99,7 +99,7 @@ export async function getCategoryDistribution(): Promise<CategoryDistributionIte
     if (error || !data) return []
 
     const counts: Record<string, number> = {}
-    for (const row of data) {
+    for (const row of data as unknown as { category: string }[]) {
       counts[row.category] = (counts[row.category] ?? 0) + 1
     }
 
@@ -173,7 +173,7 @@ export async function getSignalDistribution(): Promise<SignalDistributionItem[]>
     if (error || !data) return empty
 
     const counts = [0, 0, 0, 0, 0]
-    for (const row of data) {
+    for (const row of data as unknown as { signal_score: number | null }[]) {
       const score = row.signal_score ?? 0
       const idx = Math.min(Math.floor(score / 20), 4)
       counts[idx]++

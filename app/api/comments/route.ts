@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'content must be 1000 characters or fewer' }, { status: 400 })
   }
 
-  const { data, error } = await supabaseAdmin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabaseAdmin as any)
     .from('product_comments')
     .insert({
       product_id,
@@ -52,7 +53,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to insert comment' }, { status: 500 })
   }
 
-  return NextResponse.json({ comment: { ...data, author_name: user.email?.split('@')[0] ?? 'User' } }, { status: 201 })
+  const comment = data as { [key: string]: unknown }
+  return NextResponse.json({ comment: { ...comment, author_name: user.email?.split('@')[0] ?? 'User' } }, { status: 201 })
 }
 
 export async function DELETE(req: NextRequest) {
@@ -76,7 +78,7 @@ export async function DELETE(req: NextRequest) {
   if (!existing) {
     return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
   }
-  if (existing.user_id !== user.id) {
+  if ((existing as { user_id: string }).user_id !== user.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

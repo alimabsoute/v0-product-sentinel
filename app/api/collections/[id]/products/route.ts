@@ -33,7 +33,8 @@ export async function POST(
       return NextResponse.json({ error: 'product_id is required' }, { status: 400 })
     }
 
-    const { error } = await supabaseAdmin
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabaseAdmin as any)
       .from('collection_products')
       .insert({ collection_id: id, product_id })
 

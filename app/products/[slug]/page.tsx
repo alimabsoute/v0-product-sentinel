@@ -308,14 +308,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   {relatedNews.map(news => (
                     <a
                       key={news.id}
-                      href={news.url}
+                      href={news.url ?? '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block rounded-lg border border-border p-4 transition-colors hover:border-primary/30 hover:bg-card"
                     >
-                      <h3 className="font-medium">{news.title}</h3>
+                      <h3 className="font-medium">{news.headline}</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {news.source ?? 'Unknown'} • {news.published_at ? formatRelativeTime(news.published_at) : ''}
+                        {news.publication ?? 'Unknown'} • {news.mention_date ? formatRelativeTime(news.mention_date) : ''}
                       </p>
                     </a>
                   ))}
