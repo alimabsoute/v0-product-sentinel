@@ -17,6 +17,7 @@ import {
   getSurvivalRates,
   getMarketStats,
   getCohortShare,
+  getAlphaSignals,
 } from '@/lib/db/analytics'
 import { MarketsClient } from './_client'
 
@@ -30,6 +31,7 @@ export default async function MarketsPage() {
     categoryGrowth,
     survivalRates,
     cohortShare,
+    alphaSignals,
   ] = await Promise.all([
     getMarketStats(),
     getCategoryDistribution(),
@@ -39,6 +41,7 @@ export default async function MarketsPage() {
     getCategoryGrowth(),
     getSurvivalRates(),
     getCohortShare('capability'),
+    getAlphaSignals(500),
   ])
 
   return (
@@ -68,6 +71,7 @@ export default async function MarketsPage() {
           categoryGrowth={categoryGrowth}
           survivalRates={survivalRates}
           cohortShare={cohortShare}
+          alphaSignals={alphaSignals}
         />
       </main>
       <SiteFooter />

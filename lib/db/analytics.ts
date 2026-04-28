@@ -350,6 +350,57 @@ export async function getCohortShare(tagGroup = 'capability'): Promise<CohortSha
   }
 }
 
+// ─── Alpha Signals ────────────────────────────────────────────────────────────
+
+export type AlphaSignal = {
+  product_id: string
+  name: string
+  slug: string
+  category: string
+  signal_score: number
+  velocity_score: number
+}
+
+/**
+ * Active products with signal + velocity scores for the quadrant scatter chart.
+ * Returns top `limit` by signal_score. Empty array on error.
+ */
+export async function getAlphaSignals(limit = 500): Promise<AlphaSignal[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('latest_signal_scores')
+      .select(`
+        product_id,
+        signal_score,
+        velocity_score,
+        products!inner ( name, slug, category, status )
+      `)
+      .eq('products.status', 'active')
+      .not('signal_score', 'is', null)
+      .not('velocity_score', 'is', null)
+      .order('signal_score', { ascending: false })
+      .limit(limit)
+
+    if (error || !data) return []
+
+    return (data as unknown as Array<{
+      product_id: string
+      signal_score: number
+      velocity_score: number
+      products: { name: string; slug: string; category: string }
+    }>).map(row => ({
+      product_id: row.product_id,
+      name: row.products.name,
+      slug: row.products.slug,
+      category: row.products.category,
+      signal_score: row.signal_score,
+      velocity_score: row.velocity_score,
+    }))
+  } catch {
+    return []
+  }
+}
+
 /**
  * High-level market aggregate stats.
  */

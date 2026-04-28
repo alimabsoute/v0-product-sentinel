@@ -18,6 +18,10 @@ import {
   Legend,
   AreaChart,
   Area,
+  ScatterChart,
+  Scatter,
+  ZAxis,
+  ReferenceLine,
 } from 'recharts'
 import type {
   CategoryDistributionItem,
@@ -28,6 +32,7 @@ import type {
   SurvivalRateItem,
   MarketStats,
   CohortShareItem,
+  AlphaSignal,
 } from '@/lib/db/analytics'
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
@@ -65,6 +70,180 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   )
 }
 
+// ─── Alpha Signals Quadrant Chart ─────────────────────────────────────────────
+
+const SIGNAL_THRESHOLD = 50
+const VELOCITY_THRESHOLD = 0
+
+const QUADRANT_META = {
+  escape_velocity: { label: 'Escape Velocity', color: '#22c55e', desc: 'High signal · Accelerating' },
+  launching:       { label: 'Launching',        color: '#3b82f6', desc: 'Low signal · Accelerating' },
+  stable:          { label: 'Stable',           color: '#f59e0b', desc: 'High signal · Plateaued'   },
+  at_risk:         { label: 'At Risk',          color: '#ef4444', desc: 'Low signal · Declining'    },
+} as const
+
+type QuadrantKey = keyof typeof QUADRANT_META
+
+function classifyQuadrant(d: AlphaSignal): QuadrantKey {
+  if (d.signal_score >= SIGNAL_THRESHOLD && d.velocity_score >= VELOCITY_THRESHOLD) return 'escape_velocity'
+  if (d.signal_score <  SIGNAL_THRESHOLD && d.velocity_score >= VELOCITY_THRESHOLD) return 'launching'
+  if (d.signal_score >= SIGNAL_THRESHOLD && d.velocity_score <  VELOCITY_THRESHOLD) return 'stable'
+  return 'at_risk'
+}
+
+type AlphaTooltipProps = { active?: boolean; payload?: Array<{ payload: AlphaSignal & { quadrant: QuadrantKey } }> }
+
+function AlphaTooltip({ active, payload }: AlphaTooltipProps) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  const meta = QUADRANT_META[d.quadrant]
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2.5 text-xs shadow-lg min-w-[160px]">
+      <div className="font-medium text-sm truncate max-w-[200px]">{d.name}</div>
+      <div className="mt-1 flex items-center gap-1.5">
+        <span
+          className="inline-block w-2 h-2 rounded-full"
+          style={{ background: meta.color }}
+        />
+        <span className="font-mono uppercase tracking-wider" style={{ color: meta.color }}>
+          {meta.label}
+        </span>
+      </div>
+      <div className="mt-1.5 grid grid-cols-2 gap-x-3 font-mono text-muted-foreground">
+        <span>Signal</span><span className="text-foreground">{d.signal_score.toFixed(1)}</span>
+        <span>Velocity</span>
+        <span className={d.velocity_score >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+          {d.velocity_score >= 0 ? '+' : ''}{d.velocity_score.toFixed(2)}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function AlphaSignalsSection({ data }: { data: AlphaSignal[] }) {
+  const annotated = data.map(d => ({ ...d, quadrant: classifyQuadrant(d) }))
+
+  const byQuadrant: Record<QuadrantKey, typeof annotated> = {
+    escape_velocity: annotated.filter(d => d.quadrant === 'escape_velocity'),
+    launching:       annotated.filter(d => d.quadrant === 'launching'),
+    stable:          annotated.filter(d => d.quadrant === 'stable'),
+    at_risk:         annotated.filter(d => d.quadrant === 'at_risk'),
+  }
+
+  const counts = Object.fromEntries(
+    (Object.keys(byQuadrant) as QuadrantKey[]).map(k => [k, byQuadrant[k].length])
+  )
+
+  if (data.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No signal data — run <code className="font-mono text-xs bg-secondary px-1 rounded">npm run signals</code> to compute velocity scores.
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Legend row */}
+      <div className="flex flex-wrap gap-4">
+        {(Object.keys(QUADRANT_META) as QuadrantKey[]).map(k => (
+          <div key={k} className="flex items-center gap-2 text-xs">
+            <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: QUADRANT_META[k].color }} />
+            <span className="font-mono uppercase tracking-wider font-medium" style={{ color: QUADRANT_META[k].color }}>
+              {QUADRANT_META[k].label}
+            </span>
+            <span className="text-muted-foreground">({counts[k]})</span>
+          </div>
+        ))}
+        <span className="text-xs text-muted-foreground ml-auto">
+          {data.length} products plotted
+        </span>
+      </div>
+
+      {/* Scatter chart */}
+      <div className="relative">
+        {/* Quadrant corner labels */}
+        <div className="absolute inset-0 pointer-events-none z-10" style={{ top: 10, right: 24, bottom: 40, left: 60 }}>
+          <div className="absolute top-2 right-2 text-[10px] font-mono uppercase tracking-widest opacity-50" style={{ color: '#22c55e' }}>
+            ESCAPE VELOCITY
+          </div>
+          <div className="absolute top-2 left-2 text-[10px] font-mono uppercase tracking-widest opacity-50" style={{ color: '#3b82f6' }}>
+            LAUNCHING
+          </div>
+          <div className="absolute bottom-2 right-2 text-[10px] font-mono uppercase tracking-widest opacity-50" style={{ color: '#f59e0b' }}>
+            STABLE
+          </div>
+          <div className="absolute bottom-2 left-2 text-[10px] font-mono uppercase tracking-widest opacity-50" style={{ color: '#ef4444' }}>
+            AT RISK
+          </div>
+        </div>
+
+        <ResponsiveContainer width="100%" height={420}>
+          <ScatterChart margin={{ top: 20, right: 30, bottom: 30, left: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis
+              dataKey="signal_score"
+              type="number"
+              domain={[0, 100]}
+              name="Signal"
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={false}
+              tickLine={false}
+              label={{ value: 'Signal Score →', position: 'insideBottomRight', offset: -4, fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            />
+            <YAxis
+              dataKey="velocity_score"
+              type="number"
+              name="Velocity"
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={false}
+              tickLine={false}
+              label={{ value: 'Velocity →', angle: -90, position: 'insideTopLeft', offset: 12, fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            />
+            <ZAxis range={[22, 22]} />
+            <Tooltip content={<AlphaTooltip />} />
+            <ReferenceLine x={SIGNAL_THRESHOLD} stroke="hsl(var(--border))" strokeDasharray="5 3" strokeWidth={1.5} />
+            <ReferenceLine y={VELOCITY_THRESHOLD} stroke="hsl(var(--border))" strokeDasharray="5 3" strokeWidth={1.5} />
+            <Scatter name="Escape Velocity" data={byQuadrant.escape_velocity} fill="#22c55e" fillOpacity={0.75} />
+            <Scatter name="Launching"       data={byQuadrant.launching}       fill="#3b82f6" fillOpacity={0.75} />
+            <Scatter name="Stable"          data={byQuadrant.stable}          fill="#f59e0b" fillOpacity={0.75} />
+            <Scatter name="At Risk"         data={byQuadrant.at_risk}         fill="#ef4444" fillOpacity={0.75} />
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Quadrant summary cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {(Object.keys(QUADRANT_META) as QuadrantKey[]).map(k => {
+          const meta = QUADRANT_META[k]
+          const top3 = byQuadrant[k].slice(0, 3)
+          return (
+            <div key={k} className="rounded-lg border border-border bg-secondary/20 p-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
+                <span className="text-xs font-mono uppercase tracking-wider font-semibold" style={{ color: meta.color }}>
+                  {meta.label}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground mb-2">{meta.desc}</div>
+              <div className="text-2xl font-mono font-semibold tabular-nums">{counts[k]}</div>
+              {top3.length > 0 && (
+                <div className="mt-2 space-y-0.5">
+                  {top3.map(p => (
+                    <div key={p.product_id} className="text-xs text-muted-foreground truncate">
+                      {p.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 type Props = {
@@ -76,6 +255,7 @@ type Props = {
   categoryGrowth: CategoryGrowthItem[]
   survivalRates: SurvivalRateItem[]
   cohortShare: CohortShareItem[]
+  alphaSignals: AlphaSignal[]
 }
 
 function pivotCohortData(data: CohortShareItem[]) {
@@ -133,6 +313,7 @@ export function MarketsClient({
   categoryGrowth,
   survivalRates,
   cohortShare,
+  alphaSignals,
 }: Props) {
   const [dateRange, setDateRange] = useState<DateRange>('all')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -551,7 +732,18 @@ export function MarketsClient({
         )}
       </div>
 
-      {/* Row 6: Capability Adoption by Launch Year */}
+      {/* Row 6: Alpha Signals — Quadrant scatter chart */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h2 className="text-sm font-mono uppercase tracking-widest text-muted-foreground mb-1">
+          Alpha Signals — Product Quadrant Map
+        </h2>
+        <p className="text-xs text-muted-foreground mb-4">
+          Each dot is an active product. X = current signal score. Y = week-over-week velocity. Dashed lines divide the four strategic zones.
+        </p>
+        <AlphaSignalsSection data={alphaSignals} />
+      </div>
+
+      {/* Row 7: Capability Adoption by Launch Year */}
       <div className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-sm font-mono uppercase tracking-widest text-muted-foreground mb-1">
           Capability Adoption by Launch Year
