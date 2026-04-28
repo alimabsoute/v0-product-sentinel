@@ -286,3 +286,12 @@
   background: oklch(0.75 0.005 260);
   background-clip: content-box;
 }
+
+/* Ticker strip scroll animation */
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: ticker linear infinite;
+}

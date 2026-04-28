@@ -395,6 +395,42 @@ export async function getProductCount(): Promise<number> {
   return count ?? 0
 }
 
+export type MarketStats = {
+  totalProducts: number
+  addedToday: number
+  pressCount: number
+  avgSignal: number
+  deathsThisWeek: number
+}
+
+export async function getMarketStats(): Promise<MarketStats> {
+  const today = new Date().toISOString().slice(0, 10)
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
+
+  const [total, todayCount, press, signal, deaths] = await Promise.all([
+    supabaseAdmin.from('products').select('id', { count: 'exact', head: true }),
+    supabaseAdmin.from('products').select('id', { count: 'exact', head: true }).gte('created_at', today),
+    supabaseAdmin.from('press_mentions').select('id', { count: 'exact', head: true }),
+    supabaseAdmin.from('product_signal_scores').select('signal_score').order('score_date', { ascending: false }).limit(500),
+    supabaseAdmin.from('products')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['dead', 'sunset', 'discontinued', 'inactive'])
+      .gte('updated_at', weekAgo),
+  ])
+
+  const rawRows = (signal.data ?? []) as { signal_score: number | null }[]
+  const scores = rawRows.map(r => r.signal_score).filter((s): s is number => s != null)
+  const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
+
+  return {
+    totalProducts: total.count ?? 0,
+    addedToday: todayCount.count ?? 0,
+    pressCount: press.count ?? 0,
+    avgSignal: avg,
+    deathsThisWeek: deaths.count ?? 0,
+  }
+}
+
 /** Distinct active category slugs (for filter pills). */
 export async function getDistinctCategories(): Promise<string[]> {
   const { data, error } = await supabaseAdmin

@@ -633,7 +633,7 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
           d3AlphaDecay={0.02}
           d3VelocityDecay={0.3}
           warmupTicks={20}
-          onEngineStop={handleEngineReady}
+          onEngineStop={undefined}
           nodeRelSize={1}
           nodeVal={(n: RGNode) => (n.type === 'category' ? 40 : radiusForScore(n.signal_score))}
           nodeLabel={(n: RGNode) =>
