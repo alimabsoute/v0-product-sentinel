@@ -1,44 +1,40 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { Skull, Calendar, ChevronLeft, ChevronRight, TrendingDown, Activity, Clock, Zap } from 'lucide-react'
+import { Skull, ChevronLeft, ChevronRight, Clock, Zap, TrendingDown, AlertTriangle } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { brandTitle } from '@/lib/branding'
 import {
-  getGraveyardOverviewStats,
-  getKMSurvivalCurves,
+  getGraveyardStats,
+  getDeathVelocityByCause,
+  getDangerWindows,
   getDeathCauses,
-  getActuarialTable,
   getDeathWaveTimeline,
   getHazardHeatmap,
   getDeadProducts,
   type DeadProduct,
 } from '@/lib/db/graveyard'
 import {
-  KMSurvivalChart,
+  DeathVelocityChart,
   DeathCauseChart,
+  DangerWindowsChart,
   DeathWaveChart,
   HazardHeatmap,
-  ActuarialTable,
 } from '@/components/graveyard-charts'
 
 export const metadata = {
   title: brandTitle('Product Graveyard'),
-  description: 'Kaplan-Meier survival analysis of 120+ dead tech products. Statistical mortality intelligence since 1994.',
+  description: 'Empirical mortality intelligence — when do products die, why, and which failure mode kills fastest. 120 documented failures, 1994–2024.',
 }
 
 const DEATH_REASON_LABELS: Record<string, string> = {
-  outcompeted: 'Outcompeted',
-  acquired_shutdown: 'Acquired & Killed',
-  strategic_pivot: 'Strategic Pivot',
-  execution: 'Execution Failure',
-  funding_failure: 'Funding Failure',
-  market_timing: 'Market Timing',
-  platform_dependency: 'Platform Pulled Rug',
-  regulatory: 'Regulatory',
+  outcompeted: 'Outcompeted', acquired_shutdown: 'Acquired & Killed',
+  strategic_pivot: 'Strategic Pivot', execution: 'Execution Failure',
+  funding_failure: 'Funding Failure', market_timing: 'Market Timing',
+  platform_dependency: 'Platform Pulled Rug', regulatory: 'Regulatory',
 }
 
 const DEATH_REASON_COLORS: Record<string, string> = {
@@ -60,12 +56,12 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
   const sp = await searchParams
   const page = sp.page ? Number(sp.page) : 1
 
-  const [stats, kmCurves, deathCauses, actuarial, wave, heatmap, deadResult] =
+  const [stats, velocity, dangerWindows, causes, wave, heatmap, deadResult] =
     await Promise.all([
-      getGraveyardOverviewStats(),
-      getKMSurvivalCurves(),
+      getGraveyardStats(),
+      getDeathVelocityByCause(),
+      getDangerWindows(),
       getDeathCauses(),
-      getActuarialTable(),
       getDeathWaveTimeline(),
       getHazardHeatmap(),
       getDeadProducts(page, 24),
@@ -75,7 +71,7 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
     <div className="min-h-screen bg-background">
       <SiteHeader />
 
-      {/* ── Dark hero header ─────────────────────────────────────────────── */}
+      {/* ── Dark hero ───────────────────────────────────────────────────── */}
       <section className="bg-zinc-950 border-b border-zinc-800">
         <div className="mx-auto max-w-7xl px-6 py-12">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
@@ -85,38 +81,26 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
                   <Skull className="h-5 w-5 text-zinc-400" />
                 </div>
                 <span className="text-xs font-mono text-zinc-600 uppercase tracking-widest">
-                  Mortality Intelligence · Kaplan-Meier Analysis
+                  Empirical Failure Intelligence · {stats.spanYears}
                 </span>
               </div>
               <h1 className="font-serif text-3xl sm:text-4xl font-bold text-zinc-100">
                 Product Graveyard
               </h1>
               <p className="mt-2 text-zinc-500 max-w-lg text-sm leading-relaxed">
-                Survival analysis of {stats.totalDead}+ documented tech product failures,{' '}
-                {stats.oldestYear}–present. Understand when products die, why, and which categories
-                carry the highest mortality risk.
+                {stats.totalDead} documented product deaths analyzed. How long do products live before they die,
+                what kills them, and when in their lifecycle are they most vulnerable?
+              </p>
+              <p className="mt-2 text-[11px] text-zinc-700 font-mono">
+                ⚠ All statistics are conditional on observed failures — not population survival rates.
+                Data reflects curated famous failures, not a random sample.
               </p>
             </div>
-
-            {/* ── Stat strip ── */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
-              <StatBlock icon={<Skull className="h-4 w-4" />} value={`${stats.totalDead}`} label="Dead Products" />
-              <StatBlock
-                icon={<Clock className="h-4 w-4" />}
-                value={`${(stats.avgLifespanMonths / 12).toFixed(1)}yr`}
-                label="Avg Lifespan"
-              />
-              <StatBlock
-                icon={<Zap className="h-4 w-4" />}
-                value={`${stats.fastestDeath.months}mo`}
-                label={`Fastest Death`}
-                sub={stats.fastestDeath.name}
-              />
-              <StatBlock
-                icon={<TrendingDown className="h-4 w-4" />}
-                value={stats.topKiller}
-                label="Top Killer"
-              />
+              <StatBlock icon={<Skull />} value={`${stats.totalDead}`} label="Failures Analyzed" />
+              <StatBlock icon={<Clock />} value={`${(stats.avgLifespanMonths / 12).toFixed(1)}yr`} label="Avg Age at Death" />
+              <StatBlock icon={<Zap />} value={`${stats.fastestDeath.months}mo`} label="Fastest Death" sub={stats.fastestDeath.name} />
+              <StatBlock icon={<TrendingDown />} value={`${stats.topKillerPct}%`} label={stats.topKiller} />
             </div>
           </div>
         </div>
@@ -124,84 +108,86 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
 
       <main className="mx-auto max-w-7xl px-6 py-10 space-y-12">
 
-        {/* ── Section 1: KM Curve + Death Causes ──────────────────────────── */}
-        <div className="grid gap-6 lg:grid-cols-5">
-
-          {/* KM Survival Curve */}
-          <div className="lg:col-span-3 rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Activity className="h-4 w-4 text-zinc-400" />
-                <h2 className="font-serif text-base font-semibold text-zinc-100">
-                  Kaplan-Meier Survival Curve
-                </h2>
-              </div>
-              <p className="text-xs text-zinc-600 font-mono">
-                S(t) = ∏<sub>i:tᵢ≤t</sub> (1 − dᵢ/nᵢ) · Probability of surviving to age t given eventual death
-              </p>
-            </div>
-            <KMSurvivalChart curves={kmCurves} />
+        {/* ── Section 1: Death Velocity — the most useful professional chart ── */}
+        <div className="rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
+          <div className="mb-2">
+            <h2 className="font-serif text-base font-semibold text-zinc-100">
+              Death Velocity by Kill Mechanism
+            </h2>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              How much time does each failure mode give you? Bar = interquartile range of age-at-death.
+              Dot = median. Hover for professional read.
+            </p>
+          </div>
+          <div className="mt-5">
+            <DeathVelocityChart rows={velocity} />
           </div>
 
-          {/* Death Causes */}
-          <div className="lg:col-span-2 rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Skull className="h-4 w-4 text-zinc-400" />
-                <h2 className="font-serif text-base font-semibold text-zinc-100">
-                  Cause of Death
-                </h2>
+          {/* Key insight callout */}
+          <div className="mt-5 grid sm:grid-cols-3 gap-3">
+            {velocity.slice(0, 3).map(r => (
+              <div key={r.reason} className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-2 w-2 rounded-full" style={{ background: r.color }} />
+                  <span className="text-xs font-medium text-zinc-300">{r.label}</span>
+                </div>
+                <p className="font-mono text-lg font-bold text-zinc-100">
+                  {r.medianMonths < 12 ? `${r.medianMonths}mo` : `${(r.medianMonths / 12).toFixed(1)}yr`}
+                  <span className="text-xs font-normal text-zinc-600 ml-1">median</span>
+                </p>
+                <p className="text-[11px] text-zinc-600 mt-1">{r.insight}</p>
               </div>
-              <p className="text-xs text-zinc-600">Distribution across {stats.totalDead} products</p>
-            </div>
-            <DeathCauseChart causes={deathCauses} />
+            ))}
           </div>
         </div>
 
-        {/* ── Section 2: Hazard Heatmap ────────────────────────────────────── */}
-        <div className="rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
-          <div className="mb-5">
+        {/* ── Section 2: What kills them + Danger windows ─────────────────── */}
+        <div className="grid gap-6 lg:grid-cols-5">
+
+          <div className="lg:col-span-2 rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
             <h2 className="font-serif text-base font-semibold text-zinc-100 mb-1">
-              Empirical Hazard Heatmap
+              What Kills Products
             </h2>
-            <p className="text-xs text-zinc-600 font-mono">
-              h(t,category) = P(death in age window | death observed) · Where do products die across their life?
-            </p>
+            <p className="text-xs text-zinc-500 mb-4">Share of {stats.totalDead} documented failures</p>
+            <DeathCauseChart causes={causes} />
           </div>
+
+          <div className="lg:col-span-3 rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
+            <h2 className="font-serif text-base font-semibold text-zinc-100 mb-1">
+              When in the Lifecycle Do They Die?
+            </h2>
+            <p className="text-xs text-zinc-500 mb-4">
+              Of products that died in each category, what % died in each phase?
+              Red = startup killer zone (0–2yr). Orange = growth stage (2–5yr). Yellow = established (5yr+).
+            </p>
+            <DangerWindowsChart rows={dangerWindows} />
+          </div>
+        </div>
+
+        {/* ── Section 3: Hazard concentration heatmap ─────────────────────── */}
+        <div className="rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
+          <h2 className="font-serif text-base font-semibold text-zinc-100 mb-1">
+            Failure Concentration Heatmap
+          </h2>
+          <p className="text-xs text-zinc-500 mb-5">
+            Where in a product's life are failures concentrated, by category?
+            Red intensity = % of that category's failures occurring in that age window.
+          </p>
           <HazardHeatmap cells={heatmap} />
         </div>
 
-        {/* ── Section 3: Death Wave Timeline ──────────────────────────────── */}
+        {/* ── Section 4: Death wave timeline ──────────────────────────────── */}
         <div className="rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
-          <div className="mb-4">
-            <h2 className="font-serif text-base font-semibold text-zinc-100 mb-1">
-              Death Wave Timeline
-            </h2>
-            <p className="text-xs text-zinc-600">
-              Product shutdowns per year by category · 2000–2024
-            </p>
-          </div>
-          <DeathWaveChart
-            years={wave.years}
-            series={wave.series}
-            categories={wave.categories}
-          />
+          <h2 className="font-serif text-base font-semibold text-zinc-100 mb-1">
+            Death Waves — Failures Per Year
+          </h2>
+          <p className="text-xs text-zinc-500 mb-4">
+            When did the crash years happen? 2012–2017 was the great mobile startup culling.
+          </p>
+          <DeathWaveChart years={wave.years} series={wave.series} categories={wave.categories} />
         </div>
 
-        {/* ── Section 4: Actuarial Table ───────────────────────────────────── */}
-        <div className="rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
-          <div className="mb-5">
-            <h2 className="font-serif text-base font-semibold text-zinc-100 mb-1">
-              Actuarial Table — Survival by Category
-            </h2>
-            <p className="text-xs text-zinc-600 font-mono">
-              Conditional survival rates for the dead cohort only · Risk = 5-year mortality rate
-            </p>
-          </div>
-          <ActuarialTable rows={actuarial} />
-        </div>
-
-        {/* ── Section 5: Dead Product Cards ───────────────────────────────── */}
+        {/* ── Section 5: Product cards ─────────────────────────────────────── */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -211,36 +197,21 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
               </p>
             </div>
           </div>
-
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {deadResult.products.map(product => (
-              <GraveyardCard key={product.id} product={product} />
-            ))}
+            {deadResult.products.map(p => <GraveyardCard key={p.id} product={p} />)}
           </div>
-
-          {/* Pagination */}
           {deadResult.totalPages > 1 && (
             <div className="mt-8 flex items-center justify-between">
               <Button variant="outline" size="sm" disabled={page <= 1} asChild={page > 1}>
-                {page > 1 ? (
-                  <Link href={`/graveyard?page=${page - 1}`}>
-                    <ChevronLeft className="h-4 w-4 mr-1" />Previous
-                  </Link>
-                ) : (
-                  <span><ChevronLeft className="h-4 w-4 mr-1" />Previous</span>
-                )}
+                {page > 1
+                  ? <Link href={`/graveyard?page=${page - 1}`}><ChevronLeft className="h-4 w-4 mr-1" />Previous</Link>
+                  : <span><ChevronLeft className="h-4 w-4 mr-1" />Previous</span>}
               </Button>
-              <span className="text-xs text-muted-foreground font-mono">
-                {deadResult.total} products · {page}/{deadResult.totalPages}
-              </span>
+              <span className="text-xs text-muted-foreground font-mono">{page}/{deadResult.totalPages}</span>
               <Button variant="outline" size="sm" disabled={page >= deadResult.totalPages} asChild={page < deadResult.totalPages}>
-                {page < deadResult.totalPages ? (
-                  <Link href={`/graveyard?page=${page + 1}`}>
-                    Next<ChevronRight className="h-4 w-4 ml-1" />
-                  </Link>
-                ) : (
-                  <span>Next<ChevronRight className="h-4 w-4 ml-1" /></span>
-                )}
+                {page < deadResult.totalPages
+                  ? <Link href={`/graveyard?page=${page + 1}`}>Next<ChevronRight className="h-4 w-4 ml-1" /></Link>
+                  : <span>Next<ChevronRight className="h-4 w-4 ml-1" /></span>}
               </Button>
             </div>
           )}
@@ -258,12 +229,14 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
   )
 }
 
-// ─── Components ───────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatBlock({ icon, value, label, sub }: { icon: React.ReactNode; value: string; label: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3.5">
-      <div className="flex items-center gap-1.5 text-zinc-500 mb-1.5">{icon}<span className="text-[10px] uppercase tracking-wider">{label}</span></div>
+      <div className="flex items-center gap-1.5 text-zinc-600 mb-1.5 [&>svg]:h-3.5 [&>svg]:w-3.5">{icon}
+        <span className="text-[10px] uppercase tracking-wider">{label}</span>
+      </div>
       <p className="font-mono text-xl font-bold text-zinc-100 leading-none">{value}</p>
       {sub && <p className="text-[10px] text-zinc-600 mt-1 truncate">{sub}</p>}
     </div>
@@ -290,22 +263,19 @@ function GraveyardCard({ product }: { product: DeadProduct }) {
             <img
               src={product.logo_url}
               alt={product.name}
-              className="h-10 w-10 rounded-lg object-cover grayscale opacity-60 group-hover:opacity-80 transition-opacity"
+              className="h-10 w-10 rounded-lg object-cover grayscale opacity-50 group-hover:opacity-70 transition-opacity"
             />
-            <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800">
-              <Skull className="h-2.5 w-2.5 text-zinc-500" />
-            </div>
           </div>
         ) : (
           <div className="h-10 w-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
-            <Skull className="h-4 w-4 text-zinc-600" />
+            <Skull className="h-4 w-4 text-zinc-700" />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-zinc-200 truncate group-hover:text-zinc-100 transition-colors">
+          <h3 className="font-medium text-zinc-300 truncate group-hover:text-zinc-100 transition-colors text-sm">
             {product.name}
           </h3>
-          <p className="text-xs text-zinc-600 capitalize truncate">{product.category}</p>
+          <p className="text-[11px] text-zinc-600 capitalize">{product.category}</p>
         </div>
       </div>
 
@@ -316,22 +286,20 @@ function GraveyardCard({ product }: { product: DeadProduct }) {
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
           {product.launched_year && product.discontinued_year && (
-            <span className="flex items-center gap-1 text-[10px] text-zinc-600 font-mono">
-              <Calendar className="h-3 w-3" />
+            <span className="text-[10px] text-zinc-700 font-mono">
               {product.launched_year}–{product.discontinued_year}
             </span>
           )}
           {lifespan && (
-            <span className="text-[10px] font-mono text-zinc-600">{lifespan}</span>
+            <span className="text-[10px] font-mono text-zinc-600 bg-zinc-900 px-1.5 py-0.5 rounded">
+              {lifespan}
+            </span>
           )}
         </div>
         {reasonLabel && (
-          <Badge
-            variant="outline"
-            className={`text-[9px] px-1.5 py-0 h-4 shrink-0 border ${reasonColor}`}
-          >
+          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 shrink-0 border ${reasonColor}`}>
             {reasonLabel}
           </Badge>
         )}

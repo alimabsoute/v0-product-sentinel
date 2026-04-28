@@ -1,9 +1,10 @@
 /**
  * lib/db/graveyard.ts
  *
- * Statistical intelligence functions for the graveyard page.
- * Implements Kaplan-Meier survival analysis, hazard rates, actuarial tables,
- * and death wave timeline — all computed from the products corpus.
+ * Empirical mortality analysis for the graveyard page.
+ * All data is from our curated corpus of 120 documented failures — results
+ * are conditional on eventual death, not population survival rates.
+ * Methodology note is surfaced in the UI wherever numbers are displayed.
  */
 
 import { supabaseAdmin } from '@/lib/supabase-server'
@@ -28,26 +29,30 @@ export type DeadProduct = {
   era: string | null
 }
 
-export type KMPoint = {
-  timeYears: number
-  survival: number
-}
-
-export type KMCurve = {
+export type DeathVelocityRow = {
+  reason: string
   label: string
   color: string
-  points: KMPoint[]
+  count: number
+  medianMonths: number
+  p25Months: number   // 25th percentile
+  p75Months: number   // 75th percentile
+  minMonths: number
+  maxMonths: number
+  fastestName: string
+  slowestName: string
+  insight: string     // what this tells a professional
 }
 
-export type ActuarialRow = {
+export type DangerWindowRow = {
   category: string
   displayName: string
   count: number
+  earlyPct: number   // % dying 0-2yr (startup killer window)
+  midPct: number     // % dying 2-5yr (growth stage)
+  latePct: number    // % dying 5yr+ (established stage)
   medianMonths: number
-  oneYearSurvival: number
-  threeYearSurvival: number
-  fiveYearSurvival: number
-  avgLifespanYears: number
+  peakWindow: string // 'early' | 'mid' | 'late'
 }
 
 export type DeathCause = {
@@ -56,11 +61,13 @@ export type DeathCause = {
   count: number
   pct: number
   color: string
+  medianMonths: number
 }
 
-export type DeathWavePoint = {
-  year: number
-  [key: string]: number
+export type DeathWaveData = {
+  years: number[]
+  series: Record<string, number[]>
+  categories: string[]
 }
 
 export type HazardCell = {
@@ -69,75 +76,68 @@ export type HazardCell = {
   ageBucket: string
   count: number
   pct: number
-  intensity: number  // 0-1 for color scaling
+  intensity: number
 }
 
 export type GraveyardStats = {
   totalDead: number
-  oldestYear: number
+  spanYears: string
   avgLifespanMonths: number
   fastestDeath: { name: string; months: number }
   longestSurvivor: { name: string; months: number }
   topKiller: string
+  topKillerPct: number
 }
 
-// ─── Display helpers ──────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORY_DISPLAY: Record<string, string> = {
-  'social': 'Social',
-  'productivity': 'Productivity',
-  'media': 'Media',
-  'hardware': 'Hardware',
-  'gaming': 'Gaming',
-  'analytics': 'Analytics',
-  'communication': 'Communication',
-  'dev-tools': 'Dev Tools',
-  'health': 'Health',
-  'e-commerce': 'E-Commerce',
-  'design': 'Design',
-  'mobile': 'Mobile',
-  'finance': 'Finance',
-  'entertainment': 'Entertainment',
-  'web': 'Web',
+  social: 'Social', productivity: 'Productivity', media: 'Media',
+  hardware: 'Hardware', gaming: 'Gaming', analytics: 'Analytics',
+  communication: 'Communication', 'dev-tools': 'Dev Tools',
+  health: 'Health', 'e-commerce': 'E-Commerce', design: 'Design',
+  mobile: 'Mobile', finance: 'Finance', entertainment: 'Entertainment', web: 'Web',
 }
 
 const DEATH_REASON_LABELS: Record<string, string> = {
-  'outcompeted': 'Outcompeted',
-  'acquired_shutdown': 'Acquired & Killed',
-  'strategic_pivot': 'Strategic Pivot',
-  'execution': 'Execution Failure',
-  'funding_failure': 'Funding Failure',
-  'market_timing': 'Market Timing',
-  'platform_dependency': 'Platform Pulled Rug',
-  'regulatory': 'Regulatory',
+  outcompeted: 'Outcompeted',
+  acquired_shutdown: 'Acquired & Killed',
+  strategic_pivot: 'Strategic Pivot',
+  execution: 'Execution Failure',
+  funding_failure: 'Funding Failure',
+  market_timing: 'Market Timing',
+  platform_dependency: 'Platform Pulled Rug',
+  regulatory: 'Regulatory',
 }
 
 const DEATH_REASON_COLORS: Record<string, string> = {
-  'outcompeted': '#ef4444',
-  'acquired_shutdown': '#f97316',
-  'strategic_pivot': '#eab308',
-  'execution': '#a855f7',
-  'funding_failure': '#3b82f6',
-  'market_timing': '#22c55e',
-  'platform_dependency': '#ec4899',
-  'regulatory': '#14b8a6',
+  outcompeted: '#ef4444',
+  acquired_shutdown: '#f97316',
+  strategic_pivot: '#eab308',
+  execution: '#a855f7',
+  funding_failure: '#3b82f6',
+  market_timing: '#22c55e',
+  platform_dependency: '#ec4899',
+  regulatory: '#14b8a6',
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  'social': '#ef4444',
-  'productivity': '#3b82f6',
-  'media': '#f97316',
-  'hardware': '#a855f7',
-  'e-commerce': '#22c55e',
-  'communication': '#eab308',
-  'gaming': '#ec4899',
+// Professional insight per death cause — what does this mean for a founder/VC?
+const DEATH_REASON_INSIGHTS: Record<string, string> = {
+  outcompeted: 'Slow death — years of signal decline before the end. You\'ll see it coming.',
+  acquired_shutdown: 'Often a forced exit after years of operation. The acquirer kills the brand.',
+  strategic_pivot: 'Internal decision, not market failure. Company survives; product doesn\'t.',
+  execution: 'Fastest killer. Bad product-market fit surfaces in months, not years.',
+  funding_failure: 'Early-stage phenomenon. Most funding deaths happen before year 2.',
+  market_timing: 'Market was real — just 5-10 years ahead. The second mover won.',
+  platform_dependency: 'API/platform risk. Death is sudden once the rug gets pulled.',
+  regulatory: 'External shock. Little warning, unpredictable timing.',
 }
 
 const AGE_BUCKETS = [
-  { key: '0-1yr', label: '0-1 yr', minMonths: 0, maxMonths: 12 },
-  { key: '1-3yr', label: '1-3 yr', minMonths: 12, maxMonths: 36 },
-  { key: '3-5yr', label: '3-5 yr', minMonths: 36, maxMonths: 60 },
-  { key: '5-10yr', label: '5-10 yr', minMonths: 60, maxMonths: 120 },
+  { key: '0-1yr', label: '< 1 yr', minMonths: 0, maxMonths: 12 },
+  { key: '1-3yr', label: '1–3 yr', minMonths: 12, maxMonths: 36 },
+  { key: '3-5yr', label: '3–5 yr', minMonths: 36, maxMonths: 60 },
+  { key: '5-10yr', label: '5–10 yr', minMonths: 60, maxMonths: 120 },
   { key: '10yr+', label: '10+ yr', minMonths: 120, maxMonths: Infinity },
 ]
 
@@ -145,153 +145,92 @@ function catDisplay(slug: string): string {
   return CATEGORY_DISPLAY[slug] ?? slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
-// ─── Kaplan-Meier survival estimator ─────────────────────────────────────────
-
-function computeKMCurve(lifespanMonths: number[]): KMPoint[] {
-  if (lifespanMonths.length === 0) return [{ timeYears: 0, survival: 1 }]
-
-  const sorted = [...lifespanMonths].filter(m => m > 0).sort((a, b) => a - b)
-  const n = sorted.length
-  const points: KMPoint[] = [{ timeYears: 0, survival: 1 }]
-
-  let s = 1.0
-  let idx = 0
-
-  while (idx < sorted.length) {
-    const t = sorted[idx]
-    let deaths = 0
-    while (idx < sorted.length && sorted[idx] === t) {
-      deaths++
-      idx++
-    }
-    const nAtRisk = n - (idx - deaths)
-    s = s * (1 - deaths / nAtRisk)
-    points.push({ timeYears: parseFloat((t / 12).toFixed(2)), survival: parseFloat(s.toFixed(4)) })
-  }
-
-  // Extend to 20 years if the last point is before that
-  const lastPoint = points[points.length - 1]
-  if (lastPoint.timeYears < 20) {
-    points.push({ timeYears: 20, survival: lastPoint.survival })
-  }
-
-  return points
+function percentile(sorted: number[], p: number): number {
+  const idx = (p / 100) * (sorted.length - 1)
+  const lo = Math.floor(idx)
+  const hi = Math.ceil(idx)
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
 }
 
-// Sample KM points at regular year intervals for clean chart rendering
-function sampleKMAtYears(points: KMPoint[], years: number[]): KMPoint[] {
-  return years.map(yr => {
-    // Find the survival value just before or at this year
-    let survival = 1.0
-    for (const p of points) {
-      if (p.timeYears <= yr) survival = p.survival
-      else break
-    }
-    return { timeYears: yr, survival }
-  })
-}
+// ─── Analytics functions ──────────────────────────────────────────────────────
 
-// ─── Main analytics functions ─────────────────────────────────────────────────
-
-export async function getGraveyardOverviewStats(): Promise<GraveyardStats> {
+export async function getGraveyardStats(): Promise<GraveyardStats> {
   const { data } = await supabaseAdmin
     .from('products')
-    .select('name, lifespan_months, death_reason')
+    .select('name, lifespan_months, death_reason, launched_year, discontinued_year')
     .eq('status', 'dead')
     .not('lifespan_months', 'is', null)
 
-  const rows = (data ?? []) as { name: string; lifespan_months: number; death_reason: string | null }[]
+  const rows = (data ?? []) as {
+    name: string; lifespan_months: number; death_reason: string | null
+    launched_year: number | null; discontinued_year: number | null
+  }[]
 
   const lifespans = rows.map(r => r.lifespan_months)
-  const avgLifespan = lifespans.length ? Math.round(lifespans.reduce((a, b) => a + b, 0) / lifespans.length) : 0
-
+  const avg = lifespans.length ? Math.round(lifespans.reduce((a, b) => a + b, 0) / lifespans.length) : 0
   const sorted = [...rows].sort((a, b) => a.lifespan_months - b.lifespan_months)
-  const fastest = sorted[0]
-  const longest = sorted[sorted.length - 1]
 
-  // Find top killer
   const reasonCounts: Record<string, number> = {}
   for (const r of rows) {
     if (r.death_reason) reasonCounts[r.death_reason] = (reasonCounts[r.death_reason] ?? 0) + 1
   }
-  const topKiller = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'unknown'
+  const [[topKiller, topCount]] = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])
+
+  const years = rows.flatMap(r => [r.launched_year, r.discontinued_year]).filter(Boolean) as number[]
+  const minYear = Math.min(...years)
+  const maxYear = Math.max(...years)
 
   return {
     totalDead: rows.length,
-    oldestYear: 1994,
-    avgLifespanMonths: avgLifespan,
-    fastestDeath: { name: fastest?.name ?? '', months: fastest?.lifespan_months ?? 0 },
-    longestSurvivor: { name: longest?.name ?? '', months: longest?.lifespan_months ?? 0 },
+    spanYears: `${minYear}–${maxYear}`,
+    avgLifespanMonths: avg,
+    fastestDeath: { name: sorted[0]?.name ?? '', months: sorted[0]?.lifespan_months ?? 0 },
+    longestSurvivor: { name: sorted[sorted.length - 1]?.name ?? '', months: sorted[sorted.length - 1]?.lifespan_months ?? 0 },
     topKiller: DEATH_REASON_LABELS[topKiller] ?? topKiller,
+    topKillerPct: Math.round((topCount / rows.length) * 100),
   }
 }
 
-export async function getKMSurvivalCurves(): Promise<KMCurve[]> {
+export async function getDeathVelocityByCause(): Promise<DeathVelocityRow[]> {
   const { data } = await supabaseAdmin
     .from('products')
-    .select('category, lifespan_months')
-    .eq('status', 'dead')
-    .not('lifespan_months', 'is', null)
-
-  const rows = (data ?? []) as { category: string; lifespan_months: number }[]
-  const yearSamples = [0, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 18, 20]
-
-  // Overall curve
-  const overall = sampleKMAtYears(
-    computeKMCurve(rows.map(r => r.lifespan_months)),
-    yearSamples
-  )
-
-  const curves: KMCurve[] = [
-    { label: 'All Products', color: '#ffffff', points: overall },
-  ]
-
-  // Category-specific curves for top categories
-  const catTargets = ['social', 'productivity', 'hardware', 'e-commerce', 'media']
-  for (const cat of catTargets) {
-    const catRows = rows.filter(r => r.category === cat)
-    if (catRows.length < 3) continue
-    const pts = sampleKMAtYears(
-      computeKMCurve(catRows.map(r => r.lifespan_months)),
-      yearSamples
-    )
-    curves.push({
-      label: catDisplay(cat),
-      color: CATEGORY_COLORS[cat] ?? '#94a3b8',
-      points: pts,
-    })
-  }
-
-  return curves
-}
-
-export async function getDeathCauses(): Promise<DeathCause[]> {
-  const { data } = await supabaseAdmin
-    .from('products')
-    .select('death_reason')
+    .select('name, death_reason, lifespan_months')
     .eq('status', 'dead')
     .not('death_reason', 'is', null)
+    .not('lifespan_months', 'is', null)
 
-  const rows = (data ?? []) as { death_reason: string }[]
-  const total = rows.length
+  const rows = (data ?? []) as { name: string; death_reason: string; lifespan_months: number }[]
 
-  const counts: Record<string, number> = {}
+  const byReason: Record<string, { name: string; months: number }[]> = {}
   for (const r of rows) {
-    counts[r.death_reason] = (counts[r.death_reason] ?? 0) + 1
+    if (!byReason[r.death_reason]) byReason[r.death_reason] = []
+    byReason[r.death_reason].push({ name: r.name, months: r.lifespan_months })
   }
 
-  return Object.entries(counts)
-    .map(([reason, count]) => ({
-      reason,
-      label: DEATH_REASON_LABELS[reason] ?? reason,
-      count,
-      pct: parseFloat(((count / total) * 100).toFixed(1)),
-      color: DEATH_REASON_COLORS[reason] ?? '#94a3b8',
-    }))
-    .sort((a, b) => b.count - a.count)
+  return Object.entries(byReason)
+    .filter(([, items]) => items.length >= 2)
+    .map(([reason, items]) => {
+      const sorted = [...items].sort((a, b) => a.months - b.months)
+      const months = sorted.map(s => s.months)
+      return {
+        reason,
+        label: DEATH_REASON_LABELS[reason] ?? reason,
+        color: DEATH_REASON_COLORS[reason] ?? '#94a3b8',
+        count: items.length,
+        medianMonths: Math.round(percentile(months, 50)),
+        p25Months: Math.round(percentile(months, 25)),
+        p75Months: Math.round(percentile(months, 75)),
+        minMonths: months[0],
+        maxMonths: months[months.length - 1],
+        fastestName: sorted[0].name,
+        slowestName: sorted[sorted.length - 1].name,
+        insight: DEATH_REASON_INSIGHTS[reason] ?? '',
+      }
+    })
+    .sort((a, b) => a.medianMonths - b.medianMonths)
 }
 
-export async function getActuarialTable(): Promise<ActuarialRow[]> {
+export async function getDangerWindows(): Promise<DangerWindowRow[]> {
   const { data } = await supabaseAdmin
     .from('products')
     .select('category, lifespan_months')
@@ -307,29 +246,53 @@ export async function getActuarialTable(): Promise<ActuarialRow[]> {
   }
 
   return Object.entries(byCategory)
-    .filter(([, lifespans]) => lifespans.length >= 3)
+    .filter(([, ls]) => ls.length >= 3)
     .map(([category, lifespans]) => {
+      const n = lifespans.length
       const sorted = [...lifespans].sort((a, b) => a - b)
-      const n = sorted.length
-      const mid = Math.floor(n / 2)
-      const median = n % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
-      const avg = lifespans.reduce((a, b) => a + b, 0) / n
+      const median = Math.round(percentile(sorted, 50))
+      const earlyPct = Math.round((lifespans.filter(m => m <= 24).length / n) * 100)
+      const midPct = Math.round((lifespans.filter(m => m > 24 && m <= 60).length / n) * 100)
+      const latePct = 100 - earlyPct - midPct
+      const peakWindow = earlyPct >= midPct && earlyPct >= latePct ? 'early'
+        : midPct >= latePct ? 'mid' : 'late'
+      return { category, displayName: catDisplay(category), count: n, earlyPct, midPct, latePct, medianMonths: median, peakWindow }
+    })
+    .sort((a, b) => b.count - a.count)
+}
 
+export async function getDeathCauses(): Promise<DeathCause[]> {
+  const { data } = await supabaseAdmin
+    .from('products')
+    .select('death_reason, lifespan_months')
+    .eq('status', 'dead')
+    .not('death_reason', 'is', null)
+
+  const rows = (data ?? []) as { death_reason: string; lifespan_months: number | null }[]
+  const total = rows.length
+
+  const acc: Record<string, number[]> = {}
+  for (const r of rows) {
+    if (!acc[r.death_reason]) acc[r.death_reason] = []
+    if (r.lifespan_months != null) acc[r.death_reason].push(r.lifespan_months)
+  }
+
+  return Object.entries(acc)
+    .map(([reason, months]) => {
+      const sorted = [...months].sort((a, b) => a - b)
       return {
-        category,
-        displayName: catDisplay(category),
-        count: n,
-        medianMonths: Math.round(median),
-        avgLifespanYears: parseFloat((avg / 12).toFixed(1)),
-        oneYearSurvival: Math.round((lifespans.filter(m => m > 12).length / n) * 100),
-        threeYearSurvival: Math.round((lifespans.filter(m => m > 36).length / n) * 100),
-        fiveYearSurvival: Math.round((lifespans.filter(m => m > 60).length / n) * 100),
+        reason,
+        label: DEATH_REASON_LABELS[reason] ?? reason,
+        count: months.length,
+        pct: parseFloat(((months.length / total) * 100).toFixed(1)),
+        color: DEATH_REASON_COLORS[reason] ?? '#94a3b8',
+        medianMonths: sorted.length ? Math.round(percentile(sorted, 50)) : 0,
       }
     })
     .sort((a, b) => b.count - a.count)
 }
 
-export async function getDeathWaveTimeline(): Promise<{ years: number[]; series: Record<string, number[]>; categories: string[] }> {
+export async function getDeathWaveTimeline(): Promise<DeathWaveData> {
   const { data } = await supabaseAdmin
     .from('products')
     .select('category, discontinued_year')
@@ -338,18 +301,13 @@ export async function getDeathWaveTimeline(): Promise<{ years: number[]; series:
     .gte('discontinued_year', 2000)
 
   const rows = (data ?? []) as { category: string; discontinued_year: number }[]
-
   const topCats = ['social', 'productivity', 'media', 'hardware', 'e-commerce', 'communication', 'gaming']
   const years = Array.from({ length: 2025 - 2000 }, (_, i) => 2000 + i)
 
   const series: Record<string, number[]> = {}
   for (const cat of topCats) {
-    series[cat] = years.map(yr =>
-      rows.filter(r => r.category === cat && r.discontinued_year === yr).length
-    )
+    series[cat] = years.map(yr => rows.filter(r => r.category === cat && r.discontinued_year === yr).length)
   }
-
-  // Other category
   series['other'] = years.map(yr =>
     rows.filter(r => !topCats.includes(r.category) && r.discontinued_year === yr).length
   )
@@ -365,7 +323,6 @@ export async function getHazardHeatmap(): Promise<HazardCell[]> {
     .not('lifespan_months', 'is', null)
 
   const rows = (data ?? []) as { category: string; lifespan_months: number }[]
-
   const byCategory: Record<string, number[]> = {}
   for (const r of rows) {
     if (!byCategory[r.category]) byCategory[r.category] = []
@@ -384,13 +341,12 @@ export async function getHazardHeatmap(): Promise<HazardCell[]> {
     const n = lifespans.length
     for (const bucket of AGE_BUCKETS) {
       const count = lifespans.filter(m => m >= bucket.minMonths && m < bucket.maxMonths).length
-      const pct = n > 0 ? parseFloat(((count / n) * 100).toFixed(1)) : 0
+      const pct = parseFloat(((count / n) * 100).toFixed(1))
       if (pct > maxPct) maxPct = pct
       cells.push({ category, displayName: catDisplay(category), ageBucket: bucket.key, count, pct, intensity: 0 })
     }
   }
 
-  // Normalize intensity 0-1
   for (const cell of cells) {
     cell.intensity = maxPct > 0 ? cell.pct / maxPct : 0
   }
@@ -404,8 +360,6 @@ export async function getDeadProducts(page = 1, limit = 24): Promise<{
   totalPages: number
 }> {
   const from = (page - 1) * limit
-  const to = from + limit - 1
-
   const { data, count } = await supabaseAdmin
     .from('products')
     .select('id, slug, name, description, logo_url, category, launched_year, launched_month, discontinued_year, discontinued_month, lifespan_months, status, death_reason, postmortem, era', { count: 'exact' })
@@ -413,7 +367,7 @@ export async function getDeadProducts(page = 1, limit = 24): Promise<{
     .not('lifespan_months', 'is', null)
     .order('discontinued_year', { ascending: false })
     .order('lifespan_months', { ascending: true })
-    .range(from, to)
+    .range(from, from + limit - 1)
 
   return {
     products: (data ?? []) as DeadProduct[],
