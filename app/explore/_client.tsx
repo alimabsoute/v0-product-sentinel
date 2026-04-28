@@ -178,7 +178,7 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
       nodes: [...visibleProducts, ...visibleHubs] as RGNode[],
       links: visibleLinks as RGLink[],
     }
-  }, [initialGraph, categoryFilter])
+  }, [graphData, categoryFilter])
 
   // ── Neighbour index for hover highlighting ────────────────────────────────
   const neighbourIndex = useMemo(() => {
@@ -215,19 +215,26 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
     }
   }, [searchMatches, filteredData])
 
-  // ── Physics config (applied once on mount of the graph) ───────────────────
-  const handleEngineReady = useCallback(() => {
-    const fg = fgRef.current
-    if (!fg) return
-    // Stronger repulsion so clusters don't clump
-    fg.d3Force('charge')?.strength(-120)
-    // Variable link distance: shorter for alternatives, longer for category spokes
-    fg.d3Force('link')?.distance((link: RGLink) => {
-      if (link.type === 'alternative') return 30
-      if (link.type === 'relationship') return 40
-      return 60
-    })
-  }, [])
+  // ── Physics config — applied after ForceGraph2D mounts, then reheated ──────
+  // onEngineStop fires AFTER simulation settles, so forces set there don't affect
+  // the visible layout. Instead: configure forces + reheat after a short delay.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const fg = fgRef.current
+      if (!fg) return
+      fg.d3Force('charge')?.strength(-80)
+      fg.d3Force('link')?.distance((link: RGLink) => {
+        if (link.type === 'alternative') return 20
+        if (link.type === 'relationship') return 25
+        return 35  // tighter category spokes = clusters pull together
+      })
+      fg.d3Force('link')?.strength((link: RGLink) => {
+        return link.type === 'category' ? 0.5 : 0.3
+      })
+      fg.d3ReheatSimulation?.()
+    }, 600)
+    return () => clearTimeout(id)
+  }, [graphData])
 
   // ── Node rendering (canvas) ───────────────────────────────────────────────
   const drawNode = useCallback(
@@ -571,20 +578,30 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
               </Link>
             </div>
 
-            {/* Neighbours list */}
+            {/* Neighbours list — graph connections first, same-category fallback */}
             {(() => {
-              const neighbours = Array.from(neighbourIndex.get(selectedNode.id!) ?? [])
+              const graphNeighbours = Array.from(neighbourIndex.get(selectedNode.id!) ?? [])
                 .map(id => filteredData.nodes.find(n => n.id === id) as RGNode | undefined)
                 .filter((n): n is RGNode => !!n && n.type === 'product')
                 .slice(0, 6)
-              if (neighbours.length === 0) return null
+
+              const sameCategory = graphNeighbours.length > 0 ? [] :
+                filteredData.nodes
+                  .filter(n => n.type === 'product' && n.categorySlug === selectedNode.categorySlug && n.id !== selectedNode.id)
+                  .sort((a, b) => b.signal_score - a.signal_score)
+                  .slice(0, 6) as RGNode[]
+
+              const displayItems = graphNeighbours.length > 0 ? graphNeighbours : sameCategory
+              const label = graphNeighbours.length > 0 ? 'Connected' : 'In same category'
+
+              if (displayItems.length === 0) return null
               return (
                 <div className="mt-6">
                   <div className="mb-2 text-[11px] uppercase tracking-wider text-white/40">
-                    Connected
+                    {label}
                   </div>
                   <div className="space-y-1">
-                    {neighbours.map(n => (
+                    {displayItems.map(n => (
                       <button
                         key={n.id}
                         onClick={() => setSelectedNode(n)}
@@ -594,7 +611,8 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
                           className="block h-2 w-2 rounded-full"
                           style={{ background: colorForCategory(n.categorySlug) }}
                         />
-                        <span className="truncate">{n.name}</span>
+                        <span className="flex-1 truncate">{n.name}</span>
+                        <span className="font-mono text-[10px] text-white/30">{n.signal_score.toFixed(0)}</span>
                       </button>
                     ))}
                   </div>
