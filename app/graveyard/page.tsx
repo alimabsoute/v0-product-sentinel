@@ -15,8 +15,10 @@ import {
   getDeathWaveTimeline,
   getHazardHeatmap,
   getDeadProducts,
+  getAlmostDeadProducts,
   getSurvivalModelData,
   type DeadProduct,
+  type AlmostDeadProduct,
 } from '@/lib/db/graveyard'
 import {
   DeathVelocityChart,
@@ -58,7 +60,7 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
   const sp = await searchParams
   const page = sp.page ? Number(sp.page) : 1
 
-  const [stats, velocity, dangerWindows, causes, wave, heatmap, deadResult, survivalData] =
+  const [stats, velocity, dangerWindows, causes, wave, heatmap, deadResult, survivalData, almostDead] =
     await Promise.all([
       getGraveyardStats(),
       getDeathVelocityByCause(),
@@ -68,6 +70,7 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
       getHazardHeatmap(),
       getDeadProducts(page, 24),
       getSurvivalModelData(),
+      getAlmostDeadProducts(8),
     ])
 
   return (
@@ -110,6 +113,28 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
       </section>
 
       <main className="mx-auto max-w-7xl px-6 py-10 space-y-12">
+
+        {/* ── Almost Dead Watch List ─────────────────────────────────────────── */}
+        {almostDead.length > 0 && (
+          <div className="rounded-2xl border border-amber-900/40 bg-amber-950/10 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle className="h-4 w-4 text-amber-400" />
+              <h2 className="font-serif text-base font-semibold text-amber-300">
+                Death Signals Detected
+              </h2>
+              <span className="text-xs text-amber-700 font-mono ml-auto">
+                {almostDead.length} active products showing terminal patterns
+              </span>
+            </div>
+            <p className="text-xs text-amber-800 mb-5">
+              Active products with signal score below 30, negative velocity, and no scoring activity in 60+ days.
+              These match the pre-death signal patterns of documented failures.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {almostDead.map(p => <AlmostDeadCard key={p.product_id} product={p} />)}
+            </div>
+          </div>
+        )}
 
         {/* ── Section 1: Death Velocity — the most useful professional chart ── */}
         <div className="rounded-2xl bg-zinc-950 border border-zinc-800 p-6">
@@ -249,6 +274,56 @@ function StatBlock({ icon, value, label, sub }: { icon: React.ReactNode; value: 
   )
 }
 
+function AlmostDeadCard({ product }: { product: AlmostDeadProduct }) {
+  const daysSinceScore = product.score_date
+    ? Math.floor((Date.now() - new Date(product.score_date).getTime()) / (1000 * 60 * 60 * 24))
+    : null
+
+  return (
+    <Link
+      href={`/products/${product.slug}`}
+      className="group block rounded-xl border border-amber-900/30 bg-zinc-950 p-4 transition-all hover:border-amber-700/50 hover:bg-zinc-900"
+    >
+      <div className="flex items-start gap-3 mb-3">
+        {product.logo_url ? (
+          <img
+            src={product.logo_url}
+            alt={product.name}
+            className="h-8 w-8 rounded-lg object-cover opacity-50 group-hover:opacity-70 transition-opacity shrink-0"
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-700" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-zinc-300 truncate text-sm group-hover:text-zinc-100 transition-colors">
+            {product.name}
+          </h3>
+          <p className="text-[11px] text-zinc-600 capitalize">{product.category}</p>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-zinc-600">Signal</span>
+          <span className="font-mono text-xs text-amber-400">{product.signal_score.toFixed(0)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-zinc-600">Velocity</span>
+          <span className="font-mono text-xs text-red-400">{product.velocity_score.toFixed(1)}</span>
+        </div>
+        {daysSinceScore !== null && (
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-600">Last scored</span>
+            <span className="font-mono text-[10px] text-zinc-600">{daysSinceScore}d ago</span>
+          </div>
+        )}
+      </div>
+    </Link>
+  )
+}
+
 function GraveyardCard({ product }: { product: DeadProduct }) {
   const reasonLabel = product.death_reason ? (DEATH_REASON_LABELS[product.death_reason] ?? product.death_reason) : null
   const reasonColor = product.death_reason ? (DEATH_REASON_COLORS[product.death_reason] ?? 'text-zinc-400 border-zinc-700') : 'text-zinc-400 border-zinc-700'
@@ -260,7 +335,7 @@ function GraveyardCard({ product }: { product: DeadProduct }) {
 
   return (
     <Link
-      href={`/products/${product.slug}`}
+      href={`/graveyard/${product.slug}`}
       className="group block rounded-xl border border-zinc-800 bg-zinc-950 p-4 transition-all hover:border-zinc-600 hover:bg-zinc-900"
     >
       <div className="flex items-start gap-3 mb-3">

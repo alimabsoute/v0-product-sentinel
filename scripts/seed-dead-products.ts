@@ -39,6 +39,7 @@ type DeadSeed = {
   postmortem: string
   website_url?: string
   era?: string
+  platform?: string
 }
 
 // ─── Dead Products — append forever ──────────────────────────────────────────
@@ -867,6 +868,12 @@ async function main() {
   console.log(`\n=== Dead Products Seeder ===`)
   console.log(`Products to upsert: ${DEAD_PRODUCTS.length}\n`)
 
+  const platformFromCategory = (cat: string): string => {
+    if (cat === 'mobile') return 'mobile'
+    if (cat === 'hardware') return 'hardware'
+    return 'web'
+  }
+
   const rows = DEAD_PRODUCTS.map(p => ({
     slug: p.slug ?? slugify(p.name),
     name: p.name,
@@ -879,6 +886,8 @@ async function main() {
     status: 'dead' as const,
     death_reason: p.death_reason,
     postmortem: p.postmortem,
+    platform: p.platform ?? platformFromCategory(p.category),
+    source: 'manual',
     ...(p.website_url ? { website_url: p.website_url } : {}),
     ...(p.era ? { era: p.era } : {}),
     updated_at: new Date().toISOString(),

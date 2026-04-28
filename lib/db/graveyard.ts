@@ -354,6 +354,73 @@ export async function getHazardHeatmap(): Promise<HazardCell[]> {
   return cells
 }
 
+export type AlmostDeadProduct = {
+  product_id: string
+  name: string
+  slug: string
+  category: string
+  logo_url: string | null
+  signal_score: number
+  velocity_score: number
+  score_date: string | null
+}
+
+export async function getAlmostDeadProducts(limit = 8): Promise<AlmostDeadProduct[]> {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 60)
+  const cutoffStr = cutoff.toISOString().split('T')[0]
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('latest_signal_scores')
+      .select(`
+        product_id,
+        signal_score,
+        velocity_score,
+        score_date,
+        products!inner ( name, slug, category, logo_url, status )
+      `)
+      .eq('products.status', 'active')
+      .lt('signal_score', 30)
+      .lt('velocity_score', -5)
+      .lt('score_date', cutoffStr)
+      .order('signal_score', { ascending: true })
+      .limit(limit)
+
+    if (error || !data) return []
+
+    return (data as unknown as Array<{
+      product_id: string
+      signal_score: number
+      velocity_score: number
+      score_date: string | null
+      products: { name: string; slug: string; category: string; logo_url: string | null }
+    }>).map(row => ({
+      product_id: row.product_id,
+      name: row.products.name,
+      slug: row.products.slug,
+      category: row.products.category,
+      logo_url: row.products.logo_url,
+      signal_score: row.signal_score,
+      velocity_score: row.velocity_score,
+      score_date: row.score_date,
+    }))
+  } catch {
+    return []
+  }
+}
+
+export async function getDeadProduct(slug: string): Promise<DeadProduct | null> {
+  const { data } = await supabaseAdmin
+    .from('products')
+    .select('id, slug, name, description, logo_url, category, launched_year, launched_month, discontinued_year, discontinued_month, lifespan_months, status, death_reason, postmortem, era')
+    .eq('slug', slug)
+    .eq('status', 'dead')
+    .single()
+
+  return (data as DeadProduct | null) ?? null
+}
+
 export async function getDeadProducts(page = 1, limit = 24): Promise<{
   products: DeadProduct[]
   total: number
