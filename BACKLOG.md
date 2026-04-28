@@ -16,15 +16,14 @@ Items are roughly prioritized. Top section = do soon, bottom = someday.
 
 ## UX / Product
 
-- [ ] **PH source badge** — Currently shows "PH" text button on most cards (appears when `website_url` differs from `source_url`). Options: replace text with Product Hunt favicon icon, or remove entirely. Decision needed before real traffic.
+- [x] **PH badge removed** — The "PH" button that linked back to Product Hunt has been stripped from all card variants in `components/product-card.tsx`. Only the product's own website link (`url`) is shown.
 
-- [ ] **`website_url` backfill** — Early ingested products (initial PH backfill) may have `website_url = null`, meaning clicks go to PH instead of the real site. Run a SQL query to check scope: `select count(*) filter (where website_url is null) from products where status = 'active'`. If significant, write a backfill script using Haiku extraction.
+- [ ] **`website_url` backfill** — Products ingested early may have `website_url = null`, meaning the card link goes nowhere. Query scope: `select count(*) from products where status = 'active' and (website_url is null or website_url = '')`. If significant, write a Haiku backfill script to extract real URLs from `source_url`.
 
 - [ ] **GA4 tracking** — Add measurement ID to `app/layout.tsx` via `@vercel/analytics` or Google's script tag. Needed to understand what pages people actually use.
 
 - [ ] **Homepage UI polish** — Noted 2026-04-26: bounding boxes and card design could be tighter. No spec yet — needs screenshots or direction.
 
-- [ ] **"PH" button label** — If keeping the source badge, rename "PH" to something clearer for users who don't know what PH means (e.g., tooltip, icon, or "Source").
 
 ---
 
@@ -47,6 +46,12 @@ Items are roughly prioritized. Top section = do soon, bottom = someday.
 - [ ] **Set up Vercel Analytics** — Already have `@vercel/analytics` in deps. Just needs the `<Analytics />` component in `app/layout.tsx`.
 
 - [ ] **`enrich-attributes.yml` cron** — Runs weekly Sunday 02:00 UTC. Confirm it's picking up new products correctly after the subquery bug fix.
+
+---
+
+## Mobile Responsiveness
+
+- [ ] **Full responsive pass** — Design and features are being settled first. Once the layout, sections, and data are stable, do a full mobile-first audit: 320px–768px breakpoints, 44px touch targets, `clamp()` typography, compressed card layouts, ticker strip on mobile, graveyard dark section, force graph (consider hiding on < 768px or swapping for a list). Not blocking current feature work — do this as a dedicated pass once the desktop design is locked.
 
 ---
 

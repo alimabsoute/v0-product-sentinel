@@ -180,20 +180,6 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
           <BuzzIndicator product={product} />
           <div className="flex items-center gap-1">
             <BookmarkButton productId={product.id} />
-            {product.source_url && product.url !== product.source_url && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-1.5 text-xs text-muted-foreground hover:text-foreground"
-                onClick={(e) => {
-                  e.preventDefault()
-                  window.open(product.source_url!, '_blank')
-                }}
-                title="View on Product Hunt"
-              >
-                PH
-              </Button>
-            )}
             <Button
               variant="ghost"
               size="icon"
@@ -313,20 +299,6 @@ export function ProductCard({ product, variant = 'default' }: ProductCardProps) 
           >
             <GitCompare className="h-4 w-4" />
           </Button>
-          {product.source_url && product.url !== product.source_url && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-1.5 text-xs text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.preventDefault()
-                window.open(product.source_url!, '_blank')
-              }}
-              title="View on Product Hunt"
-            >
-              PH
-            </Button>
-          )}
           <Button
             variant="ghost"
             size="icon"
