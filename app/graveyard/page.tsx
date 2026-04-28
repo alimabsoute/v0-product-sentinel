@@ -15,6 +15,7 @@ import {
   getDeathWaveTimeline,
   getHazardHeatmap,
   getDeadProducts,
+  getSurvivalModelData,
   type DeadProduct,
 } from '@/lib/db/graveyard'
 import {
@@ -24,6 +25,7 @@ import {
   DeathWaveChart,
   HazardHeatmap,
 } from '@/components/graveyard-charts'
+import { SurvivalModelPanel } from '@/components/graveyard-survival'
 
 export const metadata = {
   title: brandTitle('Product Graveyard'),
@@ -56,7 +58,7 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
   const sp = await searchParams
   const page = sp.page ? Number(sp.page) : 1
 
-  const [stats, velocity, dangerWindows, causes, wave, heatmap, deadResult] =
+  const [stats, velocity, dangerWindows, causes, wave, heatmap, deadResult, survivalData] =
     await Promise.all([
       getGraveyardStats(),
       getDeathVelocityByCause(),
@@ -65,6 +67,7 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
       getDeathWaveTimeline(),
       getHazardHeatmap(),
       getDeadProducts(page, 24),
+      getSurvivalModelData(),
     ])
 
   return (
@@ -187,7 +190,10 @@ export default async function GraveyardPage({ searchParams }: PageProps) {
           <DeathWaveChart years={wave.years} series={wave.series} categories={wave.categories} />
         </div>
 
-        {/* ── Section 5: Product cards ─────────────────────────────────────── */}
+        {/* ── Section 5: Survival Model ────────────────────────────────────── */}
+        <SurvivalModelPanel data={survivalData} />
+
+        {/* ── Section 6: Product cards ─────────────────────────────────────── */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <div>

@@ -375,3 +375,160 @@ export async function getDeadProducts(page = 1, limit = 24): Promise<{
     totalPages: Math.ceil((count ?? 0) / limit),
   }
 }
+
+// ─── Survival Model (Kaplan-Meier + Weibull MLE) ──────────────────────────────
+
+export type KMPoint = {
+  t: number   // age in months
+  s: number   // S(t) = P(T > t), survival probability [0,1]
+}
+
+export type WeibullFitResult = {
+  key: string
+  displayName: string
+  n: number
+  k: number            // shape parameter — determines hazard shape
+  lambda: number       // scale (characteristic lifetime, months)
+  meanMonths: number   // E[T] = λ·Γ(1+1/k)
+  medianMonths: number // λ·(ln2)^(1/k)
+  p12mo: number        // P(T > 12mo)
+  p18mo: number        // P(T > 18mo)
+  p36mo: number        // P(T > 36mo)
+  hazardShape: 'decreasing' | 'constant' | 'increasing'
+}
+
+export type SurvivalModelData = {
+  categoryCurves: {
+    key: string
+    displayName: string
+    color: string
+    n: number
+    points: KMPoint[]
+  }[]
+  overallCurve: KMPoint[]
+  weibullFits: WeibullFitResult[]
+  overallWeibull: WeibullFitResult
+  sampleSize: number
+}
+
+// ─── Private helpers ──────────────────────────────────────────────────────────
+
+function kmEstimator(lifespans: number[]): KMPoint[] {
+  if (!lifespans.length) return [{ t: 0, s: 1 }]
+  const sorted = [...lifespans].sort((a, b) => a - b)
+  const n = sorted.length
+  const deathMap = new Map<number, number>()
+  for (const t of sorted) deathMap.set(t, (deathMap.get(t) ?? 0) + 1)
+
+  const points: KMPoint[] = [{ t: 0, s: 1 }]
+  let s = 1
+  let atRisk = n
+  for (const [t, d] of [...deathMap].sort((a, b) => a[0] - b[0])) {
+    s = s * (1 - d / atRisk)
+    points.push({ t, s })
+    atRisk -= d
+  }
+  return points
+}
+
+// Lanczos approximation for ln(Γ(z)), accurate to 15 significant digits
+function logGamma(z: number): number {
+  if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z)
+  const zz = z - 1
+  const c = [1.000000000190015, 76.18009172947146, -86.50532032941677,
+    24.01409824083091, -1.231739572450155, 1.208650973866179e-3, -5.395239384953e-6]
+  let x = c[0]
+  for (let i = 1; i <= 6; i++) x += c[i] / (zz + i)
+  const t = zz + 5.5
+  return 0.5 * Math.log(2 * Math.PI) + (zz + 0.5) * Math.log(t) - t + Math.log(x)
+}
+
+function fitWeibull(lifespans: number[], key: string, displayName: string): WeibullFitResult {
+  const n = lifespans.length
+  const sorted = [...lifespans].sort((a, b) => a - b)
+
+  let k = 1
+  let lambda = sorted.reduce((s, v) => s + v, 0) / Math.max(n, 1)
+
+  if (n >= 3) {
+    // Probability paper linearization: ln(-ln(1-F(t))) = k·ln(t) - k·ln(λ)
+    // Benard's median rank: F_i = (i - 0.3) / (n + 0.4)
+    const pts: { x: number; y: number }[] = []
+    for (let i = 0; i < n; i++) {
+      const F = (i + 1 - 0.3) / (n + 0.4)
+      if (F >= 1 || sorted[i] <= 0) continue
+      pts.push({ x: Math.log(sorted[i]), y: Math.log(-Math.log(1 - F)) })
+    }
+    const m = pts.length
+    const xBar = pts.reduce((s, p) => s + p.x, 0) / m
+    const yBar = pts.reduce((s, p) => s + p.y, 0) / m
+    const num = pts.reduce((s, p) => s + (p.x - xBar) * (p.y - yBar), 0)
+    const den = pts.reduce((s, p) => s + (p.x - xBar) ** 2, 0)
+    if (den > 0) {
+      k = Math.max(0.3, num / den)
+      lambda = Math.exp(-(yBar - k * xBar) / k)
+    }
+  }
+
+  const survFn = (t: number) => Math.exp(-Math.pow(t / lambda, k))
+  const meanMonths = Math.round(lambda * Math.exp(logGamma(1 + 1 / k)))
+  const medianMonths = Math.round(lambda * Math.pow(Math.log(2), 1 / k))
+  const hazardShape: WeibullFitResult['hazardShape'] =
+    k < 0.85 ? 'decreasing' : k > 1.15 ? 'increasing' : 'constant'
+
+  return {
+    key, displayName, n,
+    k: parseFloat(k.toFixed(3)),
+    lambda: parseFloat(lambda.toFixed(1)),
+    meanMonths, medianMonths,
+    p12mo: parseFloat(survFn(12).toFixed(3)),
+    p18mo: parseFloat(survFn(18).toFixed(3)),
+    p36mo: parseFloat(survFn(36).toFixed(3)),
+    hazardShape,
+  }
+}
+
+const SURVIVAL_CURVE_COLORS: Record<string, string> = {
+  social: '#ff6b35', productivity: '#4ecdc4', media: '#ffe66d',
+  hardware: '#a8e6cf', gaming: '#ff8b94', analytics: '#88d8b0',
+  communication: '#c9b1ff', 'dev-tools': '#6bcb77', health: '#ffd166',
+  'e-commerce': '#ef476f', design: '#06d6a0', mobile: '#118ab2',
+}
+
+export async function getSurvivalModelData(): Promise<SurvivalModelData> {
+  const { data } = await supabaseAdmin
+    .from('products')
+    .select('category, lifespan_months')
+    .eq('status', 'dead')
+    .not('lifespan_months', 'is', null)
+
+  const rows = (data ?? []) as { category: string; lifespan_months: number }[]
+  const byCategory = new Map<string, number[]>()
+  for (const r of rows) {
+    const arr = byCategory.get(r.category) ?? []
+    arr.push(r.lifespan_months)
+    byCategory.set(r.category, arr)
+  }
+
+  const allLifespans = rows.map(r => r.lifespan_months)
+
+  return {
+    categoryCurves: [...byCategory.entries()]
+      .filter(([, ls]) => ls.length >= 4)
+      .map(([cat, ls]) => ({
+        key: cat,
+        displayName: catDisplay(cat),
+        color: SURVIVAL_CURVE_COLORS[cat] ?? '#94a3b8',
+        n: ls.length,
+        points: kmEstimator(ls),
+      }))
+      .sort((a, b) => b.n - a.n),
+    overallCurve: kmEstimator(allLifespans),
+    weibullFits: [...byCategory.entries()]
+      .filter(([, ls]) => ls.length >= 3)
+      .map(([cat, ls]) => fitWeibull(ls, cat, catDisplay(cat)))
+      .sort((a, b) => b.n - a.n),
+    overallWeibull: fitWeibull(allLifespans, 'overall', 'ALL CATEGORIES'),
+    sampleSize: rows.length,
+  }
+}
