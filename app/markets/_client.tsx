@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import {
   ResponsiveContainer,
@@ -114,6 +115,15 @@ function buildLineData(
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+type DateRange = '30d' | '90d' | '1y' | 'all'
+
+const DATE_RANGE_OPTIONS: { label: string; value: DateRange }[] = [
+  { label: '30d', value: '30d' },
+  { label: '90d', value: '90d' },
+  { label: '1 yr', value: '1y' },
+  { label: 'All', value: 'all' },
+]
+
 export function MarketsClient({
   stats,
   categoryDistribution,
@@ -124,14 +134,30 @@ export function MarketsClient({
   survivalRates,
   cohortShare,
 }: Props) {
+  const [dateRange, setDateRange] = useState<DateRange>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+
   const activePercent =
     stats.totalProducts > 0
       ? Math.round((stats.activeProducts / stats.totalProducts) * 100)
       : 0
 
+  // Filter growth data by selected date range (client-side)
+  const filteredGrowth = useMemo(() => {
+    if (dateRange === 'all') return categoryGrowth
+    const cutoff = new Date()
+    if (dateRange === '30d') cutoff.setDate(cutoff.getDate() - 30)
+    else if (dateRange === '90d') cutoff.setDate(cutoff.getDate() - 90)
+    else if (dateRange === '1y') cutoff.setFullYear(cutoff.getFullYear() - 1)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    return categoryGrowth.filter(r => r.month >= cutoffStr)
+  }, [categoryGrowth, dateRange])
+
   // Top 5 categories by product count for line chart
   const top5Categories = categoryDistribution.slice(0, 5).map(c => c.category)
-  const lineData = buildLineData(categoryGrowth, top5Categories)
+  // When a pie slice is selected, show only that category's line
+  const activeLineCategories = selectedCategory ? [selectedCategory] : top5Categories
+  const lineData = buildLineData(filteredGrowth, activeLineCategories)
 
   // Pie chart data — top 10 categories
   const pieData = categoryDistribution.slice(0, 10)
@@ -146,6 +172,41 @@ export function MarketsClient({
 
   return (
     <div className="space-y-6">
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Period:</span>
+        <div className="flex gap-1">
+          {DATE_RANGE_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setDateRange(opt.value)}
+              className={`px-3 py-1 rounded text-xs font-mono transition-colors border ${
+                dateRange === opt.value
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/40'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {selectedCategory && (
+          <div className="flex items-center gap-1.5 rounded border border-border bg-secondary/40 px-2.5 py-1 text-xs font-mono">
+            <span className="text-muted-foreground">Category:</span>
+            <span className="font-medium">
+              {pieData.find(d => d.category === selectedCategory)?.display ?? selectedCategory}
+            </span>
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className="ml-1 text-muted-foreground hover:text-foreground leading-none"
+              aria-label="Clear category filter"
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Row 1: Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
@@ -175,7 +236,12 @@ export function MarketsClient({
         {/* Category Growth Line Chart (60%) */}
         <div className="lg:col-span-3 rounded-xl border border-border bg-card p-5">
           <h2 className="text-sm font-mono uppercase tracking-widest text-muted-foreground mb-4">
-            Category Growth — Last 12 Months
+            Category Growth
+            {selectedCategory && (
+              <span className="ml-2 normal-case capitalize font-normal">
+                — {pieData.find(d => d.category === selectedCategory)?.display ?? selectedCategory}
+              </span>
+            )}
           </h2>
           {lineData.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
@@ -234,6 +300,7 @@ export function MarketsClient({
           </h2>
           {pieData.length > 0 ? (
             <>
+              <p className="mb-2 text-xs text-muted-foreground">Click a slice to filter the growth chart.</p>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
@@ -245,11 +312,20 @@ export function MarketsClient({
                     outerRadius={80}
                     innerRadius={40}
                     paddingAngle={2}
+                    onClick={(entry: { category: string }) => {
+                      setSelectedCategory(prev =>
+                        prev === entry.category ? null : entry.category
+                      )
+                    }}
+                    style={{ cursor: 'pointer' }}
                   >
                     {pieData.map((entry, i) => (
                       <Cell
                         key={entry.category}
                         fill={PIE_COLORS[i % PIE_COLORS.length]}
+                        opacity={selectedCategory && selectedCategory !== entry.category ? 0.3 : 1}
+                        stroke={selectedCategory === entry.category ? '#fff' : 'none'}
+                        strokeWidth={selectedCategory === entry.category ? 2 : 0}
                       />
                     ))}
                   </Pie>
