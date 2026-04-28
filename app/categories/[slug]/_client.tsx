@@ -210,6 +210,7 @@ export function CategoryClient({
   stats,
   subCategories,
 }: CategoryClientProps) {
+  const searchParams = useSearchParams()
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [showHistory, setShowHistory] = useState(true)
@@ -220,6 +221,8 @@ export function CategoryClient({
   const [total, setTotal] = useState(totalCount)
   const [totalPages, setTotalPages] = useState(initialTotalPages)
   const [loading, setLoading] = useState(false)
+
+  const era = searchParams.get('era') ?? ''
 
   const history = categoryHistory[slug]
 
@@ -234,6 +237,7 @@ export function CategoryClient({
         limit: String(LIMIT),
         status: statusFilter,
         ...(activeSubCat ? { sub_category: activeSubCat } : {}),
+        ...(era ? { era } : {}),
       })
       const res = await fetch(`/api/products/search?${params}`)
       const data = await res.json()
@@ -245,7 +249,7 @@ export function CategoryClient({
     } finally {
       setLoading(false)
     }
-  }, [slug, sortBy, page, statusFilter, activeSubCat])
+  }, [slug, sortBy, page, statusFilter, activeSubCat, era])
 
   // Re-fetch on filter/sort/page change (but not on initial mount)
   const [initialized, setInitialized] = useState(false)
@@ -257,10 +261,10 @@ export function CategoryClient({
     fetchProducts()
   }, [fetchProducts, initialized])
 
-  // Reset page on filter/sort/subcat change
+  // Reset page on filter/sort/subcat/era change
   useEffect(() => {
     setPage(1)
-  }, [statusFilter, sortBy, activeSubCat])
+  }, [statusFilter, sortBy, activeSubCat, era])
 
   const activeCount = statusFilter === 'active' ? total : null
   const deadCount = statusFilter === 'dead' ? total : null

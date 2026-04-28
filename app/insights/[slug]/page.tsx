@@ -1,8 +1,7 @@
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  // Try to get article title from slug
   const title = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-  return { title: `${title} | Prism Insights` }
+  return { title: `${title} | Launch Sentinel Insights` }
 }
 
 import { notFound } from 'next/navigation'
@@ -50,7 +49,7 @@ export default async function InsightPage({ params }: InsightPageProps) {
   const { data: mention, error } = await supabaseAdmin
     .from('press_mentions')
     .select(`
-      id, title, url, source, published_at, sentiment, description,
+      id, headline, url, publication, mention_date, sentiment, snippet,
       product_id,
       products ( name, slug, logo_url, category, description )
     `)
@@ -63,12 +62,12 @@ export default async function InsightPage({ params }: InsightPageProps) {
 
   type MentionRow = {
     id: string
-    title: string
+    headline: string
     url: string
-    source: string | null
-    published_at: string | null
+    publication: string | null
+    mention_date: string | null
     sentiment: string | null
-    description: string | null
+    snippet: string | null
     product_id: string
     products: {
       name: string
@@ -101,8 +100,8 @@ export default async function InsightPage({ params }: InsightPageProps) {
         {/* Article Header */}
         <header className="mb-8">
           <div className="flex items-center gap-2 mb-4">
-            {m.source && (
-              <Badge variant="secondary">{m.source}</Badge>
+            {m.publication && (
+              <Badge variant="secondary">{m.publication}</Badge>
             )}
             {m.sentiment && (
               <Badge
@@ -118,24 +117,24 @@ export default async function InsightPage({ params }: InsightPageProps) {
           </div>
 
           <h1 className="font-serif text-3xl font-bold leading-tight sm:text-4xl">
-            {m.title}
+            {m.headline}
           </h1>
 
-          {m.description && (
+          {m.snippet && (
             <p className="mt-4 text-lg text-muted-foreground">
-              {m.description}
+              {m.snippet}
             </p>
           )}
 
           <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            {m.source && (
-              <span className="font-medium text-foreground">{m.source}</span>
+            {m.publication && (
+              <span className="font-medium text-foreground">{m.publication}</span>
             )}
-            {m.published_at && (
+            {m.mention_date && (
               <div className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" />
-                <span>{formatDate(m.published_at)}</span>
-                <span className="text-xs opacity-60">({formatRelativeTime(m.published_at)})</span>
+                <span>{formatDate(m.mention_date)}</span>
+                <span className="text-xs opacity-60">({formatRelativeTime(m.mention_date)})</span>
               </div>
             )}
           </div>
