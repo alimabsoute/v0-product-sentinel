@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { Search, X, RotateCcw, ExternalLink } from 'lucide-react'
+import { Search, X, RotateCcw, ExternalLink, Copy } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -63,6 +63,46 @@ function colorForCategory(slug: string): string {
   return CATEGORY_COLORS[slug] ?? '#64748b'
 }
 
+// ─── Death / mortality risk helpers ──────────────────────────────────────────
+
+function riskColor(risk: number): string {
+  if (risk >= 100) return '#dc2626'  // crimson — dead
+  if (risk >= 70)  return '#f97316'  // orange — critical
+  if (risk >= 40)  return '#eab308'  // yellow — watch
+  return '#22c55e'                   // green — safe
+}
+
+function riskLabel(risk: number): string {
+  if (risk >= 100) return 'DEAD'
+  if (risk >= 70)  return 'CRITICAL'
+  if (risk >= 40)  return 'WATCH'
+  return 'SAFE'
+}
+
+function riskBadgeClass(risk: number): string {
+  if (risk >= 100) return 'bg-red-900/50 text-red-400'
+  if (risk >= 70)  return 'bg-orange-900/50 text-orange-400'
+  if (risk >= 40)  return 'bg-yellow-900/50 text-yellow-400'
+  return 'bg-green-900/50 text-green-400'
+}
+
+// ─── Graveyard gravity — pulls dead nodes toward a fixed cluster point ────────
+
+function makeGraveyardForce(cx: number, cy: number) {
+  let _nodes: RGNode[] = []
+  function force(alpha: number) {
+    for (const n of _nodes) {
+      if (!n.is_dead) continue
+      const dx = (n.x ?? cx) - cx
+      const dy = (n.y ?? cy) - cy
+      n.vx = (n.vx ?? 0) - dx * alpha * 0.15
+      n.vy = (n.vy ?? 0) - dy * alpha * 0.15
+    }
+  }
+  ;(force as any).initialize = (ns: RGNode[]) => { _nodes = ns }
+  return force
+}
+
 // Log-scale node radius so huge scores don't swamp the canvas
 function radiusForScore(score: number): number {
   const clamped = Math.max(0, Math.min(100, score))
@@ -94,6 +134,7 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
   const [viewMode, setViewMode] = useState<GraphViewMode>('category')
   const [graphData, setGraphData] = useState(initialGraph)
   const [loadingMode, setLoadingMode] = useState(false)
+  const [riskThreshold, setRiskThreshold] = useState(0)
 
   const debouncedSearch = useDebounced(search, 200)
 
@@ -139,6 +180,7 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
     setViewMode(mode)
     setLoadingMode(true)
     setCategoryFilter(null)
+    if (mode !== 'death') setRiskThreshold(0)
     try {
       const res = await fetch(`/api/graph?viewMode=${mode}&limit=2000`)
       const data = await res.json()
@@ -155,6 +197,11 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
     let visibleProducts = nodes.filter(n => n.type === 'product')
     if (categoryFilter) {
       visibleProducts = visibleProducts.filter(n => n.categorySlug === categoryFilter)
+    }
+
+    // Death mode: apply risk threshold filter
+    if (viewMode === 'death' && riskThreshold > 0) {
+      visibleProducts = visibleProducts.filter(n => n.mortality_risk >= riskThreshold)
     }
 
     const productIds = new Set(visibleProducts.map(n => n.id))
@@ -178,7 +225,7 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
       nodes: [...visibleProducts, ...visibleHubs] as RGNode[],
       links: visibleLinks as RGLink[],
     }
-  }, [graphData, categoryFilter])
+  }, [graphData, categoryFilter, viewMode, riskThreshold])
 
   // ── Neighbour index for hover highlighting ────────────────────────────────
   const neighbourIndex = useMemo(() => {
@@ -226,15 +273,21 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
       fg.d3Force('link')?.distance((link: RGLink) => {
         if (link.type === 'alternative') return 20
         if (link.type === 'relationship') return 25
-        return 35  // tighter category spokes = clusters pull together
+        return 35
       })
       fg.d3Force('link')?.strength((link: RGLink) => {
         return link.type === 'category' ? 0.5 : 0.3
       })
+      // Death mode: gravity well pulls all dead nodes toward bottom-right cluster
+      if (viewMode === 'death') {
+        fg.d3Force('graveyard', makeGraveyardForce(dims.width * 0.72, dims.height * 0.72))
+      } else {
+        fg.d3Force('graveyard', null)
+      }
       fg.d3ReheatSimulation?.()
     }, 600)
     return () => clearTimeout(id)
-  }, [graphData])
+  }, [graphData, viewMode, dims])
 
   // ── Node rendering (canvas) ───────────────────────────────────────────────
   const drawNode = useCallback(
@@ -243,7 +296,10 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
       const y = node.y ?? 0
       const isHub = node.type === 'category'
       const radius = isHub ? 16 : radiusForScore(node.signal_score)
-      const catColor = colorForCategory(node.categorySlug)
+      // In death mode override colour to reflect mortality risk
+      const catColor = (!isHub && viewMode === 'death')
+        ? riskColor(node.mortality_risk)
+        : colorForCategory(node.categorySlug)
 
       // ── Dimming logic ──
       let opacity = 1
@@ -329,6 +385,28 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
         }
       }
 
+      // ── Risk ring (all modes: critical ≥70; death mode: watch ≥40 too) ──
+      const ringThreshold = viewMode === 'death' ? 40 : 70
+      if (!isHub && node.mortality_risk >= ringThreshold) {
+        ctx.beginPath()
+        ctx.arc(x, y, radius + 1.5 / globalScale, 0, 2 * Math.PI, false)
+        ctx.lineWidth = (node.mortality_risk >= 100 ? 2.5 : 1.5) / globalScale
+        ctx.strokeStyle = hexWithAlpha(riskColor(node.mortality_risk), 0.75)
+        ctx.stroke()
+      }
+
+      // ── Skull overlay for confirmed dead products ──
+      if (!isHub && node.is_dead && globalScale > 0.5 && radius > 4) {
+        const sz = Math.max(radius * 1.05, 7)
+        ctx.font = `${sz}px serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.globalAlpha = opacity * 0.8
+        ctx.fillStyle = '#fff'
+        ctx.fillText('☠', x, y)
+        ctx.globalAlpha = opacity
+      }
+
       // Hover label
       if (hoveredNode?.id === node.id) {
         const label = node.name
@@ -351,7 +429,7 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
 
       ctx.globalAlpha = 1
     },
-    [hoveredNode, neighbourIndex, searchMatches, getLogoImage],
+    [hoveredNode, neighbourIndex, searchMatches, getLogoImage, viewMode],
   )
 
   // ── Link colour + opacity (for dim-on-hover) ──────────────────────────────
@@ -396,9 +474,43 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
     window.open(`/products/${node.slug}`, '_blank', 'noopener')
   }, [])
 
+  const handleCopyReport = useCallback(() => {
+    if (!selectedNode) return
+    const n = selectedNode
+    const threats = filteredData.nodes
+      .filter(x => x.type === 'product' && !x.is_dead && x.categorySlug === n.categorySlug && x.id !== n.id)
+      .sort((a, b) => b.signal_score - a.signal_score)
+      .slice(0, 3)
+    const deadComps = filteredData.nodes
+      .filter(x => x.type === 'product' && x.is_dead && x.categorySlug === n.categorySlug)
+      .sort((a, b) => (b.lifespan_months ?? 0) - (a.lifespan_months ?? 0))
+      .slice(0, 3)
+    const lines = [
+      `LAUNCH SENTINEL INTELLIGENCE REPORT`,
+      `Generated: ${new Date().toLocaleDateString()}`,
+      ``,
+      `PRODUCT: ${n.name}`,
+      `CATEGORY: ${n.category}`,
+      `SIGNAL: ${n.signal_score.toFixed(1)}${n.signal_delta != null ? ` (${n.signal_delta >= 0 ? '+' : ''}${n.signal_delta.toFixed(1)})` : ''}`,
+      `MORTALITY RISK: ${n.mortality_risk}/100 [${riskLabel(n.mortality_risk)}]`,
+      ``,
+      `COMPETITIVE THREATS:`,
+      ...threats.map(t => `  · ${t.name} — ${t.signal_score.toFixed(1)}`),
+      ...(threats.length === 0 ? ['  None tracked'] : []),
+      ``,
+      `DEAD COMPARABLES (${n.category}):`,
+      ...deadComps.map(d => `  · ${d.name}${d.lifespan_months ? ` (${Math.round(d.lifespan_months / 12)}yr)` : ''} — ${d.death_reason?.replace(/_/g, ' ') ?? 'cause unknown'}`),
+      ...(deadComps.length === 0 ? ['  No documented deaths in this category'] : []),
+      ``,
+      `Source: launchsentinel.com/products/${n.slug}`,
+    ]
+    navigator.clipboard.writeText(lines.join('\n')).catch(() => {})
+  }, [selectedNode, filteredData])
+
   const handleReset = useCallback(() => {
     setSearch('')
     setCategoryFilter(null)
+    setRiskThreshold(0)
     setSelectedNode(null)
     fgRef.current?.zoomToFit?.(600, 60)
   }, [])
@@ -434,30 +546,47 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
             </div>
             {/* View mode tabs */}
             <div className="mb-2 flex rounded-md border border-white/10 overflow-hidden">
-              {(['category', 'era', 'similarity'] as GraphViewMode[]).map(m => (
+              {(['category', 'era', 'similarity', 'death'] as GraphViewMode[]).map(m => (
                 <button
                   key={m}
                   onClick={() => { if (m !== viewMode) switchViewMode(m) }}
-                  className={`flex-1 py-1 text-[10px] font-medium capitalize transition-colors ${viewMode === m ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white/80'}`}
+                  className={`flex-1 py-1 text-[10px] font-medium capitalize transition-colors ${
+                    viewMode === m
+                      ? m === 'death' ? 'bg-red-900/60 text-red-300' : 'bg-white/20 text-white'
+                      : 'text-white/50 hover:text-white/80'
+                  }`}
                 >
-                  {m}
+                  {m === 'death' ? '☠ risk' : m}
                 </button>
               ))}
             </div>
 
             <div className="flex items-center justify-between gap-2">
-              {viewMode === 'category' && (
-              <select
-                value={categoryFilter ?? ''}
-                onChange={(e) => setCategoryFilter(e.target.value || null)}
-                className="h-7 flex-1 rounded-md border border-white/10 bg-white/5 px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/20"
-              >
-                <option value="">All categories</option>
-                {categories.map(c => (
-                  <option key={c.slug} value={c.slug}>{c.name}</option>
-                ))}
-              </select>
-              )}
+              {viewMode === 'death' ? (
+                <div className="flex-1 flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-[10px] text-white/50">
+                    <span>Min risk</span>
+                    <span className="font-mono text-orange-400">{riskThreshold > 0 ? `${riskThreshold}+` : 'all'}</span>
+                  </div>
+                  <input
+                    type="range" min={0} max={90} step={10}
+                    value={riskThreshold}
+                    onChange={e => setRiskThreshold(Number(e.target.value))}
+                    className="h-1 w-full accent-orange-500 cursor-pointer"
+                  />
+                </div>
+              ) : viewMode === 'category' ? (
+                <select
+                  value={categoryFilter ?? ''}
+                  onChange={(e) => setCategoryFilter(e.target.value || null)}
+                  className="h-7 flex-1 rounded-md border border-white/10 bg-white/5 px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                >
+                  <option value="">All categories</option>
+                  {categories.map(c => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
+                </select>
+              ) : null}
               <Button
                 variant="ghost"
                 size="sm"
@@ -511,116 +640,130 @@ export function ExplorePage({ initialGraph, categories }: ExplorePageProps) {
         </div>
 
         {/* ── Side panel (right, slide-in) ── */}
-        {selectedNode && selectedNode.type === 'product' && (
-          <aside className="absolute right-0 top-0 z-20 h-full w-[320px] animate-in slide-in-from-right border-l border-white/10 bg-black/80 p-5 backdrop-blur-md duration-300">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                {selectedNode.logo_url ? (
+        {selectedNode && selectedNode.type === 'product' && (() => {
+          const sn = selectedNode
+          const catColor = colorForCategory(sn.categorySlug)
+          const threats = filteredData.nodes
+            .filter(n => n.type === 'product' && !n.is_dead && n.categorySlug === sn.categorySlug && n.id !== sn.id && n.signal_score > sn.signal_score)
+            .sort((a, b) => b.signal_score - a.signal_score)
+            .slice(0, 3) as RGNode[]
+          const deadComps = filteredData.nodes
+            .filter(n => n.type === 'product' && n.is_dead && n.categorySlug === sn.categorySlug)
+            .sort((a, b) => (b.lifespan_months ?? 0) - (a.lifespan_months ?? 0))
+            .slice(0, 3) as RGNode[]
+          return (
+          <aside className="absolute right-0 top-0 z-20 flex h-full w-[340px] flex-col animate-in slide-in-from-right border-l border-white/10 bg-black/85 backdrop-blur-md duration-300 overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between p-5 pb-4">
+              <div className="flex items-center gap-3 min-w-0">
+                {sn.logo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={selectedNode.logo_url}
-                    alt={selectedNode.name}
-                    className="h-12 w-12 rounded-lg border border-white/10 bg-white/5 object-cover"
-                  />
+                  <img src={sn.logo_url} alt={sn.name} className="h-11 w-11 shrink-0 rounded-lg border border-white/10 bg-white/5 object-cover" />
                 ) : (
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-lg font-bold text-black"
-                    style={{ background: colorForCategory(selectedNode.categorySlug) }}
-                  >
-                    {selectedNode.name[0]?.toUpperCase() ?? '?'}
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg font-bold text-black text-sm" style={{ background: catColor }}>
+                    {sn.name[0]?.toUpperCase() ?? '?'}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h3 className="truncate text-base font-semibold text-white">
-                    {selectedNode.name}
-                  </h3>
-                  <Badge
-                    variant="outline"
-                    className="mt-1 border-white/20 text-[10px] text-white/70"
-                    style={{ borderColor: colorForCategory(selectedNode.categorySlug) }}
-                  >
-                    {selectedNode.category}
+                  <h3 className="truncate text-sm font-semibold text-white">{sn.name}</h3>
+                  <Badge variant="outline" className="mt-1 border-white/20 text-[10px] text-white/60" style={{ borderColor: catColor }}>
+                    {sn.category}
                   </Badge>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedNode(null)}
-                className="text-white/40 hover:text-white"
-                aria-label="Close"
-              >
+              <button onClick={() => setSelectedNode(null)} className="ml-2 shrink-0 text-white/40 hover:text-white" aria-label="Close">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-5">
-              <div className="mb-1 flex items-center justify-between text-[11px] text-white/60">
-                <span>Signal score</span>
-                <span className="font-mono text-white">{selectedNode.signal_score.toFixed(1)}</span>
+            {/* Signal score */}
+            <div className="border-t border-white/10 px-5 py-3">
+              <div className="mb-1 text-[9px] uppercase tracking-widest text-white/40">Signal Score</div>
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono text-xl font-bold text-white">{sn.signal_score.toFixed(1)}</span>
+                {sn.signal_delta != null && (
+                  <span className={`font-mono text-xs ${sn.signal_delta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {sn.signal_delta >= 0 ? '↑' : '↓'}{Math.abs(sn.signal_delta).toFixed(1)}
+                  </span>
+                )}
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${Math.max(0, Math.min(100, selectedNode.signal_score))}%`,
-                    background: colorForCategory(selectedNode.categorySlug),
-                  }}
-                />
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, sn.signal_score))}%`, background: catColor }} />
               </div>
             </div>
 
-            <div className="mt-6 space-y-2">
-              <Link
-                href={`/products/${selectedNode.slug}`}
-                className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white transition hover:bg-white/10"
-              >
-                View details
+            {/* Mortality risk */}
+            <div className="border-t border-white/10 px-5 py-3">
+              <div className="mb-1 flex items-center justify-between text-[9px] uppercase tracking-widest text-white/40">
+                <span>Mortality Risk</span>
+                <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${riskBadgeClass(sn.mortality_risk)}`}>{riskLabel(sn.mortality_risk)}</span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-mono text-xl font-bold" style={{ color: riskColor(sn.mortality_risk) }}>{sn.mortality_risk}</span>
+                <span className="text-xs text-white/30">/ 100</span>
+              </div>
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full" style={{ width: `${sn.mortality_risk}%`, background: riskColor(sn.mortality_risk) }} />
+              </div>
+              {sn.is_dead && sn.death_reason && (
+                <p className="mt-1.5 text-[10px] text-red-400/70 capitalize">{sn.death_reason.replace(/_/g, ' ')}{sn.lifespan_months ? ` · ${Math.round(sn.lifespan_months / 12)}yr lifespan` : ''}</p>
+              )}
+            </div>
+
+            {/* Competitive threats */}
+            <div className="border-t border-white/10 px-5 py-3">
+              <div className="mb-2 text-[9px] uppercase tracking-widest text-white/40">Competitive Threats</div>
+              {threats.length === 0 ? (
+                <p className="text-[11px] text-white/30">No higher-signal competitors tracked</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {threats.map(t => (
+                    <button key={t.id} onClick={() => setSelectedNode(t)} className="flex w-full items-center gap-2 rounded px-1 py-0.5 text-left hover:bg-white/5">
+                      <span className="block h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: colorForCategory(t.categorySlug) }} />
+                      <span className="flex-1 truncate text-xs text-white/80">{t.name}</span>
+                      <span className="font-mono text-[10px] text-white/50">{t.signal_score.toFixed(1)}</span>
+                      <span className={`text-[10px] ${(t.signal_delta ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>{(t.signal_delta ?? 0) >= 0 ? '↑' : '↓'}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Dead comparables */}
+            <div className="border-t border-white/10 px-5 py-3">
+              <div className="mb-2 text-[9px] uppercase tracking-widest text-white/40">Dead Comparables</div>
+              {deadComps.length === 0 ? (
+                <p className="text-[11px] text-white/30">No documented deaths in this category</p>
+              ) : (
+                <div className="space-y-2">
+                  {deadComps.map(d => (
+                    <button key={d.id} onClick={() => setSelectedNode(d)} className="flex w-full flex-col gap-0.5 rounded px-1 py-0.5 text-left hover:bg-white/5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px]">☠</span>
+                        <span className="flex-1 truncate text-xs text-red-300/80">{d.name}</span>
+                        {d.lifespan_months && <span className="font-mono text-[10px] text-white/30">{Math.round(d.lifespan_months / 12)}yr</span>}
+                      </div>
+                      {d.death_reason && <span className="pl-4 text-[9px] text-white/30 capitalize">{d.death_reason.replace(/_/g, ' ')}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="mt-auto border-t border-white/10 p-5 space-y-2">
+              <Link href={`/products/${sn.slug}`} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white transition hover:bg-white/10">
+                View Full Profile
                 <ExternalLink className="h-3.5 w-3.5 text-white/50" />
               </Link>
+              <button onClick={handleCopyReport} className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition hover:bg-white/10 hover:text-white">
+                Copy Intelligence Report
+                <Copy className="h-3.5 w-3.5 text-white/40" />
+              </button>
             </div>
-
-            {/* Neighbours list — graph connections first, same-category fallback */}
-            {(() => {
-              const graphNeighbours = Array.from(neighbourIndex.get(selectedNode.id!) ?? [])
-                .map(id => filteredData.nodes.find(n => n.id === id) as RGNode | undefined)
-                .filter((n): n is RGNode => !!n && n.type === 'product')
-                .slice(0, 6)
-
-              const sameCategory = graphNeighbours.length > 0 ? [] :
-                filteredData.nodes
-                  .filter(n => n.type === 'product' && n.categorySlug === selectedNode.categorySlug && n.id !== selectedNode.id)
-                  .sort((a, b) => b.signal_score - a.signal_score)
-                  .slice(0, 6) as RGNode[]
-
-              const displayItems = graphNeighbours.length > 0 ? graphNeighbours : sameCategory
-              const label = graphNeighbours.length > 0 ? 'Connected' : 'In same category'
-
-              if (displayItems.length === 0) return null
-              return (
-                <div className="mt-6">
-                  <div className="mb-2 text-[11px] uppercase tracking-wider text-white/40">
-                    {label}
-                  </div>
-                  <div className="space-y-1">
-                    {displayItems.map(n => (
-                      <button
-                        key={n.id}
-                        onClick={() => setSelectedNode(n)}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-white/80 transition hover:bg-white/5"
-                      >
-                        <span
-                          className="block h-2 w-2 rounded-full"
-                          style={{ background: colorForCategory(n.categorySlug) }}
-                        />
-                        <span className="flex-1 truncate">{n.name}</span>
-                        <span className="font-mono text-[10px] text-white/30">{n.signal_score.toFixed(0)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )
-            })()}
           </aside>
-        )}
+          )
+        })()}
 
         {/* ── The graph ── */}
         <ForceGraph2D

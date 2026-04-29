@@ -22,7 +22,7 @@ import { supabaseAdmin } from '@/lib/supabase-server'
 
 export type GraphNodeType = 'product' | 'category'
 
-export type GraphViewMode = 'category' | 'era' | 'similarity'
+export type GraphViewMode = 'category' | 'era' | 'similarity' | 'death'
 
 export interface GraphNode {
   id: string
@@ -31,10 +31,16 @@ export interface GraphNode {
   category: string          // display name
   categorySlug: string      // raw slug
   signal_score: number      // 0-100
+  signal_delta: number | null  // score change vs prior reading
   logo_url: string | null
   type: GraphNodeType
   launched_year: number | null
   product_count?: number    // hub nodes only
+  // Death intelligence
+  is_dead: boolean
+  death_reason: string | null
+  lifespan_months: number | null
+  mortality_risk: number    // 0-100; 100 = confirmed dead
 }
 
 export interface GraphLink {
@@ -81,8 +87,15 @@ type ProductRow = {
   logo_url: string | null
   category: string
   launched_year: number | null
+  status: string
+  discontinued_year: number | null
+  death_reason: string | null
+  lifespan_months: number | null
   product_signal_scores: { signal_score: number | null; score_date: string | null }[]
 }
+
+// Statuses that represent a dead/discontinued product
+const DEAD_STATUSES = new Set(['dead', 'discontinued', 'inactive', 'acquired'])
 
 // ─── Main query ──────────────────────────────────────────────────────────────
 
@@ -99,9 +112,10 @@ export async function getGraphData(params: GetGraphDataParams = {}): Promise<Gra
     .from('products')
     .select(`
       id, slug, name, logo_url, category, launched_year,
+      status, discontinued_year, death_reason, lifespan_months,
       product_signal_scores ( signal_score, score_date )
     `)
-    .eq('status', 'active')
+    .in('status', ['active', 'dead', 'discontinued', 'inactive', 'acquired'])
 
   if (category) {
     const slug = category.toLowerCase().replace(/\s+/g, '-')
@@ -114,27 +128,58 @@ export async function getGraphData(params: GetGraphDataParams = {}): Promise<Gra
   if (error) throw error
 
   const rows = (data ?? []) as unknown as ProductRow[]
+  const currentYear = new Date().getFullYear()
 
-  // Resolve latest signal_score per product
+  // Resolve signal scores + compute mortality intelligence per product
   const withScore = rows.map(r => {
     const scores = r.product_signal_scores ?? []
     const valid = scores
       .filter(s => s.signal_score !== null && s.score_date !== null)
       .sort((a, b) => (a.score_date! < b.score_date! ? 1 : -1))
     const latest = valid[0]?.signal_score ?? 0
-    return { row: r, score: latest }
+    const prior = valid[1]?.signal_score ?? null
+    const signal_delta = prior !== null ? Math.round((latest - prior) * 10) / 10 : null
+
+    const is_dead = DEAD_STATUSES.has(r.status)
+    // declining = newest score is lower than the score 3 readings ago
+    const declining = valid.length >= 2 &&
+      latest < (valid[Math.min(3, valid.length - 1)].signal_score ?? latest)
+
+    let mortality_risk: number
+    if (is_dead) {
+      mortality_risk = 100
+    } else {
+      let risk = Math.round(100 - latest)
+      if (r.launched_year && (currentYear - r.launched_year) > 7 && latest < 30) risk += 20
+      if (declining) risk += 15
+      if (latest < 15) risk = Math.max(risk, 90)
+      mortality_risk = Math.min(100, Math.max(0, risk))
+    }
+
+    return { row: r, score: latest, is_dead, signal_delta, mortality_risk }
   })
 
-  // Sort by score desc (products with no score go to the end) and take top `limit`.
-  withScore.sort((a, b) => b.score - a.score)
-  const top = withScore.slice(0, limit)
+  // Death mode: always include all dead products + top live products up to limit.
+  // Other modes: sort by score desc and slice.
+  let top: typeof withScore
+  if (viewMode === 'death') {
+    const deadOnes = withScore.filter(w => w.is_dead)
+    const liveOnes = withScore
+      .filter(w => !w.is_dead)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Math.max(0, limit - deadOnes.length))
+    top = [...deadOnes, ...liveOnes]
+  } else {
+    withScore.sort((a, b) => b.score - a.score)
+    top = withScore.slice(0, limit)
+  }
 
   // ── 2. Build product nodes + category hubs ─────────────────────────────────
   const nodes: GraphNode[] = []
   const productIdSet = new Set<string>()
   const categoryCounts = new Map<string, number>()
 
-  for (const { row, score } of top) {
+  for (const { row, score, is_dead, signal_delta, mortality_risk } of top) {
     productIdSet.add(row.id)
     categoryCounts.set(row.category, (categoryCounts.get(row.category) ?? 0) + 1)
 
@@ -145,9 +190,14 @@ export async function getGraphData(params: GetGraphDataParams = {}): Promise<Gra
       category: categoryDisplay(row.category),
       categorySlug: row.category,
       signal_score: Math.round(score * 10) / 10,
+      signal_delta,
       logo_url: row.logo_url,
       launched_year: row.launched_year,
       type: 'product',
+      is_dead,
+      death_reason: row.death_reason,
+      lifespan_months: row.lifespan_months,
+      mortality_risk,
     })
   }
 
@@ -158,8 +208,9 @@ export async function getGraphData(params: GetGraphDataParams = {}): Promise<Gra
       nodes.push({
         id: `cat-${slug}`, name: categoryDisplay(slug), slug,
         category: categoryDisplay(slug), categorySlug: slug,
-        signal_score: 0, logo_url: null, launched_year: null,
+        signal_score: 0, signal_delta: null, logo_url: null, launched_year: null,
         type: 'category', product_count: count,
+        is_dead: false, death_reason: null, lifespan_months: null, mortality_risk: 0,
       })
     }
     for (const node of nodes) {
@@ -176,8 +227,9 @@ export async function getGraphData(params: GetGraphDataParams = {}): Promise<Gra
       nodes.push({
         id: `era-${era}`, name: era, slug: era,
         category: era, categorySlug: era,
-        signal_score: 0, logo_url: null, launched_year: null,
+        signal_score: 0, signal_delta: null, logo_url: null, launched_year: null,
         type: 'category', product_count: count,
+        is_dead: false, death_reason: null, lifespan_months: null, mortality_risk: 0,
       })
     }
     for (const node of nodes) {
