@@ -13,6 +13,10 @@ next.user-config.*
 # Common ignores
 node_modules
 .next/
-.DS_Store.backfill-progress.json
+.DS_Store
+.backfill-progress.json
+tsconfig.tsbuildinfo
+logs/
+supabase/.temp/
 
 .vercel
